@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Premium dark theme overrides -->
+    <color name="primary_dark">#121214</color>
+    <color name="card_bg_dark">#1E1E24</color>
+    <color name="accent_indigo">#818CF8</color> <!-- Lighter indigo for better contrast in dark mode -->
+    <color name="accent_indigo_dark">#6366F1</color>
+    
+    <!-- Neutral text & backgrounds overrides for night mode -->
+    <color name="text_primary">#F9FAFB</color>
+    <color name="text_secondary">#D1D5DB</color>
+    <color name="text_muted">#9CA3AF</color>
+    <color name="bg_light">#121214</color>
+    <color name="divider">#2D2D30</color>
+    <color name="white">#1E1E24</color> <!-- Cards and Dialog backgrounds become dark grey -->
+    
+    <!-- Statuses overrides for dark backgrounds -->
+    <color name="status_green_bg">#064E3B</color> 
+    <color name="status_blue_bg">#1E3A8A</color> 
+    <color name="status_purple_bg">#4C1D95</color> 
+    <color name="status_red_bg">#7F1D1D</color> 
+</resources>

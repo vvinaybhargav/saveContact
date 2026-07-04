@@ -35,6 +35,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.switchmaterial.SwitchMaterial;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -328,6 +329,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         Button btnDelete = dialogView.findViewById(R.id.btn_dialog_delete);
         Button btnSaveContacts = dialogView.findViewById(R.id.btn_dialog_save_contacts);
         Button btnReminder = dialogView.findViewById(R.id.btn_dialog_reminder);
+        SwitchMaterial switchSaveContacts = dialogView.findViewById(R.id.switch_save_contacts);
 
         // Bind Spinner choices
         ArrayAdapter<CharSequence> spinnerAdapter = ArrayAdapter.createFromResource(requireContext(),
@@ -349,6 +351,9 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             btnSave.setText(R.string.btn_update);
             btnDelete.setVisibility(View.VISIBLE);
             btnReminder.setVisibility(View.VISIBLE);
+            if (switchSaveContacts != null) {
+                switchSaveContacts.setVisibility(View.GONE);
+            }
 
             // Show/hide 'Save to Contacts' button based on existence
             if (isContactExists(editCall.getPhoneNumber())) {
@@ -368,6 +373,10 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             btnDelete.setVisibility(View.GONE);
             btnSaveContacts.setVisibility(View.GONE);
             btnReminder.setVisibility(View.GONE);
+            if (switchSaveContacts != null) {
+                switchSaveContacts.setVisibility(View.VISIBLE);
+                switchSaveContacts.setChecked(false);
+            }
             if (editCall != null) {
                 etPhone.setText(editCall.getPhoneNumber());
                 
@@ -460,7 +469,18 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                 // Insert mode
                 JobCall newCall = new JobCall(phone, company, round, tags, notes, 0, System.currentTimeMillis());
                 dbHelper.insertJobCall(newCall);
-                Toast.makeText(requireContext(), "Call logged successfully!", Toast.LENGTH_SHORT).show();
+
+                // Auto save contact if Switch is selected
+                if (switchSaveContacts != null && switchSaveContacts.isChecked()) {
+                    boolean contactSaved = saveContactDirectly(company, phone);
+                    if (contactSaved) {
+                        Toast.makeText(requireContext(), "Logged and saved to phone contacts!", Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(requireContext(), "Logged, but failed to save to contacts. Check permissions.", Toast.LENGTH_LONG).show();
+                    }
+                } else {
+                    Toast.makeText(requireContext(), "Call logged successfully!", Toast.LENGTH_SHORT).show();
+                }
             }
 
             refreshDashboardList();
