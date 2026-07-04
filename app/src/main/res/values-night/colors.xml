@@ -20,4 +20,12 @@
     <color name="status_blue_bg">#1E2D4A</color>
     <color name="status_purple_bg">#3D1E4E</color>
     <color name="status_red_bg">#4E1E1E</color>
+
+    <!-- Call type accents (brighter foregrounds + dark tinted circles for night) -->
+    <color name="call_incoming">#818CF8</color>
+    <color name="call_incoming_bg">#282C55</color>
+    <color name="call_outgoing">#A5B4FC</color>
+    <color name="call_outgoing_bg">#2E2C58</color>
+    <color name="call_missed">#FB7185</color>
+    <color name="call_missed_bg">#4E1E2A</color>
 </resources>

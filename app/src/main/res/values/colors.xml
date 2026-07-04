@@ -30,4 +30,12 @@
     <color name="divider">#E5E7EB</color>
     <color name="white">#FFFFFF</color>
     <color name="white_constant">#FFFFFF</color>
+
+    <!-- Call type accents (Recents) - indigo brand family, Missed pops in rose -->
+    <color name="call_incoming">#6366F1</color>
+    <color name="call_incoming_bg">#E0E7FF</color>
+    <color name="call_outgoing">#818CF8</color>
+    <color name="call_outgoing_bg">#ECEBFF</color>
+    <color name="call_missed">#F43F5E</color>
+    <color name="call_missed_bg">#FFE4E6</color>
 </resources>

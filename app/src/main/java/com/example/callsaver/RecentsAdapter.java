@@ -75,27 +75,27 @@ public class RecentsAdapter extends RecyclerView.Adapter<RecentsAdapter.ViewHold
     }
 
     private void setupCallTypeStyle(ViewHolder holder, int callType) {
-        // Coordinated status palette (shared across the app, adapts to dark mode):
-        //   Incoming -> green, Outgoing -> blue, Missed -> red.
+        // Indigo brand family (adapts to dark mode):
+        //   Incoming -> indigo, Outgoing -> violet, Missed -> rose.
         String typeLabel;
         int fgRes, bgRes;
 
         switch (callType) {
             case 2: // CallLog.Calls.OUTGOING_TYPE
                 typeLabel = "Outgoing";
-                fgRes = R.color.status_blue;
-                bgRes = R.color.status_blue_bg;
+                fgRes = R.color.call_outgoing;
+                bgRes = R.color.call_outgoing_bg;
                 break;
             case 3: // CallLog.Calls.MISSED_TYPE
                 typeLabel = "Missed";
-                fgRes = R.color.status_error;
-                bgRes = R.color.status_red_bg;
+                fgRes = R.color.call_missed;
+                bgRes = R.color.call_missed_bg;
                 break;
             case 1: // CallLog.Calls.INCOMING_TYPE
             default:
                 typeLabel = (callType == 1) ? "Incoming" : "Call";
-                fgRes = R.color.status_green;
-                bgRes = R.color.status_green_bg;
+                fgRes = R.color.call_incoming;
+                bgRes = R.color.call_incoming_bg;
                 break;
         }
 
