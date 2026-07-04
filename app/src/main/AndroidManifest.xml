@@ -12,6 +12,9 @@
     <!-- Permission to show overlay activity over other apps -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
+    <!-- Permission to post the "save this caller" notification (Android 13+) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <application
         android:allowBackup="true"
         android:icon="@drawable/ic_launcher"

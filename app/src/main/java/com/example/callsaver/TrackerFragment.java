@@ -39,6 +39,7 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.switchmaterial.SwitchMaterial;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemClickListener {
@@ -72,6 +73,18 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             Manifest.permission.READ_CONTACTS,
             Manifest.permission.WRITE_CONTACTS
     };
+
+    /**
+     * Base permissions plus POST_NOTIFICATIONS on Android 13+ (needed for the
+     * "save this caller" notification).
+     */
+    private String[] getRequiredPermissions() {
+        List<String> perms = new ArrayList<>(Arrays.asList(requiredPermissions));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            perms.add(Manifest.permission.POST_NOTIFICATIONS);
+        }
+        return perms.toArray(new String[0]);
+    }
 
     @Nullable
     @Override
@@ -267,7 +280,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
     private void checkPermissionsBannerVisibility() {
         if (getActivity() == null) return;
         boolean allGranted = true;
-        for (String perm : requiredPermissions) {
+        for (String perm : getRequiredPermissions()) {
             if (ContextCompat.checkSelfPermission(requireContext(), perm) != PackageManager.PERMISSION_GRANTED) {
                 allGranted = false;
                 break;
@@ -292,7 +305,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
     private void handlePermissionsRequestFlow() {
         if (getActivity() == null) return;
         List<String> listPermissionsNeeded = new ArrayList<>();
-        for (String perm : requiredPermissions) {
+        for (String perm : getRequiredPermissions()) {
             if (ContextCompat.checkSelfPermission(requireContext(), perm) != PackageManager.PERMISSION_GRANTED) {
                 listPermissionsNeeded.add(perm);
             }

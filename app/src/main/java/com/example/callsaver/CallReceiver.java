@@ -1,14 +1,21 @@
 package com.example.callsaver;
 
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.Build;
 import android.provider.ContactsContract;
 import android.telephony.TelephonyManager;
 import android.util.Log;
+
+import androidx.core.app.NotificationCompat;
 
 public class CallReceiver extends BroadcastReceiver {
 
@@ -16,6 +23,8 @@ public class CallReceiver extends BroadcastReceiver {
     private static final String PREFS_NAME = "CallSaverPrefs";
     private static final String KEY_LAST_STATE = "last_state";
     private static final String KEY_INCOMING_NUMBER = "incoming_number";
+    private static final String KEY_ANSWERED = "answered";
+    private static final String CHANNEL_ID = "recruiter_save_channel";
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -34,16 +43,17 @@ public class CallReceiver extends BroadcastReceiver {
         String lastSavedState = prefs.getString(KEY_LAST_STATE, TelephonyManager.EXTRA_STATE_IDLE);
 
         if (stateStr.equals(TelephonyManager.EXTRA_STATE_RINGING)) {
-            // Incoming call - get phone number (only available in RINGING state on most devices)
+            // Incoming call ringing - reset the "answered" flag for this new call.
             String incomingNumber = intent.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER);
+            SharedPreferences.Editor editor = prefs.edit()
+                    .putString(KEY_LAST_STATE, TelephonyManager.EXTRA_STATE_RINGING)
+                    .putBoolean(KEY_ANSWERED, false);
             if (incomingNumber != null && !incomingNumber.isEmpty()) {
-                prefs.edit()
-                        .putString(KEY_INCOMING_NUMBER, incomingNumber)
-                        .putString(KEY_LAST_STATE, TelephonyManager.EXTRA_STATE_RINGING)
-                        .apply();
+                // The number can arrive on a later RINGING broadcast; store it whenever present.
+                editor.putString(KEY_INCOMING_NUMBER, incomingNumber);
                 Log.d(TAG, "Incoming call detected from number: " + incomingNumber);
 
-                // Check if the caller is in our Job Tracker database
+                // Show the caller-ID overlay banner if this is a tracked recruiter.
                 DatabaseHelper dbHelper = new DatabaseHelper(context);
                 JobCall jobCall = dbHelper.getJobCallByNumber(context, incomingNumber);
                 if (jobCall != null) {
@@ -55,55 +65,96 @@ public class CallReceiver extends BroadcastReceiver {
                     context.startService(serviceIntent);
                 }
             }
+            editor.apply();
         } else if (stateStr.equals(TelephonyManager.EXTRA_STATE_OFFHOOK)) {
-            // Call active/answered - Stop Caller ID banner
-            prefs.edit().putString(KEY_LAST_STATE, TelephonyManager.EXTRA_STATE_OFFHOOK).apply();
-            Log.d(TAG, "Call active (OFFHOOK)");
+            // OFFHOOK after RINGING == the incoming call was answered.
+            // OFFHOOK straight from IDLE == an outgoing call (never marked answered).
+            boolean answeredIncoming = TelephonyManager.EXTRA_STATE_RINGING.equals(lastSavedState)
+                    || prefs.getBoolean(KEY_ANSWERED, false);
+            prefs.edit()
+                    .putString(KEY_LAST_STATE, TelephonyManager.EXTRA_STATE_OFFHOOK)
+                    .putBoolean(KEY_ANSWERED, answeredIncoming)
+                    .apply();
+            Log.d(TAG, "Call active (OFFHOOK). Answered incoming: " + answeredIncoming);
             context.stopService(new Intent(context, CallerIdService.class));
         } else if (stateStr.equals(TelephonyManager.EXTRA_STATE_IDLE)) {
             // Stop Caller ID banner
             context.stopService(new Intent(context, CallerIdService.class));
-            // Call ended/idle - check transition from active call
-            Log.d(TAG, "Call ended (IDLE). Previous saved state: " + lastSavedState);
-            
-            if (lastSavedState.equals(TelephonyManager.EXTRA_STATE_RINGING) || 
-                lastSavedState.equals(TelephonyManager.EXTRA_STATE_OFFHOOK)) {
-                
-                String incomingNumber = prefs.getString(KEY_INCOMING_NUMBER, null);
-                Log.d(TAG, "Processing call completion. Stored number: " + incomingNumber);
 
-                if (incomingNumber != null && !incomingNumber.trim().isEmpty()) {
-                    boolean contactExists = isContactExists(context, incomingNumber);
-                    DatabaseHelper dbHelper = new DatabaseHelper(context);
-                    boolean isTrackedRecruiter = dbHelper.getJobCallByNumber(context, incomingNumber) != null;
+            String incomingNumber = prefs.getString(KEY_INCOMING_NUMBER, null);
+            boolean answered = prefs.getBoolean(KEY_ANSWERED, false);
+            Log.d(TAG, "Call ended (IDLE). Number: " + incomingNumber + ", answered: " + answered);
 
-                    if (!contactExists || isTrackedRecruiter) {
-                        Log.d(TAG, "Triggering popup Activity. Unsaved: " + !contactExists + ", Tracked: " + isTrackedRecruiter);
-                        
-                        // Launch SaveContactActivity popup
-                        // Query call duration from call history logs
-                        int duration = getLastCallDuration(context, incomingNumber);
-                        Log.d(TAG, "Retrieved call duration: " + duration + "s");
-
-                        Intent popupIntent = new Intent(context, SaveContactActivity.class);
-                        popupIntent.putExtra("phone_number", incomingNumber);
-                        popupIntent.putExtra("timestamp", System.currentTimeMillis());
-                        popupIntent.putExtra("duration", duration);
-                        popupIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                        popupIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                        popupIntent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
-                        context.startActivity(popupIntent);
-                    } else {
-                        Log.d(TAG, "Number already exists in contacts.");
-                    }
+            // Only notify for an ANSWERED INCOMING call whose number is NOT already in contacts.
+            if (answered && incomingNumber != null && !incomingNumber.trim().isEmpty()) {
+                if (!isContactExists(context, incomingNumber)) {
+                    int duration = getLastCallDuration(context, incomingNumber);
+                    Log.d(TAG, "Number not in contacts -> posting save notification. Duration: " + duration + "s");
+                    showSaveNotification(context, incomingNumber, duration);
+                } else {
+                    Log.d(TAG, "Number already exists in contacts. No notification.");
                 }
             }
-            
+
             // Clean up state
             prefs.edit()
                     .remove(KEY_INCOMING_NUMBER)
+                    .remove(KEY_ANSWERED)
                     .putString(KEY_LAST_STATE, TelephonyManager.EXTRA_STATE_IDLE)
                     .apply();
+        }
+    }
+
+    /**
+     * Posts a heads-up notification prompting the user to save an unknown caller.
+     * Tapping it opens {@link SaveContactActivity} (a user-initiated launch, so it is
+     * not blocked by background-activity-launch restrictions like the old auto-popup was).
+     */
+    private void showSaveNotification(Context context, String number, int duration) {
+        NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        if (nm == null) {
+            return;
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(
+                    CHANNEL_ID,
+                    "Save recruiter contacts",
+                    NotificationManager.IMPORTANCE_HIGH);
+            channel.setDescription("Prompts you to save unknown callers to your Job Tracker.");
+            nm.createNotificationChannel(channel);
+        }
+
+        Intent tapIntent = new Intent(context, SaveContactActivity.class);
+        tapIntent.putExtra("phone_number", number);
+        tapIntent.putExtra("timestamp", System.currentTimeMillis());
+        tapIntent.putExtra("duration", duration);
+        tapIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+
+        int piFlags = PendingIntent.FLAG_UPDATE_CURRENT;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            piFlags |= PendingIntent.FLAG_IMMUTABLE;
+        }
+        PendingIntent pendingIntent = PendingIntent.getActivity(
+                context, number.hashCode(), tapIntent, piFlags);
+
+        Notification notification = new NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.ic_menu_call)
+                .setContentTitle("Save this caller?")
+                .setContentText(number + " isn't in your contacts. Tap to log it.")
+                .setStyle(new NotificationCompat.BigTextStyle()
+                        .bigText(number + " isn't saved in your contacts. Tap to add it to your Job Tracker & phone contacts."))
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setCategory(NotificationCompat.CATEGORY_RECOMMENDATION)
+                .setAutoCancel(true)
+                .setContentIntent(pendingIntent)
+                .build();
+
+        try {
+            nm.notify(number.hashCode(), notification);
+        } catch (SecurityException e) {
+            // POST_NOTIFICATIONS not granted (Android 13+)
+            Log.e(TAG, "Cannot post notification: " + e.getMessage());
         }
     }
 
