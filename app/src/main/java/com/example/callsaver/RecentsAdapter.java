@@ -10,6 +10,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.card.MaterialCardView;
@@ -74,33 +75,37 @@ public class RecentsAdapter extends RecyclerView.Adapter<RecentsAdapter.ViewHold
     }
 
     private void setupCallTypeStyle(ViewHolder holder, int callType) {
-        int iconRes = android.R.drawable.ic_menu_call; // Default
-        String typeLabel = "Call";
-        int badgeColor = 0xFF3B82F6; // Blue default
-        int badgeBgColor = 0xFFDBEAFE;
+        // Coordinated status palette (shared across the app, adapts to dark mode):
+        //   Incoming -> green, Outgoing -> blue, Missed -> red.
+        String typeLabel;
+        int fgRes, bgRes;
 
         switch (callType) {
-            case 1: // CallLog.Calls.INCOMING_TYPE
-                typeLabel = "Incoming";
-                badgeColor = 0xFF10B981; // Green
-                badgeBgColor = 0xFFD1FAE5;
-                break;
             case 2: // CallLog.Calls.OUTGOING_TYPE
                 typeLabel = "Outgoing";
-                badgeColor = 0xFF6366F1; // Indigo
-                badgeBgColor = 0xFFEDE9FE;
+                fgRes = R.color.status_blue;
+                bgRes = R.color.status_blue_bg;
                 break;
             case 3: // CallLog.Calls.MISSED_TYPE
                 typeLabel = "Missed";
-                badgeColor = 0xFFEF4444; // Red
-                badgeBgColor = 0xFFFEE2E2;
+                fgRes = R.color.status_error;
+                bgRes = R.color.status_red_bg;
+                break;
+            case 1: // CallLog.Calls.INCOMING_TYPE
+            default:
+                typeLabel = (callType == 1) ? "Incoming" : "Call";
+                fgRes = R.color.status_green;
+                bgRes = R.color.status_green_bg;
                 break;
         }
 
+        int fg = ContextCompat.getColor(context, fgRes);
+        int bg = ContextCompat.getColor(context, bgRes);
+
         holder.tvCallTypeLabel.setText(typeLabel);
-        holder.tvCallTypeLabel.setTextColor(badgeColor);
-        holder.cardCallTypeBg.setCardBackgroundColor(badgeBgColor);
-        holder.imgCallTypeIcon.setImageTintList(ColorStateList.valueOf(badgeColor));
+        holder.tvCallTypeLabel.setTextColor(fg);
+        holder.cardCallTypeBg.setCardBackgroundColor(bg);
+        holder.imgCallTypeIcon.setImageTintList(ColorStateList.valueOf(fg));
     }
 
     @Override
