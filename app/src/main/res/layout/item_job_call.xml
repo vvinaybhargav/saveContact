@@ -15,16 +15,16 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="16dp"
-        android:gravity="center_vertical">
+        android:padding="16dp">
 
         <!-- Company Initials Avatar Circle -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/card_avatar"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:layout_marginEnd="16dp"
-            app:cardCornerRadius="22dp"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginEnd="14dp"
+            android:layout_gravity="top"
+            app:cardCornerRadius="24dp"
             app:cardElevation="0dp"
             app:strokeWidth="0dp"
             app:cardBackgroundColor="@color/accent_indigo">
@@ -35,112 +35,139 @@
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
                 android:text="?"
-                android:textColor="@color/white"
-                android:textSize="18sp"
+                android:textColor="@color/white_constant"
+                android:textSize="20sp"
                 android:textStyle="bold" />
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Main Details (Left to Center) -->
+        <!-- Content column -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:orientation="vertical">
 
-            <TextView
-                android:id="@+id/tv_company_name"
-                android:layout_width="wrap_content"
+            <!-- Row: Company name + status badge -->
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Company Name"
-                android:textColor="@color/text_primary"
-                android:textSize="16sp"
-                android:textStyle="bold" />
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
 
+                <TextView
+                    android:id="@+id/tv_company_name"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="8dp"
+                    android:text="Company Name"
+                    android:textColor="@color/text_primary"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:maxLines="1"
+                    android:ellipsize="end" />
+
+                <!-- Round Status Badge -->
+                <TextView
+                    android:id="@+id/tv_status_badge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:paddingHorizontal="10dp"
+                    android:paddingVertical="4dp"
+                    android:text="Screening"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:background="@android:color/transparent" />
+            </LinearLayout>
+
+            <!-- Phone number -->
             <TextView
                 android:id="@+id/tv_phone_number"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
                 android:text="+1 (555) 000-0000"
                 android:textColor="@color/text_secondary"
-                android:textSize="13sp" />
+                android:textSize="13sp"
+                android:maxLines="1"
+                android:ellipsize="end" />
 
+            <!-- Tags -->
             <TextView
                 android:id="@+id/tv_tags"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="8dp"
                 android:text="Tags: Android Dev"
                 android:textColor="@color/text_muted"
-                android:textSize="12sp" />
+                android:textSize="12sp"
+                android:maxLines="1"
+                android:ellipsize="end" />
 
             <!-- Notes Preview Snippet (Dynamically visible) -->
             <TextView
                 android:id="@+id/tv_notes_preview"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="3dp"
                 android:text="Notes: resume sent"
                 android:textColor="@color/text_muted"
                 android:textSize="12sp"
                 android:ellipsize="end"
                 android:maxLines="1"
                 android:visibility="gone" />
-        </LinearLayout>
 
-        <!-- Round Badge & Time (Right side) -->
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:gravity="end"
-            android:layout_marginStart="8dp">
-
-            <!-- Round Status Badge -->
-            <TextView
-                android:id="@+id/tv_status_badge"
-                android:layout_width="wrap_content"
+            <!-- Footer row: timestamp + call button -->
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:paddingHorizontal="10dp"
-                android:paddingVertical="4dp"
-                android:text="Screening"
-                android:textSize="11sp"
-                android:textStyle="bold"
-                android:background="@android:color/transparent" />
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="12dp">
 
-            <!-- Time stamp -->
-            <TextView
-                android:id="@+id/tv_call_time"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:text="Today, 10:30 AM"
-                android:textColor="@color/text_muted"
-                android:textSize="11sp" />
+                <ImageView
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:src="@android:drawable/ic_menu_recent_history"
+                    app:tint="@color/text_muted"
+                    android:layout_marginEnd="5dp"
+                    android:contentDescription="Logged at" />
+
+                <TextView
+                    android:id="@+id/tv_call_time"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Today, 10:30 AM"
+                    android:textColor="@color/text_muted"
+                    android:textSize="11sp"
+                    android:maxLines="1"
+                    android:ellipsize="end" />
+
+                <!-- Direct Call Button -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/btn_action_call"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_marginStart="8dp"
+                    app:cardCornerRadius="20dp"
+                    app:cardElevation="0dp"
+                    app:strokeWidth="1dp"
+                    app:strokeColor="@color/status_green"
+                    app:cardBackgroundColor="@color/status_green_bg"
+                    android:clickable="true"
+                    android:focusable="true">
+
+                    <ImageView
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:layout_gravity="center"
+                        android:src="@android:drawable/ic_menu_call"
+                        app:tint="@color/status_green"
+                        android:contentDescription="Call recruiter back" />
+                </com.google.android.material.card.MaterialCardView>
+
+            </LinearLayout>
         </LinearLayout>
-
-        <!-- Direct Call Button -->
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/btn_action_call"
-            android:layout_width="38dp"
-            android:layout_height="38dp"
-            android:layout_marginStart="16dp"
-            app:cardCornerRadius="19dp"
-            app:cardElevation="0dp"
-            app:strokeWidth="1dp"
-            app:strokeColor="@color/status_green"
-            app:cardBackgroundColor="@color/status_green_bg"
-            android:clickable="true"
-            android:focusable="true">
-
-            <ImageView
-                android:layout_width="18dp"
-                android:layout_height="18dp"
-                android:layout_gravity="center"
-                android:src="@android:drawable/ic_menu_call"
-                app:tint="@color/status_green"
-                android:contentDescription="Call recruiter back" />
-        </com.google.android.material.card.MaterialCardView>
-
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>
