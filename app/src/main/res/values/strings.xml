@@ -1,24 +1,65 @@
 <resources>
-    <string name="app_name">Call Saver</string>
-    <string name="title_permissions_setup">Call Saver Setup</string>
-    <string name="desc_permissions_setup">Please grant the following permissions to enable automatic popup notifications to save unsaved numbers after you hang up.</string>
+    <string name="app_name">Job Call Tracker</string>
+    <string name="title_dashboard">Job Call Tracker</string>
+    <string name="desc_dashboard">Keep track of your interviewer calls, company rounds, and contact details in one place.</string>
+    
+    <!-- Onboarding Permissions Banner -->
+    <string name="banner_permissions_title">Missing Permissions!</string>
+    <string name="banner_permissions_desc">Tap here to grant phone state, call logs, contacts, and overlay permissions to automate popup logs after calls.</string>
+
+    <string name="title_permissions_setup">Job Tracker Setup</string>
+    <string name="desc_permissions_setup">Please grant the following permissions to enable automatic popup tracking of job calls right after you hang up.</string>
     <string name="btn_grant_permissions">Grant Missing Permissions</string>
     <string name="btn_open_overlay_settings">Enable Draw Over Other Apps</string>
+    
+    <!-- Permission Labels -->
     <string name="perm_phone_state">Phone State &amp; Call Logs</string>
-    <string name="perm_phone_state_desc">Required to detect call completion and retrieve the incoming/outgoing phone number.</string>
+    <string name="perm_phone_state_desc">Required to detect call completion and retrieve recruiter numbers.</string>
     <string name="perm_contacts">Contacts Read/Write</string>
-    <string name="perm_contacts_desc">Required to check if the number is already saved and write new contacts directly.</string>
+    <string name="perm_contacts_desc">Required to verify contact existence and save recruiters directly to your address book.</string>
     <string name="perm_overlay">System Overlay (Draw over apps)</string>
-    <string name="perm_overlay_desc">Required to show the save dialog popup automatically when you return to your home screen or another app.</string>
+    <string name="perm_overlay_desc">Required to display the quick logs popup automatically after you hang up.</string>
+    
     <string name="granted">Granted</string>
     <string name="pending">Action Required</string>
     
-    <string name="title_save_contact">Save Contact?</string>
-    <string name="label_phone_number">Phone Number</string>
-    <string name="hint_name">Contact Name</string>
-    <string name="btn_save">Save</string>
+    <!-- Job Log Forms -->
+    <string name="title_save_job_call">Log Recruiter Call</string>
+    <string name="title_edit_job_call">Edit Call Log</string>
+    <string name="title_add_job_call">Log Call Manually</string>
+    
+    <string name="hint_company_name">Company Name (e.g. Google)</string>
+    <string name="hint_tags">Tags (e.g. Android Dev, Remote)</string>
+    <string name="hint_phone_number">Phone Number</string>
+    
+    <!-- Round Spinner Dropdown Items -->
+    <string name="label_select_round">Select Interview Round</string>
+    
+    <!-- Buttons -->
+    <string name="btn_save_tracker">Save to Tracker</string>
+    <string name="btn_save_both">Save to Contacts &amp; Tracker</string>
     <string name="btn_dismiss">Dismiss</string>
-    <string name="msg_contact_saved">Contact saved successfully!</string>
-    <string name="msg_contact_failed">Failed to save contact.</string>
+    <string name="btn_delete">Delete Log</string>
+    <string name="btn_cancel">Cancel</string>
+    <string name="btn_update">Update</string>
+    <string name="btn_add">Log Call</string>
+    
+    <!-- Messages -->
+    <string name="msg_saved_tracker">Call saved to tracker!</string>
+    <string name="msg_saved_both">Saved to phone contacts and tracker!</string>
+    <string name="msg_deleted">Log entry deleted.</string>
+    <string name="msg_company_empty">Please enter a company name first.</string>
+    <string name="msg_phone_empty">Please enter a phone number first.</string>
     <string name="msg_name_empty">Please enter a name first.</string>
+    
+    <!-- Spinner Array -->
+    <string-array name="round_statuses">
+        <item>Screening</item>
+        <item>1st Round</item>
+        <item>2nd Round</item>
+        <item>Final Round</item>
+        <item>HR / Salary</item>
+        <item>Offered</item>
+        <item>Rejected</item>
+    </string-array>
 </resources>

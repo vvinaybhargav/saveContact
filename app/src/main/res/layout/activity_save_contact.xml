@@ -24,41 +24,33 @@
             android:padding="24dp"
             android:gravity="center_horizontal">
 
-            <!-- Rounded circle header badge -->
+            <!-- Rounded Circle header badge -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="56dp"
                 android:layout_height="56dp"
-                android:layout_marginBottom="16dp"
+                android:layout_marginBottom="12dp"
                 app:cardCornerRadius="28dp"
                 app:cardElevation="0dp"
-                app:cardBackgroundColor="@color/status_green_bg"
+                app:cardBackgroundColor="@color/status_blue_bg"
                 app:strokeWidth="0dp">
 
                 <ImageView
                     android:layout_width="28dp"
                     android:layout_height="28dp"
                     android:layout_gravity="center"
-                    android:src="@android:drawable/ic_menu_add"
-                    app:tint="@color/status_green"
-                    android:contentDescription="@string/title_save_contact" />
+                    android:src="@android:drawable/ic_menu_today"
+                    app:tint="@color/status_blue"
+                    android:contentDescription="@string/title_save_job_call" />
             </com.google.android.material.card.MaterialCardView>
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/title_save_contact"
+                android:text="@string/title_save_job_call"
                 android:textColor="@color/text_primary"
-                android:textSize="20sp"
+                android:textSize="18sp"
                 android:textStyle="bold"
-                android:layout_marginBottom="4dp"/>
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Unsaved Number:"
-                android:textColor="@color/text_secondary"
-                android:textSize="12sp"
-                android:layout_marginBottom="8dp"/>
+                android:layout_marginBottom="2dp"/>
 
             <TextView
                 android:id="@+id/tv_phone_number"
@@ -66,16 +58,16 @@
                 android:layout_height="wrap_content"
                 android:text="+1 (555) 000-0000"
                 android:textColor="@color/accent_indigo"
-                android:textSize="20sp"
+                android:textSize="18sp"
                 android:textStyle="bold"
-                android:layout_marginBottom="20dp"/>
+                android:layout_marginBottom="16dp"/>
 
-            <!-- Name Input Field -->
+            <!-- Company Name Input -->
             <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="@string/hint_name"
-                android:layout_marginBottom="24dp"
+                android:hint="@string/hint_company_name"
+                android:layout_marginBottom="10dp"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                 app:boxCornerRadiusTopStart="12dp"
                 app:boxCornerRadiusTopEnd="12dp"
@@ -87,46 +79,103 @@
                 app:startIconTint="@color/text_muted">
 
                 <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/et_contact_name"
+                    android:id="@+id/et_company_name"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="textPersonName|textCapWords"
+                    android:inputType="textCapWords"
                     android:maxLines="1"
                     android:singleLine="true"
                     android:textColor="@color/text_primary"/>
             </com.google.android.material.textfield.TextInputLayout>
 
-            <!-- Action buttons -->
-            <LinearLayout
+            <!-- Tags/Role Input -->
+            <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal">
+                android:hint="@string/hint_tags"
+                android:layout_marginBottom="12dp"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                app:boxCornerRadiusTopStart="12dp"
+                app:boxCornerRadiusTopEnd="12dp"
+                app:boxCornerRadiusBottomStart="12dp"
+                app:boxCornerRadiusBottomEnd="12dp"
+                app:boxStrokeColor="@color/accent_indigo"
+                app:hintTextColor="@color/accent_indigo"
+                app:startIconDrawable="@android:drawable/ic_menu_compass"
+                app:startIconTint="@color/text_muted">
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btn_dismiss"
-                    android:layout_width="0dp"
-                    android:layout_height="48dp"
-                    android:layout_weight="1"
-                    android:layout_marginEnd="8dp"
-                    android:text="@string/btn_dismiss"
-                    android:textAllCaps="false"
-                    android:textColor="@color/text_secondary"
-                    style="@style/Widget.MaterialComponents.Button.TextButton"
-                    android:textStyle="bold" />
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/et_tags"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="textCapWords"
+                    android:maxLines="1"
+                    android:singleLine="true"
+                    android:textColor="@color/text_primary"/>
+            </com.google.android.material.textfield.TextInputLayout>
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btn_save"
-                    android:layout_width="0dp"
-                    android:layout_height="48dp"
-                    android:layout_weight="1.2"
-                    android:layout_marginStart="8dp"
-                    android:text="@string/btn_save"
-                    android:textAllCaps="false"
-                    android:textColor="@color/white"
-                    app:cornerRadius="12dp"
-                    android:backgroundTint="@color/accent_indigo"
-                    android:textStyle="bold" />
-            </LinearLayout>
+            <!-- Round status Spinner Dropdown -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/label_select_round"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="4dp"
+                android:layout_marginStart="4dp"
+                android:gravity="start" />
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginBottom="20dp"
+                android:background="@drawable/spinner_border">
+
+                <Spinner
+                    android:id="@+id/spinner_round"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:paddingHorizontal="12dp"
+                    android:spinnerMode="dropdown" />
+            </FrameLayout>
+
+            <!-- Stacked Premium Actions -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_save_both"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="@string/btn_save_both"
+                android:textAllCaps="false"
+                android:textColor="@color/white"
+                app:cornerRadius="12dp"
+                android:backgroundTint="@color/accent_indigo"
+                android:textStyle="bold"
+                android:layout_marginBottom="8dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_save_tracker"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="@string/btn_save_tracker"
+                android:textAllCaps="false"
+                android:textColor="@color/accent_indigo"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                app:strokeColor="@color/accent_indigo"
+                app:cornerRadius="12dp"
+                android:textStyle="bold"
+                android:layout_marginBottom="12dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_dismiss"
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:text="@string/btn_dismiss"
+                android:textAllCaps="false"
+                android:textColor="@color/text_secondary"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:textStyle="bold" />
+
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 </RelativeLayout>

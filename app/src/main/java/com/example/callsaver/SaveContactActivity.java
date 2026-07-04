@@ -7,8 +7,10 @@ import android.os.Bundle;
 import android.view.View;
 import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -19,7 +21,12 @@ import java.util.ArrayList;
 public class SaveContactActivity extends AppCompatActivity {
 
     private String phoneNumber;
-    private EditText etContactName;
+    private long callTimestamp;
+    
+    private EditText etCompanyName;
+    private EditText etTags;
+    private Spinner spinnerRound;
+    private DatabaseHelper dbHelper;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -30,56 +37,100 @@ public class SaveContactActivity extends AppCompatActivity {
         
         setContentView(R.layout.activity_save_contact);
 
+        dbHelper = new DatabaseHelper(this);
+
         phoneNumber = getIntent().getStringExtra("phone_number");
+        callTimestamp = getIntent().getLongExtra("timestamp", System.currentTimeMillis());
+
         if (phoneNumber == null) {
             finish();
             return;
         }
 
         TextView tvPhoneNumber = findViewById(R.id.tv_phone_number);
-        etContactName = findViewById(R.id.et_contact_name);
+        etCompanyName = findViewById(R.id.et_company_name);
+        etTags = findViewById(R.id.et_tags);
+        spinnerRound = findViewById(R.id.spinner_round);
+        
         Button btnDismiss = findViewById(R.id.btn_dismiss);
-        Button btnSave = findViewById(R.id.btn_save);
+        Button btnSaveTracker = findViewById(R.id.btn_save_tracker);
+        Button btnSaveBoth = findViewById(R.id.btn_save_both);
         View rootLayout = findViewById(R.id.root_layout);
 
         tvPhoneNumber.setText(phoneNumber);
 
+        // Bind spinner data
+        ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(this,
+                R.array.round_statuses, android.R.layout.simple_spinner_item);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinnerRound.setAdapter(adapter);
+
         // Dismiss when clicking outside the dialog card
         rootLayout.setOnClickListener(v -> finish());
-        
-        // Prevent dismissal when clicking the card itself (it's handled by hierarchy click propagation)
-        View cardView = findViewById(R.id.root_layout).findViewWithTag("card");
-        if (cardView != null) {
-            cardView.setOnClickListener(v -> {
-                // Do nothing, just intercept touch event so it doesn't propagate to rootLayout
-            });
-        }
 
         btnDismiss.setOnClickListener(v -> finish());
 
-        btnSave.setOnClickListener(v -> {
-            String name = etContactName.getText().toString().trim();
-            if (name.isEmpty()) {
-                Toast.makeText(SaveContactActivity.this, R.string.msg_name_empty, Toast.LENGTH_SHORT).show();
+        // ACTION: Save to local tracker database only
+        btnSaveTracker.setOnClickListener(v -> {
+            String company = etCompanyName.getText().toString().trim();
+            String tags = etTags.getText().toString().trim();
+            String round = spinnerRound.getSelectedItem().toString();
+
+            if (company.isEmpty()) {
+                Toast.makeText(SaveContactActivity.this, R.string.msg_company_empty, Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            JobCall call = new JobCall(phoneNumber, company, round, tags, callTimestamp);
+            long id = dbHelper.insertJobCall(call);
+
+            if (id != -1) {
+                Toast.makeText(SaveContactActivity.this, R.string.msg_saved_tracker, Toast.LENGTH_SHORT).show();
+                finish();
             } else {
-                if (saveContactDirectly(name, phoneNumber)) {
-                    Toast.makeText(SaveContactActivity.this, R.string.msg_contact_saved, Toast.LENGTH_SHORT).show();
-                    finish();
+                Toast.makeText(SaveContactActivity.this, R.string.msg_contact_failed, Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        // ACTION: Save to tracker AND system contacts database
+        btnSaveBoth.setOnClickListener(v -> {
+            String company = etCompanyName.getText().toString().trim();
+            String tags = etTags.getText().toString().trim();
+            String round = spinnerRound.getSelectedItem().toString();
+
+            if (company.isEmpty()) {
+                Toast.makeText(SaveContactActivity.this, R.string.msg_company_empty, Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            // Save to Contacts (using company name as contact display name)
+            boolean contactsSaved = saveContactDirectly(company, phoneNumber);
+
+            // Save to local job calls database
+            JobCall call = new JobCall(phoneNumber, company, round, tags, callTimestamp);
+            long id = dbHelper.insertJobCall(call);
+
+            if (id != -1) {
+                if (contactsSaved) {
+                    Toast.makeText(SaveContactActivity.this, R.string.msg_saved_both, Toast.LENGTH_SHORT).show();
                 } else {
-                    Toast.makeText(SaveContactActivity.this, R.string.msg_contact_failed, Toast.LENGTH_SHORT).show();
+                    Toast.makeText(SaveContactActivity.this, "Saved to tracker, but failed to write to contacts.", Toast.LENGTH_LONG).show();
                 }
+                finish();
+            } else {
+                Toast.makeText(SaveContactActivity.this, R.string.msg_contact_failed, Toast.LENGTH_SHORT).show();
             }
         });
 
         // Request keyboard focus automatically
-        etContactName.requestFocus();
+        etCompanyName.requestFocus();
         getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE);
         
-        // Helper fallback to force keyboard layout to slide up after layout finishes
-        etContactName.postDelayed(() -> {
+        // Force slide-up keyboard helper
+        etCompanyName.postDelayed(() -> {
             InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
             if (imm != null) {
-                imm.showSoftInput(etContactName, InputMethodManager.SHOW_IMPLICIT);
+                imm.showSoftInput(etCompanyName, InputMethodManager.SHOW_IMPLICIT);
             }
         }, 150);
     }
@@ -97,14 +148,12 @@ public class SaveContactActivity extends AppCompatActivity {
     private boolean saveContactDirectly(String name, String phoneNumber) {
         ArrayList<ContentProviderOperation> ops = new ArrayList<>();
 
-        // 1. Raw contact insert
         int rawContactInsertIndex = ops.size();
         ops.add(ContentProviderOperation.newInsert(android.provider.ContactsContract.RawContacts.CONTENT_URI)
                 .withValue(android.provider.ContactsContract.RawContacts.ACCOUNT_TYPE, null)
                 .withValue(android.provider.ContactsContract.RawContacts.ACCOUNT_NAME, null)
                 .build());
 
-        // 2. Structured name insert linked to raw contact
         ops.add(ContentProviderOperation.newInsert(android.provider.ContactsContract.Data.CONTENT_URI)
                 .withValueBackReference(android.provider.ContactsContract.Data.RAW_CONTACT_ID, rawContactInsertIndex)
                 .withValue(android.provider.ContactsContract.Data.MIMETYPE, 
@@ -112,7 +161,6 @@ public class SaveContactActivity extends AppCompatActivity {
                 .withValue(android.provider.ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME, name)
                 .build());
 
-        // 3. Phone number insert linked to raw contact
         ops.add(ContentProviderOperation.newInsert(android.provider.ContactsContract.Data.CONTENT_URI)
                 .withValueBackReference(android.provider.ContactsContract.Data.RAW_CONTACT_ID, rawContactInsertIndex)
                 .withValue(android.provider.ContactsContract.Data.MIMETYPE, 

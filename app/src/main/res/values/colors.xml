@@ -13,6 +13,15 @@
     <color name="status_warning_bg">#FEF3C7</color>
     <color name="status_error">#EF4444</color>
     
+    <!-- Interview Round Status Badges (Background + Text) -->
+    <color name="status_blue">#3B82F6</color>
+    <color name="status_blue_bg">#DBEAFE</color>
+    
+    <color name="status_purple">#8B5CF6</color>
+    <color name="status_purple_bg">#EDE9FE</color>
+    
+    <color name="status_red_bg">#FEE2E2</color>
+
     <!-- Neutral text & backgrounds -->
     <color name="text_primary">#1F2937</color>
     <color name="text_secondary">#4B5563</color>

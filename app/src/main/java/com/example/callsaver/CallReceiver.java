@@ -64,6 +64,7 @@ public class CallReceiver extends BroadcastReceiver {
                         // Launch SaveContactActivity popup
                         Intent popupIntent = new Intent(context, SaveContactActivity.class);
                         popupIntent.putExtra("phone_number", incomingNumber);
+                        popupIntent.putExtra("timestamp", System.currentTimeMillis());
                         popupIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                         popupIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
                         popupIntent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
