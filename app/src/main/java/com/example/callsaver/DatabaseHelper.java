@@ -5,6 +5,7 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.telephony.PhoneNumberUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -12,7 +13,7 @@ import java.util.List;
 public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "JobTracker.db";
-    private static final int DATABASE_VERSION = 1;
+    private static final int DATABASE_VERSION = 2; // Bumped version to 2 for Notes column
 
     public static final String TABLE_NAME = "job_calls";
     public static final String COLUMN_ID = "id";
@@ -20,6 +21,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public static final String COLUMN_COMPANY_NAME = "company_name";
     public static final String COLUMN_ROUND_STATUS = "round_status";
     public static final String COLUMN_TAGS = "tags";
+    public static final String COLUMN_NOTES = "notes"; // Added in V2
     public static final String COLUMN_TIMESTAMP = "timestamp";
 
     public DatabaseHelper(Context context) {
@@ -34,6 +36,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 + COLUMN_COMPANY_NAME + " TEXT,"
                 + COLUMN_ROUND_STATUS + " TEXT,"
                 + COLUMN_TAGS + " TEXT,"
+                + COLUMN_NOTES + " TEXT," // Notes column
                 + COLUMN_TIMESTAMP + " INTEGER"
                 + ")";
         db.execSQL(CREATE_TABLE);
@@ -41,8 +44,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-        db.execSQL("DROP TABLE IF EXISTS " + TABLE_NAME);
-        onCreate(db);
+        if (oldVersion < 2) {
+            // Upgrade from V1 to V2: Add notes column without losing data
+            db.execSQL("ALTER TABLE " + TABLE_NAME + " ADD COLUMN " + COLUMN_NOTES + " TEXT");
+        }
     }
 
     /**
@@ -55,6 +60,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         values.put(COLUMN_COMPANY_NAME, jobCall.getCompanyName());
         values.put(COLUMN_ROUND_STATUS, jobCall.getRoundStatus());
         values.put(COLUMN_TAGS, jobCall.getTags());
+        values.put(COLUMN_NOTES, jobCall.getNotes());
         values.put(COLUMN_TIMESTAMP, jobCall.getTimestamp());
 
         long id = db.insert(TABLE_NAME, null, values);
@@ -80,6 +86,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                         cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_COMPANY_NAME)),
                         cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_ROUND_STATUS)),
                         cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_TAGS)),
+                        cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_NOTES)),
                         cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_TIMESTAMP))
                 );
                 callsList.add(call);
@@ -92,7 +99,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     /**
-     * Updates an existing job call entry (status, company name, tags, etc.).
+     * Updates an existing job call entry (status, company name, tags, notes, etc.).
      */
     public int updateJobCall(JobCall jobCall) {
         SQLiteDatabase db = this.getWritableDatabase();
@@ -101,6 +108,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         values.put(COLUMN_COMPANY_NAME, jobCall.getCompanyName());
         values.put(COLUMN_ROUND_STATUS, jobCall.getRoundStatus());
         values.put(COLUMN_TAGS, jobCall.getTags());
+        values.put(COLUMN_NOTES, jobCall.getNotes());
         values.put(COLUMN_TIMESTAMP, jobCall.getTimestamp());
 
         int count = db.update(TABLE_NAME, values, COLUMN_ID + " = ?",
@@ -116,5 +124,23 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         SQLiteDatabase db = this.getWritableDatabase();
         db.delete(TABLE_NAME, COLUMN_ID + " = ?", new String[]{String.valueOf(id)});
         db.close();
+    }
+
+    /**
+     * Queries database to find a matched job call by comparing phone numbers.
+     * Uses PhoneNumberUtils.compare to account for country codes and formatting.
+     */
+    public JobCall getJobCallByNumber(Context context, String incomingNumber) {
+        if (incomingNumber == null || incomingNumber.trim().isEmpty()) {
+            return null;
+        }
+        
+        List<JobCall> allCalls = getAllJobCalls();
+        for (JobCall call : allCalls) {
+            if (PhoneNumberUtils.compare(context, call.getPhoneNumber(), incomingNumber)) {
+                return call;
+            }
+        }
+        return null;
     }
 }

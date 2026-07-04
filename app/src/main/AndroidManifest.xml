@@ -47,6 +47,11 @@
             </intent-filter>
         </receiver>
 
+        <!-- Service for drawing the custom Caller ID Overlay -->
+        <service
+            android:name=".CallerIdService"
+            android:exported="false" />
+
     </application>
 
 </manifest>

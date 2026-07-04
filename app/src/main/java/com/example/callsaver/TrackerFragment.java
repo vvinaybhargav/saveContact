@@ -5,11 +5,15 @@ import android.content.ContentProviderOperation;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
+import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.ContactsContract;
 import android.provider.Settings;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -43,10 +47,17 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
     private View emptyStateLayout;
     private MaterialCardView cardPermissionsBanner;
     private FloatingActionButton fabAddCall;
+    private EditText etSearch;
 
     private DatabaseHelper dbHelper;
     private JobCallAdapter adapter;
-    private List<JobCall> callList;
+    private List<JobCall> callList; // Current filtered list bound to adapter
+    private List<JobCall> allCallsList; // Master copy of all database calls
+
+    private String searchQuery = "";
+    private String selectedStatus = "All";
+    private TextView[] chips;
+    private final String[] statuses = {"All", "Screening", "1st Round", "2nd Round", "Final Round", "HR / Salary", "Offered", "Rejected"};
 
     private final String[] requiredPermissions = {
             Manifest.permission.READ_PHONE_STATE,
@@ -71,18 +82,26 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         emptyStateLayout = view.findViewById(R.id.empty_state_layout);
         cardPermissionsBanner = view.findViewById(R.id.card_permissions_banner);
         fabAddCall = view.findViewById(R.id.fab_add_call);
+        etSearch = view.findViewById(R.id.et_search);
 
         // Setup RecyclerView
         rvJobCalls.setLayoutManager(new LinearLayoutManager(requireContext()));
         callList = new ArrayList<>();
+        allCallsList = new ArrayList<>();
         adapter = new JobCallAdapter(requireContext(), callList, this);
         rvJobCalls.setAdapter(adapter);
 
-        // Permissions banner click - redirects to check/request
+        // Permissions banner click
         cardPermissionsBanner.setOnClickListener(v -> handlePermissionsRequestFlow());
 
         // Log call manually FAB click
         fabAddCall.setOnClickListener(v -> showAddEditCallDialog(null));
+
+        // Setup filter chips
+        setupFilterChips(view);
+
+        // Setup Live Search
+        setupSearchListener();
 
         // Load logs
         refreshDashboardList();
@@ -95,14 +114,87 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         refreshDashboardList();
     }
 
-    /**
-     * Refreshes the calls displayed on the RecyclerView from the SQLite DB.
-     */
-    public void refreshDashboardList() {
-        if (dbHelper == null) return;
-        List<JobCall> updatedCalls = dbHelper.getAllJobCalls();
+    private void setupSearchListener() {
+        if (etSearch != null) {
+            etSearch.addTextChangedListener(new TextWatcher() {
+                @Override
+                public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+                @Override
+                public void onTextChanged(CharSequence s, int start, int before, int count) {
+                    searchQuery = s.toString().trim();
+                    filterList(searchQuery, selectedStatus);
+                }
+
+                @Override
+                public void afterTextChanged(Editable s) {}
+            });
+        }
+    }
+
+    private void setupFilterChips(View view) {
+        int[] chipIds = {
+                R.id.chip_all, R.id.chip_screening, R.id.chip_1st_round,
+                R.id.chip_2nd_round, R.id.chip_final, R.id.chip_hr,
+                R.id.chip_offered, R.id.chip_rejected
+        };
+
+        chips = new TextView[chipIds.length];
+        for (int i = 0; i < chipIds.length; i++) {
+            final int index = i;
+            chips[i] = view.findViewById(chipIds[i]);
+            if (chips[i] != null) {
+                chips[i].setOnClickListener(v -> {
+                    selectedStatus = statuses[index];
+                    updateChipsUI();
+                    filterList(searchQuery, selectedStatus);
+                });
+            }
+        }
+        updateChipsUI();
+    }
+
+    private void updateChipsUI() {
+        if (chips == null) return;
+        float density = getResources().getDisplayMetrics().density;
+        for (int i = 0; i < chips.length; i++) {
+            if (chips[i] == null) continue;
+
+            GradientDrawable drawable = new GradientDrawable();
+            drawable.setShape(GradientDrawable.RECTANGLE);
+            drawable.setCornerRadius(18 * density); // Pill shape
+
+            if (statuses[i].equals(selectedStatus)) {
+                // Selected: Accent indigo background, white text
+                drawable.setColor(0xFF6366F1); // Indigo color
+                chips[i].setBackground(drawable);
+                chips[i].setTextColor(Color.WHITE);
+            } else {
+                // Deselected: Muted background, dark text
+                drawable.setColor(0xFFE5E7EB); // Soft grey color
+                chips[i].setBackground(drawable);
+                chips[i].setTextColor(0xFF4B5563);
+            }
+        }
+    }
+
+    private void filterList(String query, String status) {
+        List<JobCall> filteredList = new ArrayList<>();
+        for (JobCall call : allCallsList) {
+            boolean matchesQuery = query.isEmpty() ||
+                    (call.getCompanyName() != null && call.getCompanyName().toLowerCase().contains(query.toLowerCase())) ||
+                    (call.getTags() != null && call.getTags().toLowerCase().contains(query.toLowerCase()));
+            
+            boolean matchesStatus = status.equals("All") ||
+                    (call.getRoundStatus() != null && call.getRoundStatus().equals(status));
+
+            if (matchesQuery && matchesStatus) {
+                filteredList.add(call);
+            }
+        }
+
         callList.clear();
-        callList.addAll(updatedCalls);
+        callList.addAll(filteredList);
         adapter.notifyDataSetChanged();
 
         if (callList.isEmpty()) {
@@ -112,6 +204,17 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             emptyStateLayout.setVisibility(View.GONE);
             rvJobCalls.setVisibility(View.VISIBLE);
         }
+    }
+
+    /**
+     * Refreshes the calls displayed on the RecyclerView from the SQLite DB.
+     */
+    public void refreshDashboardList() {
+        if (dbHelper == null) return;
+        List<JobCall> updatedCalls = dbHelper.getAllJobCalls();
+        allCallsList.clear();
+        allCallsList.addAll(updatedCalls);
+        filterList(searchQuery, selectedStatus);
     }
 
     /**
@@ -127,7 +230,6 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             }
         }
 
-        // Check overlay permission
         boolean overlayGranted = true;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             overlayGranted = Settings.canDrawOverlays(requireContext());
@@ -164,9 +266,6 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         }
     }
 
-    /**
-     * RecyclerView Item Click -> triggers edit/update of the call record.
-     */
     @Override
     public void onItemClick(JobCall jobCall) {
         showAddEditCallDialog(jobCall);
@@ -178,7 +277,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
      */
     public void showAddEditCallDialog(final JobCall editCall) {
         if (getContext() == null) return;
-        
+
         AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
         LayoutInflater inflater = getLayoutInflater();
         View dialogView = inflater.inflate(R.layout.dialog_add_call, null);
@@ -188,6 +287,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         EditText etPhone = dialogView.findViewById(R.id.et_phone);
         EditText etCompany = dialogView.findViewById(R.id.et_company);
         EditText etTags = dialogView.findViewById(R.id.et_tags);
+        EditText etNotes = dialogView.findViewById(R.id.et_notes);
         Spinner spinnerRound = dialogView.findViewById(R.id.spinner_round);
 
         Button btnCancel = dialogView.findViewById(R.id.btn_dialog_cancel);
@@ -209,6 +309,9 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             etPhone.setText(editCall.getPhoneNumber());
             etCompany.setText(editCall.getCompanyName());
             etTags.setText(editCall.getTags());
+            if (etNotes != null) {
+                etNotes.setText(editCall.getNotes());
+            }
             btnSave.setText(R.string.btn_update);
             btnDelete.setVisibility(View.VISIBLE);
 
@@ -266,6 +369,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             String phone = etPhone.getText().toString().trim();
             String company = etCompany.getText().toString().trim();
             String tags = etTags.getText().toString().trim();
+            String notes = etNotes != null ? etNotes.getText().toString().trim() : "";
             String round = spinnerRound.getSelectedItem().toString();
 
             if (phone.isEmpty()) {
@@ -282,13 +386,14 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                 editCall.setPhoneNumber(phone);
                 editCall.setCompanyName(company);
                 editCall.setTags(tags);
+                editCall.setNotes(notes);
                 editCall.setRoundStatus(round);
 
                 dbHelper.updateJobCall(editCall);
                 Toast.makeText(requireContext(), "Log updated!", Toast.LENGTH_SHORT).show();
             } else {
                 // Insert mode
-                JobCall newCall = new JobCall(phone, company, round, tags, System.currentTimeMillis());
+                JobCall newCall = new JobCall(phone, company, round, tags, notes, System.currentTimeMillis());
                 dbHelper.insertJobCall(newCall);
                 Toast.makeText(requireContext(), "Call logged successfully!", Toast.LENGTH_SHORT).show();
             }
@@ -310,9 +415,6 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         }
     }
 
-    /**
-     * Checks if a phone number exists in the device's Contacts.
-     */
     private boolean isContactExists(String number) {
         if (number == null || number.isEmpty()) {
             return false;
@@ -334,9 +436,6 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         return false;
     }
 
-    /**
-     * Helper to write contact details directly into the phone's address book.
-     */
     private boolean saveContactDirectly(String name, String phoneNumber) {
         ArrayList<ContentProviderOperation> ops = new ArrayList<>();
         int rawContactInsertIndex = ops.size();
@@ -347,17 +446,17 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
 
         ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
                 .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, rawContactInsertIndex)
-                .withValue(ContactsContract.Data.MIMETYPE, 
+                .withValue(ContactsContract.Data.MIMETYPE,
                         ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE)
                 .withValue(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME, name)
                 .build());
 
         ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
                 .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, rawContactInsertIndex)
-                .withValue(ContactsContract.Data.MIMETYPE, 
+                .withValue(ContactsContract.Data.MIMETYPE,
                         ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE)
                 .withValue(ContactsContract.CommonDataKinds.Phone.NUMBER, phoneNumber)
-                .withValue(ContactsContract.CommonDataKinds.Phone.TYPE, 
+                .withValue(ContactsContract.CommonDataKinds.Phone.TYPE,
                         ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE)
                 .build());
         try {

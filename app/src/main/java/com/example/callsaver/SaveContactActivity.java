@@ -25,6 +25,7 @@ public class SaveContactActivity extends AppCompatActivity {
     
     private EditText etCompanyName;
     private EditText etTags;
+    private EditText etNotes;
     private Spinner spinnerRound;
     private DatabaseHelper dbHelper;
 
@@ -50,6 +51,7 @@ public class SaveContactActivity extends AppCompatActivity {
         TextView tvPhoneNumber = findViewById(R.id.tv_phone_number);
         etCompanyName = findViewById(R.id.et_company_name);
         etTags = findViewById(R.id.et_tags);
+        etNotes = findViewById(R.id.et_notes);
         spinnerRound = findViewById(R.id.spinner_round);
         
         Button btnDismiss = findViewById(R.id.btn_dismiss);
@@ -74,6 +76,7 @@ public class SaveContactActivity extends AppCompatActivity {
         btnSaveTracker.setOnClickListener(v -> {
             String company = etCompanyName.getText().toString().trim();
             String tags = etTags.getText().toString().trim();
+            String notes = etNotes.getText().toString().trim();
             String round = spinnerRound.getSelectedItem().toString();
 
             if (company.isEmpty()) {
@@ -81,7 +84,7 @@ public class SaveContactActivity extends AppCompatActivity {
                 return;
             }
 
-            JobCall call = new JobCall(phoneNumber, company, round, tags, callTimestamp);
+            JobCall call = new JobCall(phoneNumber, company, round, tags, notes, callTimestamp);
             long id = dbHelper.insertJobCall(call);
 
             if (id != -1) {
@@ -96,6 +99,7 @@ public class SaveContactActivity extends AppCompatActivity {
         btnSaveBoth.setOnClickListener(v -> {
             String company = etCompanyName.getText().toString().trim();
             String tags = etTags.getText().toString().trim();
+            String notes = etNotes.getText().toString().trim();
             String round = spinnerRound.getSelectedItem().toString();
 
             if (company.isEmpty()) {
@@ -107,7 +111,7 @@ public class SaveContactActivity extends AppCompatActivity {
             boolean contactsSaved = saveContactDirectly(company, phoneNumber);
 
             // Save to local job calls database
-            JobCall call = new JobCall(phoneNumber, company, round, tags, callTimestamp);
+            JobCall call = new JobCall(phoneNumber, company, round, tags, notes, callTimestamp);
             long id = dbHelper.insertJobCall(call);
 
             if (id != -1) {

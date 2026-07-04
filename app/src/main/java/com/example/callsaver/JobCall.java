@@ -6,24 +6,27 @@ public class JobCall {
     private String companyName;
     private String roundStatus;
     private String tags;
+    private String notes;
     private long timestamp;
 
-    // Constructor for retrieving from DB (with ID)
-    public JobCall(int id, String phoneNumber, String companyName, String roundStatus, String tags, long timestamp) {
+    // Constructor for retrieving from DB (with ID and Notes)
+    public JobCall(int id, String phoneNumber, String companyName, String roundStatus, String tags, String notes, long timestamp) {
         this.id = id;
         this.phoneNumber = phoneNumber;
         this.companyName = companyName;
         this.roundStatus = roundStatus;
         this.tags = tags;
+        this.notes = notes;
         this.timestamp = timestamp;
     }
 
-    // Constructor for creating new records (without ID)
-    public JobCall(String phoneNumber, String companyName, String roundStatus, String tags, long timestamp) {
+    // Constructor for creating new records (without ID, but with Notes)
+    public JobCall(String phoneNumber, String companyName, String roundStatus, String tags, String notes, long timestamp) {
         this.phoneNumber = phoneNumber;
         this.companyName = companyName;
         this.roundStatus = roundStatus;
         this.tags = tags;
+        this.notes = notes;
         this.timestamp = timestamp;
     }
 
@@ -65,6 +68,14 @@ public class JobCall {
 
     public void setTags(String tags) {
         this.tags = tags;
+    }
+
+    public String getNotes() {
+        return notes;
+    }
+
+    public void setNotes(String notes) {
+        this.notes = notes;
     }
 
     public long getTimestamp() {

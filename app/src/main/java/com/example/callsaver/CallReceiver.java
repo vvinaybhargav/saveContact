@@ -42,12 +42,27 @@ public class CallReceiver extends BroadcastReceiver {
                         .putString(KEY_LAST_STATE, TelephonyManager.EXTRA_STATE_RINGING)
                         .apply();
                 Log.d(TAG, "Incoming call detected from number: " + incomingNumber);
+
+                // Check if the caller is in our Job Tracker database
+                DatabaseHelper dbHelper = new DatabaseHelper(context);
+                JobCall jobCall = dbHelper.getJobCallByNumber(context, incomingNumber);
+                if (jobCall != null) {
+                    Log.d(TAG, "Tracked job caller detected! Starting Caller ID Overlay service.");
+                    Intent serviceIntent = new Intent(context, CallerIdService.class);
+                    serviceIntent.putExtra("company_name", jobCall.getCompanyName());
+                    serviceIntent.putExtra("round_status", jobCall.getRoundStatus());
+                    serviceIntent.putExtra("tags", jobCall.getTags());
+                    context.startService(serviceIntent);
+                }
             }
         } else if (stateStr.equals(TelephonyManager.EXTRA_STATE_OFFHOOK)) {
-            // Call active/answered
+            // Call active/answered - Stop Caller ID banner
             prefs.edit().putString(KEY_LAST_STATE, TelephonyManager.EXTRA_STATE_OFFHOOK).apply();
             Log.d(TAG, "Call active (OFFHOOK)");
+            context.stopService(new Intent(context, CallerIdService.class));
         } else if (stateStr.equals(TelephonyManager.EXTRA_STATE_IDLE)) {
+            // Stop Caller ID banner
+            context.stopService(new Intent(context, CallerIdService.class));
             // Call ended/idle - check transition from active call
             Log.d(TAG, "Call ended (IDLE). Previous saved state: " + lastSavedState);
             
