@@ -77,9 +77,14 @@ public class CallReceiver extends BroadcastReceiver {
                         Log.d(TAG, "Number not in contacts. Triggering popup Activity.");
                         
                         // Launch SaveContactActivity popup
+                        // Query call duration from call history logs
+                        int duration = getLastCallDuration(context, incomingNumber);
+                        Log.d(TAG, "Retrieved call duration: " + duration + "s");
+
                         Intent popupIntent = new Intent(context, SaveContactActivity.class);
                         popupIntent.putExtra("phone_number", incomingNumber);
                         popupIntent.putExtra("timestamp", System.currentTimeMillis());
+                        popupIntent.putExtra("duration", duration);
                         popupIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                         popupIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
                         popupIntent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
@@ -124,5 +129,31 @@ public class CallReceiver extends BroadcastReceiver {
             Log.e(TAG, "Exception checking contacts: " + e.getMessage());
         }
         return false;
+    }
+
+    /**
+     * Queries the system's CallLog provider for the duration of the last call matching the number.
+     */
+    private int getLastCallDuration(Context context, String number) {
+        if (number == null || number.isEmpty()) {
+            return 0;
+        }
+        try {
+            Uri callUri = android.provider.CallLog.Calls.CONTENT_URI;
+            String[] projection = { android.provider.CallLog.Calls.DURATION };
+            String selection = android.provider.CallLog.Calls.NUMBER + " = ?";
+            String[] selectionArgs = { number };
+            String sortOrder = android.provider.CallLog.Calls.DATE + " DESC LIMIT 1";
+            try (Cursor cursor = context.getContentResolver().query(callUri, projection, selection, selectionArgs, sortOrder)) {
+                if (cursor != null && cursor.moveToFirst()) {
+                    return cursor.getInt(0); // Returns duration in seconds
+                }
+            }
+        } catch (SecurityException e) {
+            Log.e(TAG, "SecurityException querying call duration: " + e.getMessage());
+        } catch (Exception e) {
+            Log.e(TAG, "Exception querying call duration: " + e.getMessage());
+        }
+        return 0;
     }
 }

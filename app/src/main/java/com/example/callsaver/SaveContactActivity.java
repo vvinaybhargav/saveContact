@@ -22,6 +22,7 @@ public class SaveContactActivity extends AppCompatActivity {
 
     private String phoneNumber;
     private long callTimestamp;
+    private int callDuration;
     
     private EditText etCompanyName;
     private EditText etTags;
@@ -42,6 +43,7 @@ public class SaveContactActivity extends AppCompatActivity {
 
         phoneNumber = getIntent().getStringExtra("phone_number");
         callTimestamp = getIntent().getLongExtra("timestamp", System.currentTimeMillis());
+        callDuration = getIntent().getIntExtra("duration", 0);
 
         if (phoneNumber == null) {
             finish();
@@ -96,7 +98,7 @@ public class SaveContactActivity extends AppCompatActivity {
                 return;
             }
 
-            JobCall call = new JobCall(phoneNumber, company, round, tags, notes, callTimestamp);
+            JobCall call = new JobCall(phoneNumber, company, round, tags, notes, callDuration, callTimestamp);
             long id = dbHelper.insertJobCall(call);
 
             if (id != -1) {
@@ -123,7 +125,7 @@ public class SaveContactActivity extends AppCompatActivity {
             boolean contactsSaved = saveContactDirectly(company, phoneNumber);
 
             // Save to local job calls database
-            JobCall call = new JobCall(phoneNumber, company, round, tags, notes, callTimestamp);
+            JobCall call = new JobCall(phoneNumber, company, round, tags, notes, callDuration, callTimestamp);
             long id = dbHelper.insertJobCall(call);
 
             if (id != -1) {

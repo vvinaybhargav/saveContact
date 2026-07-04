@@ -49,6 +49,11 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
     private FloatingActionButton fabAddCall;
     private EditText etSearch;
 
+    private TextView tvStatLeads;
+    private TextView tvStatScreenings;
+    private TextView tvStatInterviews;
+    private TextView tvStatOffers;
+
     private DatabaseHelper dbHelper;
     private JobCallAdapter adapter;
     private List<JobCall> callList; // Current filtered list bound to adapter
@@ -83,6 +88,11 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         cardPermissionsBanner = view.findViewById(R.id.card_permissions_banner);
         fabAddCall = view.findViewById(R.id.fab_add_call);
         etSearch = view.findViewById(R.id.et_search);
+
+        tvStatLeads = view.findViewById(R.id.tv_stat_leads);
+        tvStatScreenings = view.findViewById(R.id.tv_stat_screenings);
+        tvStatInterviews = view.findViewById(R.id.tv_stat_interviews);
+        tvStatOffers = view.findViewById(R.id.tv_stat_offers);
 
         // Setup RecyclerView
         rvJobCalls.setLayoutManager(new LinearLayoutManager(requireContext()));
@@ -214,6 +224,29 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         List<JobCall> updatedCalls = dbHelper.getAllJobCalls();
         allCallsList.clear();
         allCallsList.addAll(updatedCalls);
+
+        // Calculate Statistics
+        int leads = allCallsList.size();
+        int screenings = 0;
+        int interviews = 0;
+        int offers = 0;
+        for (JobCall c : allCallsList) {
+            String st = c.getRoundStatus();
+            if (st == null) continue;
+            if (st.equals("Screening") || st.equals("HR / Salary")) {
+                screenings++;
+            } else if (st.equals("1st Round") || st.equals("2nd Round") || st.equals("Final Round")) {
+                interviews++;
+            } else if (st.equals("Offered")) {
+                offers++;
+            }
+        }
+        
+        if (tvStatLeads != null) tvStatLeads.setText(String.valueOf(leads));
+        if (tvStatScreenings != null) tvStatScreenings.setText(String.valueOf(screenings));
+        if (tvStatInterviews != null) tvStatInterviews.setText(String.valueOf(interviews));
+        if (tvStatOffers != null) tvStatOffers.setText(String.valueOf(offers));
+
         filterList(searchQuery, selectedStatus);
     }
 
@@ -294,6 +327,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         Button btnSave = dialogView.findViewById(R.id.btn_dialog_save);
         Button btnDelete = dialogView.findViewById(R.id.btn_dialog_delete);
         Button btnSaveContacts = dialogView.findViewById(R.id.btn_dialog_save_contacts);
+        Button btnReminder = dialogView.findViewById(R.id.btn_dialog_reminder);
 
         // Bind Spinner choices
         ArrayAdapter<CharSequence> spinnerAdapter = ArrayAdapter.createFromResource(requireContext(),
@@ -314,6 +348,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             }
             btnSave.setText(R.string.btn_update);
             btnDelete.setVisibility(View.VISIBLE);
+            btnReminder.setVisibility(View.VISIBLE);
 
             // Show/hide 'Save to Contacts' button based on existence
             if (isContactExists(editCall.getPhoneNumber())) {
@@ -332,6 +367,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             btnSave.setText(R.string.btn_add);
             btnDelete.setVisibility(View.GONE);
             btnSaveContacts.setVisibility(View.GONE);
+            btnReminder.setVisibility(View.GONE);
             if (editCall != null) {
                 etPhone.setText(editCall.getPhoneNumber());
                 
@@ -365,6 +401,21 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                 btnSaveContacts.setVisibility(View.GONE);
             } else {
                 Toast.makeText(requireContext(), "Failed to save contact.", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        // Schedule Follow-up Reminder click action
+        btnReminder.setOnClickListener(v -> {
+            try {
+                Intent calendarIntent = new Intent(Intent.ACTION_INSERT)
+                        .setData(Uri.parse("content://com.android.calendar/events"))
+                        .putExtra("title", "Follow up: " + (editCall != null ? editCall.getCompanyName() : ""))
+                        .putExtra("description", "Follow-up reminder reminder for " + (editCall != null ? editCall.getCompanyName() : "") + "\nStage: " + (editCall != null ? editCall.getRoundStatus() : "") + "\nNotes: " + (editCall != null ? editCall.getNotes() : ""))
+                        .putExtra("beginTime", System.currentTimeMillis() + 3 * 24 * 60 * 60 * 1000L) // Default 3 days from now
+                        .putExtra("endTime", System.currentTimeMillis() + 3 * 24 * 60 * 60 * 1000L + 30 * 60 * 1000L);
+                startActivity(calendarIntent);
+            } catch (Exception e) {
+                Toast.makeText(requireContext(), "Could not open Calendar app", Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -407,7 +458,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                 Toast.makeText(requireContext(), "Log updated!", Toast.LENGTH_SHORT).show();
             } else {
                 // Insert mode
-                JobCall newCall = new JobCall(phone, company, round, tags, notes, System.currentTimeMillis());
+                JobCall newCall = new JobCall(phone, company, round, tags, notes, 0, System.currentTimeMillis());
                 dbHelper.insertJobCall(newCall);
                 Toast.makeText(requireContext(), "Call logged successfully!", Toast.LENGTH_SHORT).show();
             }
