@@ -1,7 +1,9 @@
 package com.example.callsaver;
 
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.drawable.GradientDrawable;
+import android.net.Uri;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -56,6 +58,15 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
             holder.tvTags.setText("Tags: " + tags);
         }
 
+        // Set notes preview
+        String notes = call.getNotes();
+        if (notes == null || notes.trim().isEmpty()) {
+            holder.tvNotesPreview.setVisibility(View.GONE);
+        } else {
+            holder.tvNotesPreview.setVisibility(View.VISIBLE);
+            holder.tvNotesPreview.setText("Notes: " + notes);
+        }
+
         // Format Date Time
         SimpleDateFormat sdf = new SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault());
         String formattedDate = sdf.format(new Date(call.getTimestamp()));
@@ -73,6 +84,17 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
         // Status Badge customization
         setupStatusBadge(holder.tvStatusBadge, call.getRoundStatus());
 
+        // Direct Call back Action
+        holder.btnActionCall.setOnClickListener(v -> {
+            try {
+                Intent dialIntent = new Intent(Intent.ACTION_DIAL);
+                dialIntent.setData(Uri.parse("tel:" + call.getPhoneNumber()));
+                context.startActivity(dialIntent);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+
         // Card Click Action
         holder.itemView.setOnClickListener(v -> {
             if (listener != null) {
@@ -87,7 +109,6 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
         int textColor;
         int bgColor;
         
-        // Define colors based on round status string
         if (status == null) {
             status = "Screening";
         }
@@ -133,18 +154,20 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
     }
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
-        TextView tvCompanyName, tvPhoneNumber, tvTags, tvCallTime, tvAvatarText, tvStatusBadge;
-        MaterialCardView cardAvatar;
+        TextView tvCompanyName, tvPhoneNumber, tvTags, tvNotesPreview, tvCallTime, tvAvatarText, tvStatusBadge;
+        MaterialCardView cardAvatar, btnActionCall;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
             tvCompanyName = itemView.findViewById(R.id.tv_company_name);
             tvPhoneNumber = itemView.findViewById(R.id.tv_phone_number);
             tvTags = itemView.findViewById(R.id.tv_tags);
+            tvNotesPreview = itemView.findViewById(R.id.tv_notes_preview);
             tvCallTime = itemView.findViewById(R.id.tv_call_time);
             tvAvatarText = itemView.findViewById(R.id.tv_avatar_text);
             tvStatusBadge = itemView.findViewById(R.id.tv_status_badge);
             cardAvatar = itemView.findViewById(R.id.card_avatar);
+            btnActionCall = itemView.findViewById(R.id.btn_action_call);
         }
     }
 }

@@ -34,7 +34,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
-                android:text="G"
+                android:text="?"
                 android:textColor="@color/white"
                 android:textSize="18sp"
                 android:textStyle="bold" />
@@ -73,6 +73,19 @@
                 android:text="Tags: Android Dev"
                 android:textColor="@color/text_muted"
                 android:textSize="12sp" />
+
+            <!-- Notes Preview Snippet (Dynamically visible) -->
+            <TextView
+                android:id="@+id/tv_notes_preview"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Notes: resume sent"
+                android:textColor="@color/text_muted"
+                android:textSize="12sp"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:visibility="gone" />
         </LinearLayout>
 
         <!-- Round Badge & Time (Right side) -->
@@ -80,7 +93,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:gravity="end">
+            android:gravity="end"
+            android:layout_marginStart="8dp">
 
             <!-- Round Status Badge -->
             <TextView
@@ -99,11 +113,34 @@
                 android:id="@+id/tv_call_time"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="10:30 AM"
+                android:layout_marginTop="6dp"
+                android:text="Today, 10:30 AM"
                 android:textColor="@color/text_muted"
                 android:textSize="11sp" />
         </LinearLayout>
+
+        <!-- Direct Call Button -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/btn_action_call"
+            android:layout_width="38dp"
+            android:layout_height="38dp"
+            android:layout_marginStart="16dp"
+            app:cardCornerRadius="19dp"
+            app:cardElevation="0dp"
+            app:strokeWidth="1dp"
+            app:strokeColor="@color/status_green"
+            app:cardBackgroundColor="@color/status_green_bg"
+            android:clickable="true"
+            android:focusable="true">
+
+            <ImageView
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:layout_gravity="center"
+                android:src="@android:drawable/ic_menu_call"
+                app:tint="@color/status_green"
+                android:contentDescription="Call recruiter back" />
+        </com.google.android.material.card.MaterialCardView>
 
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

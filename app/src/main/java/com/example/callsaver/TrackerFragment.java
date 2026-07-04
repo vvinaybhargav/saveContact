@@ -334,6 +334,20 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             btnSaveContacts.setVisibility(View.GONE);
             if (editCall != null) {
                 etPhone.setText(editCall.getPhoneNumber());
+                
+                // Auto pre-fill if call is already tracked in SQLite
+                JobCall existingCall = dbHelper.getJobCallByNumber(requireContext(), editCall.getPhoneNumber());
+                if (existingCall != null) {
+                    etCompany.setText(existingCall.getCompanyName());
+                    etTags.setText(existingCall.getTags());
+                    if (etNotes != null) {
+                        etNotes.setText(existingCall.getNotes());
+                    }
+                    if (existingCall.getRoundStatus() != null) {
+                        int position = spinnerAdapter.getPosition(existingCall.getRoundStatus());
+                        spinnerRound.setSelection(position >= 0 ? position : 0);
+                    }
+                }
             }
         }
 

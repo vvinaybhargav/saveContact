@@ -67,6 +67,18 @@ public class SaveContactActivity extends AppCompatActivity {
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerRound.setAdapter(adapter);
 
+        // Pre-fill fields if caller is already logged in the SQLite DB
+        JobCall existingCall = dbHelper.getJobCallByNumber(this, phoneNumber);
+        if (existingCall != null) {
+            etCompanyName.setText(existingCall.getCompanyName());
+            etTags.setText(existingCall.getTags());
+            etNotes.setText(existingCall.getNotes());
+            if (existingCall.getRoundStatus() != null) {
+                int pos = adapter.getPosition(existingCall.getRoundStatus());
+                spinnerRound.setSelection(pos >= 0 ? pos : 0);
+            }
+        }
+
         // Dismiss when clicking outside the dialog card
         rootLayout.setOnClickListener(v -> finish());
 
