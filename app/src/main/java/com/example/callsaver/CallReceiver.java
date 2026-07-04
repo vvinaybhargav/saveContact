@@ -73,8 +73,12 @@ public class CallReceiver extends BroadcastReceiver {
                 Log.d(TAG, "Processing call completion. Stored number: " + incomingNumber);
 
                 if (incomingNumber != null && !incomingNumber.trim().isEmpty()) {
-                    if (!isContactExists(context, incomingNumber)) {
-                        Log.d(TAG, "Number not in contacts. Triggering popup Activity.");
+                    boolean contactExists = isContactExists(context, incomingNumber);
+                    DatabaseHelper dbHelper = new DatabaseHelper(context);
+                    boolean isTrackedRecruiter = dbHelper.getJobCallByNumber(context, incomingNumber) != null;
+
+                    if (!contactExists || isTrackedRecruiter) {
+                        Log.d(TAG, "Triggering popup Activity. Unsaved: " + !contactExists + ", Tracked: " + isTrackedRecruiter);
                         
                         // Launch SaveContactActivity popup
                         // Query call duration from call history logs

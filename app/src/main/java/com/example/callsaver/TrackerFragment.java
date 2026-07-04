@@ -30,6 +30,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -116,6 +117,9 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
 
         // Load logs
         refreshDashboardList();
+
+        // Setup swipe gestures
+        setupSwipeGestures();
     }
 
     @Override
@@ -539,5 +543,52 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             e.printStackTrace();
             return false;
         }
+    }
+
+    /**
+     * Configures swipe gestures for the RecyclerView items:
+     * - Swipe LEFT: Edit the log (opens edit dialog).
+     * - Swipe RIGHT: Delete the log (shows premium confirmation dialog).
+     */
+    private void setupSwipeGestures() {
+        ItemTouchHelper.SimpleCallback simpleCallback = new ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT) {
+            @Override
+            public boolean onMove(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder, @NonNull RecyclerView.ViewHolder target) {
+                return false;
+            }
+
+            @Override
+            public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
+                int position = viewHolder.getAdapterPosition();
+                if (position < 0 || position >= callList.size()) return;
+                JobCall jobCall = callList.get(position);
+
+                if (direction == ItemTouchHelper.LEFT) {
+                    // Swipe Left: Edit
+                    showAddEditCallDialog(jobCall);
+                    adapter.notifyItemChanged(position);
+                } else if (direction == ItemTouchHelper.RIGHT) {
+                    // Swipe Right: Delete
+                    new AlertDialog.Builder(requireContext())
+                            .setTitle("Delete Call Log")
+                            .setMessage("Are you sure you want to delete the log for " + jobCall.getCompanyName() + "?")
+                            .setPositiveButton("Delete", (dialog, which) -> {
+                                dbHelper.deleteJobCall(jobCall.getId());
+                                Toast.makeText(requireContext(), "Log deleted", Toast.LENGTH_SHORT).show();
+                                refreshDashboardList();
+                            })
+                            .setNegativeButton("Cancel", (dialog, which) -> {
+                                adapter.notifyItemChanged(position);
+                            })
+                            .setOnCancelListener(dialog -> {
+                                adapter.notifyItemChanged(position);
+                            })
+                            .show();
+                }
+            }
+        };
+
+        ItemTouchHelper itemTouchHelper = new ItemTouchHelper(simpleCallback);
+        itemTouchHelper.attachToRecyclerView(rvJobCalls);
     }
 }
