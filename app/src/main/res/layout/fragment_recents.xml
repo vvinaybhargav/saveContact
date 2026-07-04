@@ -20,9 +20,10 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Recent Calls"
-            android:textColor="@color/white"
+            android:textColor="@color/accent_indigo"
             android:textSize="26sp"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+            android:letterSpacing="0.01" />
 
         <TextView
             android:layout_width="match_parent"
@@ -34,77 +35,109 @@
             android:lineSpacingMultiplier="1.1" />
     </LinearLayout>
 
-    <!-- Call Log List -->
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/rv_recents"
+    <!-- Main Content Stack -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_below="@id/header_layout"
-        android:paddingTop="8dp"
-        android:paddingBottom="80dp"
-        android:clipToPadding="false"
-        android:layout_alignParentBottom="true"/>
+        android:orientation="vertical">
 
-    <!-- Empty State / No Permissions View -->
-    <LinearLayout
-        android:id="@+id/empty_state_layout"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_centerInParent="true"
-        android:orientation="vertical"
-        android:padding="32dp"
-        android:gravity="center"
-        android:visibility="gone">
-
-        <ImageView
-            android:layout_width="64dp"
-            android:layout_height="64dp"
-            android:src="@android:drawable/ic_menu_call"
-            app:tint="@color/divider"
-            android:layout_marginBottom="16dp"
-            android:contentDescription="No call log" />
-
-        <TextView
-            android:layout_width="wrap_content"
+        <!-- Search Bar Container -->
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="No Recent Calls"
-            android:textColor="@color/text_primary"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="8dp" />
+            android:orientation="vertical"
+            android:paddingHorizontal="16dp"
+            android:paddingTop="16dp"
+            android:paddingBottom="8dp"
+            android:background="@color/bg_light">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Either your call log is empty, or the required Call Logs permission has not been granted. Grant permissions in the Tracker tab to enable."
-            android:textColor="@color/text_secondary"
-            android:textSize="13sp"
-            android:gravity="center"
-            android:lineSpacingMultiplier="1.2" />
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/til_search_recents"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Search recent calls..."
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                app:boxCornerRadiusTopStart="12dp"
+                app:boxCornerRadiusTopEnd="12dp"
+                app:boxCornerRadiusBottomStart="12dp"
+                app:boxCornerRadiusBottomEnd="12dp"
+                app:boxStrokeColor="@color/accent_indigo"
+                app:hintTextColor="@color/accent_indigo"
+                app:startIconDrawable="@android:drawable/ic_menu_search"
+                app:startIconTint="@color/text_muted">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/et_search_recents"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="text"
+                    android:textColor="@color/text_primary" />
+            </com.google.android.material.textfield.TextInputLayout>
+        </LinearLayout>
+
+        <!-- Container for List or Empty State -->
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <!-- Call Log List -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rv_recents"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:paddingTop="4dp"
+                android:paddingBottom="80dp"
+                android:clipToPadding="false"/>
+
+            <!-- Empty State / No Permissions View -->
+            <LinearLayout
+                android:id="@+id/empty_state_layout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:orientation="vertical"
+                android:padding="32dp"
+                android:gravity="center"
+                android:visibility="gone">
+
+                <ImageView
+                    android:layout_width="64dp"
+                    android:layout_height="64dp"
+                    android:src="@android:drawable/ic_menu_call"
+                    app:tint="@color/divider"
+                    android:layout_marginBottom="16dp"
+                    android:contentDescription="No call log" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="No Recent Calls"
+                    android:textColor="@color/text_primary"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="8dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Either your call log is empty, or the required Call Logs permission has not been granted. Grant permissions in the Tracker tab to enable."
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13sp"
+                    android:gravity="center"
+                    android:lineSpacingMultiplier="1.2" />
+            </LinearLayout>
+        </FrameLayout>
     </LinearLayout>
 
-    <!-- Floating Dialer Button -->
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/fab_show_dialer"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentEnd="true"
-        android:layout_alignParentBottom="true"
-        android:layout_margin="24dp"
-        android:src="@android:drawable/ic_dialog_dialer"
-        app:tint="@color/white"
-        android:contentDescription="Open dialer keypad"
-        app:fabSize="normal"
-        app:elevation="6dp"
-        android:backgroundTint="@color/accent_indigo" />
-
-    <!-- Slide-up Floating Keypad Card -->
+    <!-- Keypad Drawer (Floating Card View sliding up) -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/card_dialer_drawer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
-        android:layout_margin="16dp"
+        android:layout_marginHorizontal="8dp"
+        android:layout_marginBottom="8dp"
         app:cardCornerRadius="24dp"
         app:cardElevation="16dp"
         app:strokeWidth="1dp"
@@ -116,143 +149,161 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="20dp">
+            android:paddingHorizontal="24dp"
+            android:paddingTop="16dp"
+            android:paddingBottom="24dp">
 
-            <!-- Typed Number Display & Backspace -->
+            <!-- Handle slider bar visual -->
+            <View
+                android:layout_width="32dp"
+                android:layout_height="4dp"
+                android:background="@color/divider"
+                android:layout_gravity="center"
+                android:layout_marginBottom="16dp" />
+
+            <!-- Dialer Display Row -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:layout_marginBottom="16dp">
+                android:layout_marginBottom="12dp">
 
                 <TextView
                     android:id="@+id/tv_dialer_digits"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text=""
+                    android:hint="Dial a number"
+                    android:textColorHint="@color/text_muted"
                     android:textColor="@color/text_primary"
-                    android:textSize="28sp"
+                    android:textSize="26sp"
                     android:textStyle="bold"
-                    android:gravity="center"
+                    android:maxLines="1"
                     android:ellipsize="start"
-                    android:singleLine="true" />
+                    android:gravity="center" />
 
-                <!-- Backspace icon -->
-                <ImageView
+                <ImageButton
                     android:id="@+id/btn_dialer_backspace"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:padding="8dp"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
                     android:src="@android:drawable/ic_input_delete"
                     app:tint="@color/text_secondary"
-                    android:background="?android:attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="Backspace"
-                    android:clickable="true"
-                    android:focusable="true"/>
+                    android:contentDescription="Backspace" />
             </LinearLayout>
 
-            <!-- 3x4 Keypad Table -->
-            <TableLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:stretchColumns="*">
-
-                <TableRow android:layout_marginBottom="6dp">
-                    <TextView android:id="@+id/key_1" android:text="1" style="@style/DialerKeyStyle" />
-                    <TextView android:id="@+id/key_2" android:text="2" style="@style/DialerKeyStyle" />
-                    <TextView android:id="@+id/key_3" android:text="3" style="@style/DialerKeyStyle" />
-                </TableRow>
-
-                <TableRow android:layout_marginBottom="6dp">
-                    <TextView android:id="@+id/key_4" android:text="4" style="@style/DialerKeyStyle" />
-                    <TextView android:id="@+id/key_5" android:text="5" style="@style/DialerKeyStyle" />
-                    <TextView android:id="@+id/key_6" android:text="6" style="@style/DialerKeyStyle" />
-                </TableRow>
-
-                <TableRow android:layout_marginBottom="6dp">
-                    <TextView android:id="@+id/key_7" android:text="7" style="@style/DialerKeyStyle" />
-                    <TextView android:id="@+id/key_8" android:text="8" style="@style/DialerKeyStyle" />
-                    <TextView android:id="@+id/key_9" android:text="9" style="@style/DialerKeyStyle" />
-                </TableRow>
-
-                <TableRow>
-                    <TextView android:id="@+id/key_star" android:text="*" style="@style/DialerKeyStyle" />
-                    <TextView android:id="@+id/key_0" android:text="0" style="@style/DialerKeyStyle" />
-                    <TextView android:id="@+id/key_hash" android:text="#" style="@style/DialerKeyStyle" />
-                </TableRow>
-            </TableLayout>
-
-            <!-- Keypad Bottom Actions Row -->
+            <!-- Keyboard Layout (Linear rows) -->
+            <!-- Row 1: 1, 2, 3 -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:layout_marginTop="16dp">
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btn_dialer_close"
-                    android:layout_width="wrap_content"
-                    android:layout_height="48dp"
-                    android:text="Close"
-                    android:textAllCaps="false"
-                    android:textColor="@color/text_secondary"
-                    style="@style/Widget.MaterialComponents.Button.TextButton"
-                    android:textStyle="bold" />
-
-                <!-- Spacer View to push next actions to the right -->
-                <View
-                    android:layout_width="0dp"
-                    android:layout_height="0dp"
-                    android:layout_weight="1" />
-
-                <!-- Green Dial call button -->
-                <com.google.android.material.card.MaterialCardView
-                    android:id="@+id/btn_dialer_call"
-                    android:layout_width="52dp"
-                    android:layout_height="52dp"
-                    android:layout_marginEnd="16dp"
-                    app:cardCornerRadius="26dp"
-                    app:cardElevation="0dp"
-                    app:strokeWidth="0dp"
-                    app:cardBackgroundColor="@color/status_green_bg"
-                    android:clickable="true"
-                    android:focusable="true">
-
-                    <ImageView
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:layout_gravity="center"
-                        android:src="@android:drawable/ic_menu_call"
-                        app:tint="@color/status_green"
-                        android:contentDescription="Initiate dial" />
-                </com.google.android.material.card.MaterialCardView>
-
-                <!-- Track call button -->
-                <com.google.android.material.card.MaterialCardView
-                    android:id="@+id/btn_dialer_track"
-                    android:layout_width="52dp"
-                    android:layout_height="52dp"
-                    app:cardCornerRadius="26dp"
-                    app:cardElevation="0dp"
-                    app:strokeWidth="0dp"
-                    app:cardBackgroundColor="@color/status_blue_bg"
-                    android:clickable="true"
-                    android:focusable="true">
-
-                    <ImageView
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:layout_gravity="center"
-                        android:src="@android:drawable/ic_input_add"
-                        app:tint="@color/status_blue"
-                        android:contentDescription="Track job call" />
-                </com.google.android.material.card.MaterialCardView>
+                android:layout_marginBottom="8dp">
+                <TextView android:id="@+id/key_1" style="@style/KeypadButtonStyle" android:text="1" />
+                <TextView android:id="@+id/key_2" style="@style/KeypadButtonStyle" android:text="2" />
+                <TextView android:id="@+id/key_3" style="@style/KeypadButtonStyle" android:text="3" />
             </LinearLayout>
 
+            <!-- Row 2: 4, 5, 6 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="8dp">
+                <TextView android:id="@+id/key_4" style="@style/KeypadButtonStyle" android:text="4" />
+                <TextView android:id="@+id/key_5" style="@style/KeypadButtonStyle" android:text="5" />
+                <TextView android:id="@+id/key_6" style="@style/KeypadButtonStyle" android:text="6" />
+            </LinearLayout>
+
+            <!-- Row 3: 7, 8, 9 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="8dp">
+                <TextView android:id="@+id/key_7" style="@style/KeypadButtonStyle" android:text="7" />
+                <TextView android:id="@+id/key_8" style="@style/KeypadButtonStyle" android:text="8" />
+                <TextView android:id="@+id/key_9" style="@style/KeypadButtonStyle" android:text="9" />
+            </LinearLayout>
+
+            <!-- Row 4: *, 0, # -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="16dp">
+                <TextView android:id="@+id/key_star" style="@style/KeypadButtonStyle" android:text="*" />
+                <TextView android:id="@+id/key_0" style="@style/KeypadButtonStyle" android:text="0" />
+                <TextView android:id="@+id/key_hash" style="@style/KeypadButtonStyle" android:text="#" />
+            </LinearLayout>
+
+            <!-- Dialer Action Buttons -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:layout_marginTop="4dp">
+
+                <!-- Cancel Button -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_dialer_close"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="8dp"
+                    android:text="Cancel"
+                    android:textColor="@color/text_secondary"
+                    app:cornerRadius="16dp"
+                    style="@style/Widget.MaterialComponents.Button.TextButton"
+                    android:textStyle="bold"/>
+
+                <!-- Dial Button -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_dialer_call"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="1.2"
+                    android:layout_marginEnd="8dp"
+                    android:text="Call Now"
+                    android:textColor="@color/white"
+                    app:cornerRadius="16dp"
+                    android:backgroundTint="@color/status_green"
+                    android:textStyle="bold"
+                    app:icon="@android:drawable/ic_menu_call"
+                    app:iconTint="@color/white"/>
+
+                <!-- Quick Track Button -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_dialer_track"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="1.2"
+                    android:text="Add Tracker"
+                    android:textColor="@color/white"
+                    app:cornerRadius="16dp"
+                    android:backgroundTint="@color/accent_indigo"
+                    android:textStyle="bold"
+                    app:icon="@android:drawable/ic_input_add"
+                    app:iconTint="@color/white"/>
+            </LinearLayout>
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
+
+    <!-- FAB to slide up Keypad -->
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fab_show_dialer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentBottom="true"
+        android:layout_margin="24dp"
+        android:src="@android:drawable/ic_dialog_dialer"
+        app:tint="@color/white"
+        android:contentDescription="Open Dialpad"
+        app:fabSize="normal"
+        app:elevation="6dp"
+        android:backgroundTint="@color/accent_indigo" />
 
 </RelativeLayout>

@@ -20,9 +20,10 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/title_dashboard"
-            android:textColor="@color/white"
+            android:textColor="@color/accent_indigo"
             android:textSize="26sp"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+            android:letterSpacing="0.01" />
 
         <TextView
             android:layout_width="match_parent"
@@ -196,7 +197,7 @@
                 android:id="@+id/til_search"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Search company or tags..."
+                android:hint="Search phone, company, tag or notes..."
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                 app:boxCornerRadiusTopStart="12dp"
                 app:boxCornerRadiusTopEnd="12dp"
@@ -296,53 +297,59 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Main List Container -->
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/rv_job_calls"
+        <!-- Main List Container (Swaps between RecyclerView and Empty State Stack) -->
+        <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_weight="1"
-            android:paddingTop="4dp"
-            android:paddingBottom="8dp"
-            android:clipToPadding="false"/>
-    </LinearLayout>
+            android:layout_weight="1">
 
-    <!-- Empty State View -->
-    <LinearLayout
-        android:id="@+id/empty_state_layout"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_centerInParent="true"
-        android:orientation="vertical"
-        android:padding="32dp"
-        android:gravity="center"
-        android:visibility="visible">
+            <!-- Call Log List -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rv_job_calls"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:paddingTop="4dp"
+                android:paddingBottom="80dp"
+                android:clipToPadding="false"/>
 
-        <ImageView
-            android:layout_width="64dp"
-            android:layout_height="64dp"
-            android:src="@android:drawable/ic_menu_today"
-            app:tint="@color/divider"
-            android:layout_marginBottom="16dp"
-            android:contentDescription="Empty list" />
+            <!-- Empty State View (Centered inside remaining space) -->
+            <LinearLayout
+                android:id="@+id/empty_state_layout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:orientation="vertical"
+                android:padding="32dp"
+                android:gravity="center"
+                android:visibility="gone">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="No Job Calls Logged Yet"
-            android:textColor="@color/text_primary"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="8dp" />
+                <ImageView
+                    android:layout_width="64dp"
+                    android:layout_height="64dp"
+                    android:src="@android:drawable/ic_menu_today"
+                    app:tint="@color/divider"
+                    android:layout_marginBottom="16dp"
+                    android:contentDescription="Empty list" />
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Incoming unsaved recruiter calls will trigger logs automatically, or you can add calls manually using the button below."
-            android:textColor="@color/text_secondary"
-            android:textSize="13sp"
-            android:gravity="center"
-            android:lineSpacingMultiplier="1.2" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="No Job Calls Logged Yet"
+                    android:textColor="@color/text_primary"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="8dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Incoming unsaved recruiter calls will trigger logs automatically, or you can add calls manually using the button below."
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13sp"
+                    android:gravity="center"
+                    android:lineSpacingMultiplier="1.2" />
+            </LinearLayout>
+        </FrameLayout>
     </LinearLayout>
 
     <!-- FAB to log a call manually -->

@@ -8,9 +8,12 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.CallLog;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -35,8 +38,10 @@ public class RecentsFragment extends Fragment implements RecentsAdapter.OnCallAc
     private FloatingActionButton fabShowDialer;
     private MaterialCardView cardDialerDrawer;
     private TextView tvDialerDigits;
+    private EditText etSearchRecents;
     
     private List<RecentCallModel> callLogsList;
+    private List<RecentCallModel> allCallLogsList;
     private RecentsAdapter adapter;
     private StringBuilder dialedDigits = new StringBuilder();
 
@@ -69,11 +74,29 @@ public class RecentsFragment extends Fragment implements RecentsAdapter.OnCallAc
         fabShowDialer = view.findViewById(R.id.fab_show_dialer);
         cardDialerDrawer = view.findViewById(R.id.card_dialer_drawer);
         tvDialerDigits = view.findViewById(R.id.tv_dialer_digits);
+        etSearchRecents = view.findViewById(R.id.et_search_recents);
 
         rvRecents.setLayoutManager(new LinearLayoutManager(requireContext()));
         callLogsList = new ArrayList<>();
+        allCallLogsList = new ArrayList<>();
         adapter = new RecentsAdapter(requireContext(), callLogsList, this);
         rvRecents.setAdapter(adapter);
+
+        // Setup Search filtering
+        if (etSearchRecents != null) {
+            etSearchRecents.addTextChangedListener(new TextWatcher() {
+                @Override
+                public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+                @Override
+                public void onTextChanged(CharSequence s, int start, int before, int count) {
+                    filterRecents(s.toString());
+                }
+
+                @Override
+                public void afterTextChanged(Editable s) {}
+            });
+        }
 
         // Dialer toggle click listener
         fabShowDialer.setOnClickListener(v -> toggleDialerVisibility(true));
@@ -181,12 +204,13 @@ public class RecentsFragment extends Fragment implements RecentsAdapter.OnCallAc
      * Compatibility fix: Limits loop counter in Java rather than appending LIMIT clause to sortOrder.
      */
     private void loadCallLogs() {
+        if (getContext() == null) return;
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.READ_CALL_LOG) != PackageManager.PERMISSION_GRANTED) {
             showEmptyState();
             return;
         }
 
-        callLogsList.clear();
+        allCallLogsList.clear();
 
         String[] projection = new String[]{
                 CallLog.Calls.NUMBER,
@@ -216,20 +240,38 @@ public class RecentsFragment extends Fragment implements RecentsAdapter.OnCallAc
                     int type = cursor.getInt(typeIdx);
                     long date = cursor.getLong(dateIdx);
 
-                    callLogsList.add(new RecentCallModel(number, name, type, date));
+                    allCallLogsList.add(new RecentCallModel(number, name, type, date));
                     count++;
-                } while (cursor.moveToNext() && count < 50); // Hard capped at 50 logs for display performance
+                } while (cursor.moveToNext() && count < 80); // Capped at 80 logs
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
+
+        filterRecents(etSearchRecents != null ? etSearchRecents.getText().toString() : "");
+    }
+
+    /**
+     * Filters call logs based on search query (name or number)
+     */
+    private void filterRecents(String query) {
+        List<RecentCallModel> filtered = new ArrayList<>();
+        for (RecentCallModel item : allCallLogsList) {
+            boolean matchesName = item.name != null && item.name.toLowerCase().contains(query.toLowerCase());
+            boolean matchesNumber = item.number != null && item.number.contains(query);
+            if (query.isEmpty() || matchesName || matchesNumber) {
+                filtered.add(item);
+            }
+        }
+        callLogsList.clear();
+        callLogsList.addAll(filtered);
+        adapter.notifyDataSetChanged();
 
         if (callLogsList.isEmpty()) {
             showEmptyState();
         } else {
             emptyStateLayout.setVisibility(View.GONE);
             rvRecents.setVisibility(View.VISIBLE);
-            adapter.notifyDataSetChanged();
         }
     }
 

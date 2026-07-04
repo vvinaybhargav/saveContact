@@ -172,6 +172,10 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
     private void updateChipsUI() {
         if (chips == null) return;
         float density = getResources().getDisplayMetrics().density;
+        // Theme-aware colors so chips adapt correctly in light & dark mode.
+        int selectedColor = ContextCompat.getColor(requireContext(), R.color.accent_indigo);
+        int unselectedBg = ContextCompat.getColor(requireContext(), R.color.divider);
+        int unselectedText = ContextCompat.getColor(requireContext(), R.color.text_secondary);
         for (int i = 0; i < chips.length; i++) {
             if (chips[i] == null) continue;
 
@@ -181,14 +185,14 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
 
             if (statuses[i].equals(selectedStatus)) {
                 // Selected: Accent indigo background, white text
-                drawable.setColor(0xFF6366F1); // Indigo color
+                drawable.setColor(selectedColor);
                 chips[i].setBackground(drawable);
                 chips[i].setTextColor(Color.WHITE);
             } else {
-                // Deselected: Muted background, dark text
-                drawable.setColor(0xFFE5E7EB); // Soft grey color
+                // Deselected: Muted background + secondary text (adapts to night mode)
+                drawable.setColor(unselectedBg);
                 chips[i].setBackground(drawable);
-                chips[i].setTextColor(0xFF4B5563);
+                chips[i].setTextColor(unselectedText);
             }
         }
     }
@@ -198,7 +202,9 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         for (JobCall call : allCallsList) {
             boolean matchesQuery = query.isEmpty() ||
                     (call.getCompanyName() != null && call.getCompanyName().toLowerCase().contains(query.toLowerCase())) ||
-                    (call.getTags() != null && call.getTags().toLowerCase().contains(query.toLowerCase()));
+                    (call.getTags() != null && call.getTags().toLowerCase().contains(query.toLowerCase())) ||
+                    (call.getPhoneNumber() != null && call.getPhoneNumber().contains(query)) ||
+                    (call.getNotes() != null && call.getNotes().toLowerCase().contains(query.toLowerCase()));
             
             boolean matchesStatus = status.equals("All") ||
                     (call.getRoundStatus() != null && call.getRoundStatus().equals(status));
