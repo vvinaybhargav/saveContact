@@ -41,6 +41,12 @@
             android:taskAffinity=""
             android:theme="@style/Theme.TransparentDialog" />
 
+        <!-- Analytics dashboard -->
+        <activity
+            android:name=".AnalyticsActivity"
+            android:exported="false"
+            android:parentActivityName=".MainActivity" />
+
         <!-- Broadcast Receiver for call state changes -->
         <receiver
             android:name=".CallReceiver"

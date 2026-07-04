@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_light">
+
+    <!-- Header -->
+    <LinearLayout
+        android:id="@+id/header_layout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="@color/primary_dark"
+        android:paddingHorizontal="16dp"
+        android:paddingTop="24dp"
+        android:paddingBottom="20dp">
+
+        <ImageView
+            android:id="@+id/btn_back"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:padding="8dp"
+            android:src="@drawable/ic_back"
+            app:tint="@color/white_constant"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Back"
+            android:layout_marginEnd="8dp" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Analytics"
+                android:textColor="@color/accent_indigo"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.01" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="Your job-call pipeline at a glance"
+                android:textColor="@color/text_muted"
+                android:textSize="12sp" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@id/header_layout"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <!-- Empty state -->
+            <TextView
+                android:id="@+id/tv_empty"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="No job calls logged yet. Add some calls to see your analytics here."
+                android:textColor="@color/text_secondary"
+                android:textSize="14sp"
+                android:gravity="center"
+                android:paddingVertical="48dp"
+                android:lineSpacingMultiplier="1.2"
+                android:visibility="gone" />
+
+            <LinearLayout
+                android:id="@+id/layout_content"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+            <!-- Conversion metric cards -->
+            <TextView style="@style/AnalyticsSectionTitle" android:text="Conversion" />
+
+            <LinearLayout
+                android:id="@+id/layout_conversion"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:baselineAligned="false"
+                android:layout_marginBottom="20dp">
+
+                <com.google.android.material.card.MaterialCardView
+                    style="@style/AnalyticsMetricCard"
+                    android:layout_marginEnd="6dp">
+                    <LinearLayout style="@style/AnalyticsMetricInner">
+                        <TextView android:id="@+id/tv_interview_rate" style="@style/AnalyticsMetricValue" android:textColor="@color/status_purple" android:text="0%" />
+                        <TextView style="@style/AnalyticsMetricLabel" android:text="Interview rate" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <com.google.android.material.card.MaterialCardView
+                    style="@style/AnalyticsMetricCard"
+                    android:layout_marginHorizontal="3dp">
+                    <LinearLayout style="@style/AnalyticsMetricInner">
+                        <TextView android:id="@+id/tv_offer_rate" style="@style/AnalyticsMetricValue" android:textColor="@color/status_green" android:text="0%" />
+                        <TextView style="@style/AnalyticsMetricLabel" android:text="Offer rate" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <com.google.android.material.card.MaterialCardView
+                    style="@style/AnalyticsMetricCard"
+                    android:layout_marginStart="6dp">
+                    <LinearLayout style="@style/AnalyticsMetricInner">
+                        <TextView android:id="@+id/tv_reject_rate" style="@style/AnalyticsMetricValue" android:textColor="@color/status_error" android:text="0%" />
+                        <TextView style="@style/AnalyticsMetricLabel" android:text="Rejection rate" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+            </LinearLayout>
+
+            <!-- Pipeline funnel -->
+            <TextView style="@style/AnalyticsSectionTitle" android:text="Pipeline funnel" />
+
+            <com.google.android.material.card.MaterialCardView style="@style/AnalyticsCard">
+                <LinearLayout
+                    android:id="@+id/container_funnel"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp" />
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Calls per week -->
+            <TextView style="@style/AnalyticsSectionTitle" android:text="Calls per week" />
+
+            <com.google.android.material.card.MaterialCardView style="@style/AnalyticsCard">
+                <LinearLayout
+                    android:id="@+id/container_weekly"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp" />
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Top tags -->
+            <TextView style="@style/AnalyticsSectionTitle" android:text="Top roles / tags" />
+
+            <com.google.android.material.card.MaterialCardView
+                style="@style/AnalyticsCard"
+                android:layout_marginBottom="24dp">
+                <LinearLayout
+                    android:id="@+id/container_tags"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp" />
+            </com.google.android.material.card.MaterialCardView>
+
+            </LinearLayout>
+
+        </LinearLayout>
+    </ScrollView>
+</RelativeLayout>

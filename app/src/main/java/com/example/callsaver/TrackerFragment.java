@@ -122,6 +122,14 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         // Log call manually FAB click
         fabAddCall.setOnClickListener(v -> showAddEditCallDialog(null));
 
+        // Open the full analytics dashboard from the stats card or the hint link
+        View.OnClickListener openAnalytics = v ->
+                startActivity(new Intent(requireContext(), AnalyticsActivity.class));
+        View cardStats = view.findViewById(R.id.card_stats_dashboard);
+        View tvAnalytics = view.findViewById(R.id.tv_view_analytics);
+        if (cardStats != null) cardStats.setOnClickListener(openAnalytics);
+        if (tvAnalytics != null) tvAnalytics.setOnClickListener(openAnalytics);
+
         // Setup filter chips
         setupFilterChips(view);
 
