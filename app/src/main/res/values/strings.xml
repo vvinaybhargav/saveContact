@@ -48,6 +48,7 @@
     <string name="msg_saved_tracker">Call saved to tracker!</string>
     <string name="msg_saved_both">Saved to phone contacts and tracker!</string>
     <string name="msg_deleted">Log entry deleted.</string>
+    <string name="msg_contact_failed">Failed to save log entry.</string>
     <string name="msg_company_empty">Please enter a company name first.</string>
     <string name="msg_phone_empty">Please enter a phone number first.</string>
     <string name="msg_name_empty">Please enter a name first.</string>

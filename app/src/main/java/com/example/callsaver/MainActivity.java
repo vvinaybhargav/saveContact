@@ -232,7 +232,7 @@ public class MainActivity extends AppCompatActivity implements JobCallAdapter.On
                 return;
             }
             if (company.isEmpty()) {
-                Toast.makeText(MainActivity.this, R.string.msg_company_name, Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, R.string.msg_company_empty, Toast.LENGTH_SHORT).show();
                 return;
             }
 
