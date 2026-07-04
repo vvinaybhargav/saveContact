@@ -1,0 +1,32 @@
+# Gradle caches and build files
+.gradle/
+build/
+app/build/
+
+# Local configuration files (contains local SDK paths, etc.)
+local.properties
+
+# Android Studio / IntelliJ files
+.idea/
+*.iml
+*.ipr
+*.iws
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/gradle.xml
+.idea/assetWizardSettings.xml
+.idea/modules.xml
+
+# Built binaries
+*.apk
+*.aar
+*.ap_
+
+# Log files
+*.log
+
+# OS generated files
+.DS_Store
+.DS_Store?
+ehthumbs.db
+Thumbs.db

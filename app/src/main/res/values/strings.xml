@@ -1,0 +1,24 @@
+<resources>
+    <string name="app_name">Call Saver</string>
+    <string name="title_permissions_setup">Call Saver Setup</string>
+    <string name="desc_permissions_setup">Please grant the following permissions to enable automatic popup notifications to save unsaved numbers after you hang up.</string>
+    <string name="btn_grant_permissions">Grant Missing Permissions</string>
+    <string name="btn_open_overlay_settings">Enable Draw Over Other Apps</string>
+    <string name="perm_phone_state">Phone State &amp; Call Logs</string>
+    <string name="perm_phone_state_desc">Required to detect call completion and retrieve the incoming/outgoing phone number.</string>
+    <string name="perm_contacts">Contacts Read/Write</string>
+    <string name="perm_contacts_desc">Required to check if the number is already saved and write new contacts directly.</string>
+    <string name="perm_overlay">System Overlay (Draw over apps)</string>
+    <string name="perm_overlay_desc">Required to show the save dialog popup automatically when you return to your home screen or another app.</string>
+    <string name="granted">Granted</string>
+    <string name="pending">Action Required</string>
+    
+    <string name="title_save_contact">Save Contact?</string>
+    <string name="label_phone_number">Phone Number</string>
+    <string name="hint_name">Contact Name</string>
+    <string name="btn_save">Save</string>
+    <string name="btn_dismiss">Dismiss</string>
+    <string name="msg_contact_saved">Contact saved successfully!</string>
+    <string name="msg_contact_failed">Failed to save contact.</string>
+    <string name="msg_name_empty">Please enter a name first.</string>
+</resources>
