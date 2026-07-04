@@ -24,6 +24,9 @@ import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import android.content.ContentProviderOperation;
+import android.database.Cursor;
+import android.provider.ContactsContract;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
@@ -179,6 +182,7 @@ public class MainActivity extends AppCompatActivity implements JobCallAdapter.On
         Button btnCancel = dialogView.findViewById(R.id.btn_dialog_cancel);
         Button btnSave = dialogView.findViewById(R.id.btn_dialog_save);
         Button btnDelete = dialogView.findViewById(R.id.btn_dialog_delete);
+        Button btnSaveContacts = dialogView.findViewById(R.id.btn_dialog_save_contacts);
 
         // Bind Spinner choices
         ArrayAdapter<CharSequence> spinnerAdapter = ArrayAdapter.createFromResource(this,
@@ -197,6 +201,13 @@ public class MainActivity extends AppCompatActivity implements JobCallAdapter.On
             btnSave.setText(R.string.btn_update);
             btnDelete.setVisibility(View.VISIBLE);
             
+            // Show/hide 'Save to Contacts' button based on existence
+            if (isContactExists(editCall.getPhoneNumber())) {
+                btnSaveContacts.setVisibility(View.GONE);
+            } else {
+                btnSaveContacts.setVisibility(View.VISIBLE);
+            }
+
             // Set spinner selection
             if (editCall.getRoundStatus() != null) {
                 int position = spinnerAdapter.getPosition(editCall.getRoundStatus());
@@ -206,9 +217,25 @@ public class MainActivity extends AppCompatActivity implements JobCallAdapter.On
             dialogTitle.setText(R.string.title_add_job_call);
             btnSave.setText(R.string.btn_add);
             btnDelete.setVisibility(View.GONE);
+            btnSaveContacts.setVisibility(View.GONE);
         }
 
         btnCancel.setOnClickListener(v -> alertDialog.dismiss());
+
+        // Save directly to contacts click action
+        btnSaveContacts.setOnClickListener(v -> {
+            String company = etCompany.getText().toString().trim();
+            if (company.isEmpty()) {
+                Toast.makeText(MainActivity.this, R.string.msg_company_empty, Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (editCall != null && saveContactDirectly(company, editCall.getPhoneNumber())) {
+                Toast.makeText(MainActivity.this, "Saved to phone contacts!", Toast.LENGTH_SHORT).show();
+                btnSaveContacts.setVisibility(View.GONE);
+            } else {
+                Toast.makeText(MainActivity.this, "Failed to save contact.", Toast.LENGTH_SHORT).show();
+            }
+        });
 
         // Delete click action
         btnDelete.setOnClickListener(v -> {
@@ -266,6 +293,65 @@ public class MainActivity extends AppCompatActivity implements JobCallAdapter.On
         View parent = (View) dialogView.getParent();
         if (parent != null) {
             parent.setBackgroundResource(R.drawable.spinner_border);
+        }
+    }
+
+    /**
+     * Checks if a phone number exists in the device's Contacts.
+     */
+    private boolean isContactExists(String number) {
+        if (number == null || number.isEmpty()) {
+            return false;
+        }
+        try {
+            Uri lookupUri = Uri.withAppendedPath(
+                    ContactsContract.PhoneLookup.CONTENT_FILTER_URI,
+                    Uri.encode(number)
+            );
+            String[] projection = { ContactsContract.PhoneLookup._ID };
+            try (Cursor cursor = getContentResolver().query(lookupUri, projection, null, null, null)) {
+                if (cursor != null && cursor.moveToFirst()) {
+                    return true;
+                }
+            }
+        } catch (SecurityException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    /**
+     * Helper to write contact details directly into the phone's address book.
+     */
+    private boolean saveContactDirectly(String name, String phoneNumber) {
+        ArrayList<ContentProviderOperation> ops = new ArrayList<>();
+        int rawContactInsertIndex = ops.size();
+        ops.add(ContentProviderOperation.newInsert(ContactsContract.RawContacts.CONTENT_URI)
+                .withValue(ContactsContract.RawContacts.ACCOUNT_TYPE, null)
+                .withValue(ContactsContract.RawContacts.ACCOUNT_NAME, null)
+                .build());
+
+        ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, rawContactInsertIndex)
+                .withValue(ContactsContract.Data.MIMETYPE, 
+                        ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE)
+                .withValue(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME, name)
+                .build());
+
+        ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, rawContactInsertIndex)
+                .withValue(ContactsContract.Data.MIMETYPE, 
+                        ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE)
+                .withValue(ContactsContract.CommonDataKinds.Phone.NUMBER, phoneNumber)
+                .withValue(ContactsContract.CommonDataKinds.Phone.TYPE, 
+                        ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE)
+                .build());
+        try {
+            getContentResolver().applyBatch(ContactsContract.AUTHORITY, ops);
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
         }
     }
 
