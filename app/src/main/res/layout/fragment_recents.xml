@@ -200,8 +200,13 @@
                     android:textAllCaps="false"
                     android:textColor="@color/text_secondary"
                     style="@style/Widget.MaterialComponents.Button.TextButton"
-                    android:layout_marginEnd="auto"
                     android:textStyle="bold" />
+
+                <!-- Spacer View to push next actions to the right -->
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:layout_weight="1" />
 
                 <!-- Green Dial call button -->
                 <com.google.android.material.card.MaterialCardView
