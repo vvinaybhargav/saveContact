@@ -57,7 +57,6 @@ public class SaveContactActivity extends AppCompatActivity {
         spinnerRound = findViewById(R.id.spinner_round);
         
         Button btnDismiss = findViewById(R.id.btn_dismiss);
-        Button btnSaveTracker = findViewById(R.id.btn_save_tracker);
         Button btnSaveBoth = findViewById(R.id.btn_save_both);
         View rootLayout = findViewById(R.id.root_layout);
 
@@ -85,29 +84,6 @@ public class SaveContactActivity extends AppCompatActivity {
         rootLayout.setOnClickListener(v -> finish());
 
         btnDismiss.setOnClickListener(v -> finish());
-
-        // ACTION: Save to local tracker database only
-        btnSaveTracker.setOnClickListener(v -> {
-            String company = etCompanyName.getText().toString().trim();
-            String tags = etTags.getText().toString().trim();
-            String notes = etNotes.getText().toString().trim();
-            String round = spinnerRound.getSelectedItem().toString();
-
-            if (company.isEmpty()) {
-                Toast.makeText(SaveContactActivity.this, R.string.msg_company_empty, Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            JobCall call = new JobCall(phoneNumber, company, round, tags, notes, callDuration, callTimestamp);
-            long id = dbHelper.insertJobCall(call);
-
-            if (id != -1) {
-                Toast.makeText(SaveContactActivity.this, R.string.msg_saved_tracker, Toast.LENGTH_SHORT).show();
-                finish();
-            } else {
-                Toast.makeText(SaveContactActivity.this, R.string.msg_contact_failed, Toast.LENGTH_SHORT).show();
-            }
-        });
 
         // ACTION: Save to tracker AND system contacts database
         btnSaveBoth.setOnClickListener(v -> {

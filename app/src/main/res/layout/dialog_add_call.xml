@@ -144,17 +144,6 @@
             android:spinnerMode="dropdown" />
     </FrameLayout>
 
-    <!-- Save to Phone Contacts Switch -->
-    <com.google.android.material.switchmaterial.SwitchMaterial
-        android:id="@+id/switch_save_contacts"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
-        android:text="Also save to phone contacts"
-        android:textColor="@color/text_secondary"
-        android:textSize="14sp"
-        android:checked="false" />
-
     <!-- Actions Row -->
     <LinearLayout
         android:layout_width="match_parent"

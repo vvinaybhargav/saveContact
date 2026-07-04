@@ -176,19 +176,6 @@
                 app:cornerRadius="12dp"
                 android:backgroundTint="@color/accent_indigo"
                 android:textStyle="bold"
-                android:layout_marginBottom="8dp" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_save_tracker"
-                android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:text="@string/btn_save_tracker"
-                android:textAllCaps="false"
-                android:textColor="@color/accent_indigo"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                app:strokeColor="@color/accent_indigo"
-                app:cornerRadius="12dp"
-                android:textStyle="bold"
                 android:layout_marginBottom="12dp" />
 
             <com.google.android.material.button.MaterialButton
