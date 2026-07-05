@@ -10,28 +10,46 @@ import android.provider.ContactsContract;
 import android.telecom.Call;
 import android.view.View;
 import android.view.WindowManager;
+import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.google.android.material.card.MaterialCardView;
+
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Locale;
 
 /**
  * Full-screen call UI shown for every call while this app is the default phone app.
- * Switches between the incoming layout (Answer / Decline) and the ongoing layout
- * (Mute / Speaker / End) based on the telecom call state, and enriches the caller
- * with company / stage / tags from the local tracker DB.
+ * Switches between the incoming layout (Answer / Decline), the ongoing layout
+ * (Mute / Speaker / End), and a post-call note panel for answered tracked calls.
+ * Enriches the caller with company / stage / tags from the local tracker DB, or the
+ * saved contact name.
  */
 public class CallActivity extends AppCompatActivity implements OngoingCall.Listener {
 
-    private TextView tvName, tvNumber, tvStatus, tvDuration, tvTrackInfo, tvMute, tvSpeaker;
-    private View layoutIncoming, layoutOngoing;
-    private View btnAnswer, btnDecline, btnHangup, btnMute, btnSpeaker;
+    private static final int[] AVATAR_COLORS = {
+            0xFF6366F1, 0xFF10B981, 0xFF3B82F6, 0xFF8B5CF6, 0xFFEC4899, 0xFFF59E0B, 0xFF14B8A6
+    };
+
+    private TextView tvName, tvNumber, tvStatus, tvDuration, tvTrackInfo, tvMute, tvSpeaker, tvAvatarLetter;
+    private View layoutIncoming, layoutOngoing, layoutPostCall;
+    private View btnAnswer, btnDecline, btnHangup, btnMute, btnSpeaker, btnNoteSave, btnNoteSkip;
+    private ImageView ivAvatarIcon;
+    private MaterialCardView cardAvatar;
+    private EditText etNote;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private Runnable ticker;
     private boolean muted = false;
     private boolean speaker = false;
+    private boolean wasConnected = false;
+    private boolean showingPostCall = false;
+    private JobCall trackedCall;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,13 +64,20 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
         tvTrackInfo = findViewById(R.id.tv_call_track_info);
         tvMute = findViewById(R.id.tv_mute);
         tvSpeaker = findViewById(R.id.tv_speaker);
+        tvAvatarLetter = findViewById(R.id.tv_avatar_letter);
+        ivAvatarIcon = findViewById(R.id.iv_avatar_icon);
+        cardAvatar = findViewById(R.id.card_avatar);
         layoutIncoming = findViewById(R.id.layout_incoming_actions);
         layoutOngoing = findViewById(R.id.layout_ongoing_actions);
+        layoutPostCall = findViewById(R.id.layout_postcall);
+        etNote = findViewById(R.id.et_postcall_note);
         btnAnswer = findViewById(R.id.btn_answer);
         btnDecline = findViewById(R.id.btn_decline);
         btnHangup = findViewById(R.id.btn_hangup);
         btnMute = findViewById(R.id.btn_mute);
         btnSpeaker = findViewById(R.id.btn_speaker);
+        btnNoteSave = findViewById(R.id.btn_note_save);
+        btnNoteSkip = findViewById(R.id.btn_note_skip);
 
         bindCallerInfo(OngoingCall.getNumber());
 
@@ -61,10 +86,7 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
             OngoingCall.reject();
             finish();
         });
-        btnHangup.setOnClickListener(v -> {
-            OngoingCall.hangup();
-            finish();
-        });
+        btnHangup.setOnClickListener(v -> OngoingCall.hangup());
         btnMute.setOnClickListener(v -> {
             muted = !muted;
             CallService.applyMute(muted);
@@ -75,6 +97,8 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
             CallService.applySpeaker(speaker);
             tvSpeaker.setText(speaker ? "Speaker on" : "Speaker");
         });
+        btnNoteSave.setOnClickListener(v -> saveNoteAndFinish());
+        btnNoteSkip.setOnClickListener(v -> finish());
 
         updateUi(OngoingCall.getState());
     }
@@ -83,11 +107,13 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
     protected void onResume() {
         super.onResume();
         OngoingCall.setListener(this);
-        if (!OngoingCall.hasCall()) {
+        if (!OngoingCall.hasCall() && !showingPostCall) {
             finish();
             return;
         }
-        updateUi(OngoingCall.getState());
+        if (!showingPostCall) {
+            updateUi(OngoingCall.getState());
+        }
     }
 
     @Override
@@ -108,18 +134,18 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
         String trackerName = null;
         try {
             DatabaseHelper db = new DatabaseHelper(this);
-            JobCall jc = db.getJobCallByNumber(this, number);
-            if (jc != null) {
-                if (jc.getCompanyName() != null && !jc.getCompanyName().trim().isEmpty()) {
-                    trackerName = jc.getCompanyName();
+            trackedCall = db.getJobCallByNumber(this, number);
+            if (trackedCall != null) {
+                if (trackedCall.getCompanyName() != null && !trackedCall.getCompanyName().trim().isEmpty()) {
+                    trackerName = trackedCall.getCompanyName();
                 }
                 StringBuilder sb = new StringBuilder();
-                if (jc.getRoundStatus() != null && !jc.getRoundStatus().trim().isEmpty()) {
-                    sb.append(jc.getRoundStatus());
+                if (trackedCall.getRoundStatus() != null && !trackedCall.getRoundStatus().trim().isEmpty()) {
+                    sb.append(trackedCall.getRoundStatus());
                 }
-                if (jc.getTags() != null && !jc.getTags().trim().isEmpty()) {
+                if (trackedCall.getTags() != null && !trackedCall.getTags().trim().isEmpty()) {
                     if (sb.length() > 0) sb.append(" · ");
-                    sb.append(jc.getTags());
+                    sb.append(trackedCall.getTags());
                 }
                 if (sb.length() > 0) {
                     tvTrackInfo.setText(sb.toString());
@@ -129,20 +155,37 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
         } catch (Exception ignored) {
         }
 
-        // Prefer the tracker company; otherwise fall back to the phone's saved contact name.
+        // Prefer tracker company; else the phone's saved contact name; else the number.
         String display = trackerName;
-        if (display == null || display.trim().isEmpty()) {
-            display = lookupContactName(number);
+        boolean named = display != null && !display.trim().isEmpty();
+        if (!named) {
+            String contactName = lookupContactName(number);
+            if (contactName != null && !contactName.trim().isEmpty()) {
+                display = contactName;
+                named = true;
+            }
         }
         if (display == null || display.trim().isEmpty()) {
             display = (number == null || number.isEmpty()) ? "Unknown" : number;
         }
         tvName.setText(display);
+        applyAvatar(display, named);
     }
 
-    /**
-     * Looks up the display name for a number in the device's saved contacts.
-     */
+    private void applyAvatar(String name, boolean named) {
+        if (named && name != null && !name.trim().isEmpty()) {
+            char first = name.trim().charAt(0);
+            tvAvatarLetter.setText(String.valueOf(Character.toUpperCase(first)));
+            tvAvatarLetter.setVisibility(View.VISIBLE);
+            ivAvatarIcon.setVisibility(View.GONE);
+            int color = AVATAR_COLORS[Math.abs(name.hashCode()) % AVATAR_COLORS.length];
+            cardAvatar.setCardBackgroundColor(color);
+        } else {
+            tvAvatarLetter.setVisibility(View.GONE);
+            ivAvatarIcon.setVisibility(View.VISIBLE);
+        }
+    }
+
     private String lookupContactName(String number) {
         if (number == null || number.isEmpty()) {
             return null;
@@ -162,6 +205,9 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
     }
 
     private void updateUi(int state) {
+        if (showingPostCall) {
+            return;
+        }
         switch (state) {
             case Call.STATE_RINGING:
                 tvStatus.setText("Incoming call");
@@ -177,6 +223,7 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
                 tvDuration.setVisibility(View.GONE);
                 break;
             case Call.STATE_ACTIVE:
+                wasConnected = true;
                 tvStatus.setText("Ongoing");
                 layoutIncoming.setVisibility(View.GONE);
                 layoutOngoing.setVisibility(View.VISIBLE);
@@ -188,13 +235,44 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
                 break;
             case Call.STATE_DISCONNECTING:
             case Call.STATE_DISCONNECTED:
-                tvStatus.setText("Call ended");
                 handler.removeCallbacksAndMessages(null);
-                finish();
+                // Offer to jot a note only after a real conversation with a tracked recruiter.
+                if (wasConnected && trackedCall != null && trackedCall.getId() > 0) {
+                    showPostCall();
+                } else {
+                    finish();
+                }
                 break;
             default:
                 break;
         }
+    }
+
+    private void showPostCall() {
+        showingPostCall = true;
+        tvStatus.setText("Call ended");
+        tvDuration.setVisibility(View.GONE);
+        layoutIncoming.setVisibility(View.GONE);
+        layoutOngoing.setVisibility(View.GONE);
+        layoutPostCall.setVisibility(View.VISIBLE);
+        etNote.requestFocus();
+    }
+
+    private void saveNoteAndFinish() {
+        String note = etNote.getText().toString().trim();
+        if (!note.isEmpty() && trackedCall != null) {
+            try {
+                String stamp = new SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault()).format(new Date());
+                String existing = trackedCall.getNotes() == null ? "" : trackedCall.getNotes();
+                String combined = "[" + stamp + "] " + note + (existing.isEmpty() ? "" : "\n" + existing);
+                trackedCall.setNotes(combined);
+                new DatabaseHelper(this).updateJobCall(trackedCall);
+                Toast.makeText(this, "Note saved", Toast.LENGTH_SHORT).show();
+            } catch (Exception e) {
+                Toast.makeText(this, "Couldn't save note", Toast.LENGTH_SHORT).show();
+            }
+        }
+        finish();
     }
 
     private void startTimer() {
@@ -229,6 +307,9 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
 
     @Override
     public void onBackPressed() {
-        // Prevent accidentally dropping the call UI with Back; use End/Decline instead.
+        if (showingPostCall) {
+            finish();
+        }
+        // Otherwise ignore Back during a ringing/active call; use Decline/End.
     }
 }

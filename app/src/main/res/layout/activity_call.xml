@@ -25,6 +25,7 @@
             android:letterSpacing="0.05" />
 
         <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_avatar"
             android:layout_width="88dp"
             android:layout_height="88dp"
             android:layout_marginTop="20dp"
@@ -34,12 +35,24 @@
             app:cardBackgroundColor="@color/accent_indigo">
 
             <ImageView
+                android:id="@+id/iv_avatar_icon"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
                 android:layout_gravity="center"
                 android:src="@android:drawable/sym_action_call"
                 app:tint="@color/white_constant"
                 android:contentDescription="Caller" />
+
+            <TextView
+                android:id="@+id/tv_avatar_letter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:text="?"
+                android:textColor="@color/white_constant"
+                android:textSize="36sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
         </com.google.android.material.card.MaterialCardView>
 
         <TextView
@@ -167,6 +180,61 @@
                     app:tint="@color/white_constant" />
             </com.google.android.material.card.MaterialCardView>
             <TextView style="@style/CallActionLabel" android:text="Answer" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Post-call note capture (shown after an answered tracked call) -->
+    <LinearLayout
+        android:id="@+id/layout_postcall"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_alignParentBottom="true"
+        android:paddingHorizontal="24dp"
+        android:paddingBottom="40dp"
+        android:visibility="gone">
+
+        <EditText
+            android:id="@+id/et_postcall_note"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Add a note about this call…"
+            android:textColorHint="@color/text_muted"
+            android:textColor="@color/white_constant"
+            android:background="@color/card_bg_dark"
+            android:padding="14dp"
+            android:gravity="top"
+            android:minLines="2"
+            android:maxLines="4"
+            android:inputType="textMultiLine|textCapSentences"
+            android:importantForAutofill="no" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="12dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_note_skip"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="8dp"
+                android:text="Skip"
+                android:textColor="@color/text_secondary"
+                style="@style/Widget.MaterialComponents.Button.TextButton" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_note_save"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1.4"
+                android:text="Save note"
+                android:textColor="@color/white_constant"
+                app:cornerRadius="12dp"
+                android:backgroundTint="@color/accent_indigo"
+                android:textStyle="bold" />
         </LinearLayout>
     </LinearLayout>
 
