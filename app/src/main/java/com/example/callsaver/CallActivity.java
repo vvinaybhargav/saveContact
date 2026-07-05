@@ -1,5 +1,6 @@
 package com.example.callsaver;
 
+import android.content.ContentProviderOperation;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
@@ -10,8 +11,10 @@ import android.provider.ContactsContract;
 import android.telecom.Call;
 import android.view.View;
 import android.view.WindowManager;
+import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -20,6 +23,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.google.android.material.card.MaterialCardView;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.Locale;
 
@@ -41,7 +45,8 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
     private View btnAnswer, btnDecline, btnHangup, btnMute, btnSpeaker, btnNoteSave, btnNoteSkip;
     private ImageView ivAvatarIcon;
     private MaterialCardView cardAvatar;
-    private EditText etNote;
+    private EditText etNote, etCompany;
+    private Spinner spinnerStage;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private Runnable ticker;
@@ -49,6 +54,8 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
     private boolean speaker = false;
     private boolean wasConnected = false;
     private boolean showingPostCall = false;
+    private boolean isKnownContact = false;
+    private String callNumber = "";
     private JobCall trackedCall;
 
     @Override
@@ -71,6 +78,8 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
         layoutOngoing = findViewById(R.id.layout_ongoing_actions);
         layoutPostCall = findViewById(R.id.layout_postcall);
         etNote = findViewById(R.id.et_postcall_note);
+        etCompany = findViewById(R.id.et_postcall_company);
+        spinnerStage = findViewById(R.id.spinner_postcall_stage);
         btnAnswer = findViewById(R.id.btn_answer);
         btnDecline = findViewById(R.id.btn_decline);
         btnHangup = findViewById(R.id.btn_hangup);
@@ -97,7 +106,7 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
             CallService.applySpeaker(speaker);
             tvSpeaker.setText(speaker ? "Speaker on" : "Speaker");
         });
-        btnNoteSave.setOnClickListener(v -> saveNoteAndFinish());
+        btnNoteSave.setOnClickListener(v -> onPostCallSave());
         btnNoteSkip.setOnClickListener(v -> finish());
 
         updateUi(OngoingCall.getState());
@@ -129,6 +138,7 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
     }
 
     private void bindCallerInfo(String number) {
+        callNumber = number == null ? "" : number;
         tvNumber.setText(number == null || number.isEmpty() ? "Unknown number" : number);
 
         String trackerName = null;
@@ -163,7 +173,10 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
             if (contactName != null && !contactName.trim().isEmpty()) {
                 display = contactName;
                 named = true;
+                isKnownContact = true;
             }
+        } else {
+            isKnownContact = true;
         }
         if (display == null || display.trim().isEmpty()) {
             display = (number == null || number.isEmpty()) ? "Unknown" : number;
@@ -236,9 +249,12 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
             case Call.STATE_DISCONNECTING:
             case Call.STATE_DISCONNECTED:
                 handler.removeCallbacksAndMessages(null);
-                // Offer to jot a note only after a real conversation with a tracked recruiter.
-                if (wasConnected && trackedCall != null && trackedCall.getId() > 0) {
-                    showPostCall();
+                // After a real conversation, offer the post-call panel for a tracked
+                // recruiter (note + stage) or an unknown caller (save + note). Ordinary
+                // saved contacts just close.
+                boolean tracked = trackedCall != null && trackedCall.getId() > 0;
+                if (wasConnected && (tracked || !isKnownContact)) {
+                    showPostCall(tracked);
                 } else {
                     finish();
                 }
@@ -248,31 +264,99 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
         }
     }
 
-    private void showPostCall() {
+    private void showPostCall(boolean tracked) {
         showingPostCall = true;
         tvStatus.setText("Call ended");
         tvDuration.setVisibility(View.GONE);
         layoutIncoming.setVisibility(View.GONE);
         layoutOngoing.setVisibility(View.GONE);
         layoutPostCall.setVisibility(View.VISIBLE);
+
+        ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(
+                this, R.array.round_statuses, R.layout.item_spinner_white);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinnerStage.setAdapter(adapter);
+
+        if (tracked) {
+            etCompany.setVisibility(View.GONE);
+            int pos = adapter.getPosition(trackedCall.getRoundStatus());
+            spinnerStage.setSelection(pos >= 0 ? pos : 0);
+            ((TextView) btnNoteSave).setText("Save");
+        } else {
+            etCompany.setVisibility(View.VISIBLE);
+        }
         etNote.requestFocus();
     }
 
-    private void saveNoteAndFinish() {
+    private void onPostCallSave() {
         String note = etNote.getText().toString().trim();
-        if (!note.isEmpty() && trackedCall != null) {
-            try {
-                String stamp = new SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault()).format(new Date());
-                String existing = trackedCall.getNotes() == null ? "" : trackedCall.getNotes();
-                String combined = "[" + stamp + "] " + note + (existing.isEmpty() ? "" : "\n" + existing);
-                trackedCall.setNotes(combined);
-                new DatabaseHelper(this).updateJobCall(trackedCall);
-                Toast.makeText(this, "Note saved", Toast.LENGTH_SHORT).show();
-            } catch (Exception e) {
-                Toast.makeText(this, "Couldn't save note", Toast.LENGTH_SHORT).show();
+        String stage = spinnerStage.getSelectedItem() != null
+                ? spinnerStage.getSelectedItem().toString() : "Screening";
+        DatabaseHelper db = new DatabaseHelper(this);
+
+        try {
+            if (trackedCall != null && trackedCall.getId() > 0) {
+                // Existing recruiter: update stage if changed, add the note.
+                if (!stage.equals(trackedCall.getRoundStatus())) {
+                    trackedCall.setRoundStatus(stage);
+                    db.updateJobCall(trackedCall);
+                }
+                if (!note.isEmpty()) {
+                    db.insertNote(trackedCall.getId(), note, System.currentTimeMillis());
+                }
+                Toast.makeText(this, "Saved", Toast.LENGTH_SHORT).show();
+            } else {
+                // Unknown caller: create a tracker entry + save to contacts + note.
+                String company = etCompany.getText().toString().trim();
+                if (company.isEmpty()) {
+                    if (note.isEmpty()) {
+                        finish();
+                        return;
+                    }
+                    Toast.makeText(this, "Enter a name to save this caller", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                JobCall newCall = new JobCall(callNumber, company, stage, "", "", 0,
+                        System.currentTimeMillis());
+                long id = db.insertJobCall(newCall);
+                if (id != -1 && !note.isEmpty()) {
+                    db.insertNote(id, note, System.currentTimeMillis());
+                }
+                saveContactDirectly(company, callNumber);
+                Toast.makeText(this, "Saved to tracker & contacts", Toast.LENGTH_SHORT).show();
             }
+        } catch (Exception e) {
+            Toast.makeText(this, "Couldn't save", Toast.LENGTH_SHORT).show();
         }
         finish();
+    }
+
+    private void saveContactDirectly(String name, String phoneNumber) {
+        try {
+            ArrayList<ContentProviderOperation> ops = new ArrayList<>();
+            int idx = ops.size();
+            ops.add(ContentProviderOperation.newInsert(ContactsContract.RawContacts.CONTENT_URI)
+                    .withValue(ContactsContract.RawContacts.ACCOUNT_TYPE, null)
+                    .withValue(ContactsContract.RawContacts.ACCOUNT_NAME, null)
+                    .build());
+            ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                    .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, idx)
+                    .withValue(ContactsContract.Data.MIMETYPE,
+                            ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE)
+                    .withValue(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME, name)
+                    .build());
+            ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                    .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, idx)
+                    .withValue(ContactsContract.Data.MIMETYPE,
+                            ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE)
+                    .withValue(ContactsContract.CommonDataKinds.Phone.NUMBER, phoneNumber)
+                    .withValue(ContactsContract.CommonDataKinds.Phone.TYPE,
+                            ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE)
+                    .build());
+            getContentResolver().applyBatch(ContactsContract.AUTHORITY, ops);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private void startTimer() {

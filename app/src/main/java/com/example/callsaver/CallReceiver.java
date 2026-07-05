@@ -12,6 +12,7 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.ContactsContract;
+import android.telecom.TelecomManager;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 
@@ -77,7 +78,10 @@ public class CallReceiver extends BroadcastReceiver {
             Log.d(TAG, "Call ended (IDLE). Number: " + incomingNumber + ", answered: " + answered);
 
             // Only notify for an ANSWERED INCOMING call whose number is NOT already in contacts.
-            if (answered && incomingNumber != null && !incomingNumber.trim().isEmpty()) {
+            // When we're the default phone app, the in-call screen's post-call panel handles
+            // this instead, so skip the notification to avoid a double prompt.
+            if (answered && incomingNumber != null && !incomingNumber.trim().isEmpty()
+                    && !isDefaultDialer(context)) {
                 if (!isContactExists(context, incomingNumber)) {
                     int duration = getLastCallDuration(context, incomingNumber);
                     Log.d(TAG, "Number not in contacts -> posting save notification. Duration: " + duration + "s");
@@ -146,6 +150,15 @@ public class CallReceiver extends BroadcastReceiver {
         } catch (SecurityException e) {
             // POST_NOTIFICATIONS not granted (Android 13+)
             Log.e(TAG, "Cannot post notification: " + e.getMessage());
+        }
+    }
+
+    private boolean isDefaultDialer(Context context) {
+        try {
+            TelecomManager tm = (TelecomManager) context.getSystemService(Context.TELECOM_SERVICE);
+            return tm != null && context.getPackageName().equals(tm.getDefaultDialerPackage());
+        } catch (Exception e) {
+            return false;
         }
     }
 

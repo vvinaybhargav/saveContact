@@ -20,6 +20,7 @@ import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -38,9 +39,12 @@ import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.switchmaterial.SwitchMaterial;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemClickListener {
 
@@ -353,6 +357,8 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         EditText etCompany = dialogView.findViewById(R.id.et_company);
         EditText etTags = dialogView.findViewById(R.id.et_tags);
         EditText etNotes = dialogView.findViewById(R.id.et_notes);
+        LinearLayout llNotesTimeline = dialogView.findViewById(R.id.ll_notes_timeline);
+        View labelNotes = dialogView.findViewById(R.id.label_notes);
         Spinner spinnerRound = dialogView.findViewById(R.id.spinner_round);
 
         Button btnCancel = dialogView.findViewById(R.id.btn_dialog_cancel);
@@ -375,9 +381,8 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             etPhone.setText(editCall.getPhoneNumber());
             etCompany.setText(editCall.getCompanyName());
             etTags.setText(editCall.getTags());
-            if (etNotes != null) {
-                etNotes.setText(editCall.getNotes());
-            }
+            // Notes are shown as a dated timeline below; the field is for adding a new note.
+            populateNotesTimeline(llNotesTimeline, labelNotes, editCall.getId());
             btnSave.setText(R.string.btn_update);
             btnDelete.setVisibility(View.VISIBLE);
             btnReminder.setVisibility(View.VISIBLE);
@@ -408,9 +413,6 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                 if (existingCall != null) {
                     etCompany.setText(existingCall.getCompanyName());
                     etTags.setText(existingCall.getTags());
-                    if (etNotes != null) {
-                        etNotes.setText(existingCall.getNotes());
-                    }
                     if (existingCall.getRoundStatus() != null) {
                         int position = spinnerAdapter.getPosition(existingCall.getRoundStatus());
                         spinnerRound.setSelection(position >= 0 ? position : 0);
@@ -466,7 +468,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             String phone = etPhone.getText().toString().trim();
             String company = etCompany.getText().toString().trim();
             String tags = etTags.getText().toString().trim();
-            String notes = etNotes != null ? etNotes.getText().toString().trim() : "";
+            String noteToAdd = etNotes != null ? etNotes.getText().toString().trim() : "";
             String round = spinnerRound.getSelectedItem().toString();
 
             if (phone.isEmpty()) {
@@ -483,15 +485,20 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                 editCall.setPhoneNumber(phone);
                 editCall.setCompanyName(company);
                 editCall.setTags(tags);
-                editCall.setNotes(notes);
                 editCall.setRoundStatus(round);
 
                 dbHelper.updateJobCall(editCall);
+                if (!noteToAdd.isEmpty()) {
+                    dbHelper.insertNote(editCall.getId(), noteToAdd, System.currentTimeMillis());
+                }
                 Toast.makeText(requireContext(), "Log updated!", Toast.LENGTH_SHORT).show();
             } else {
                 // Insert mode
-                JobCall newCall = new JobCall(phone, company, round, tags, notes, 0, System.currentTimeMillis());
-                dbHelper.insertJobCall(newCall);
+                JobCall newCall = new JobCall(phone, company, round, tags, "", 0, System.currentTimeMillis());
+                long newId = dbHelper.insertJobCall(newCall);
+                if (newId != -1 && !noteToAdd.isEmpty()) {
+                    dbHelper.insertNote(newId, noteToAdd, System.currentTimeMillis());
+                }
 
                 // Always write to phone contacts address book
                 boolean contactSaved = saveContactDirectly(company, phone);
@@ -516,6 +523,35 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         View parent = (View) dialogView.getParent();
         if (parent != null) {
             parent.setBackgroundResource(R.drawable.spinner_border);
+        }
+    }
+
+    /**
+     * Fills the edit dialog's notes timeline with dated, individually-deletable notes.
+     */
+    private void populateNotesTimeline(LinearLayout container, View label, long jobId) {
+        if (container == null) return;
+        container.removeAllViews();
+        List<CallNote> notes = dbHelper.getNotesForJob(jobId);
+        if (notes.isEmpty()) {
+            if (label != null) label.setVisibility(View.GONE);
+            return;
+        }
+        if (label != null) label.setVisibility(View.VISIBLE);
+        LayoutInflater inflater = getLayoutInflater();
+        SimpleDateFormat sdf = new SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault());
+        for (CallNote n : notes) {
+            View row = inflater.inflate(R.layout.item_note_row, container, false);
+            ((TextView) row.findViewById(R.id.tv_note_text)).setText(n.note);
+            ((TextView) row.findViewById(R.id.tv_note_time)).setText(sdf.format(new Date(n.timestamp)));
+            row.findViewById(R.id.btn_delete_note).setOnClickListener(v -> {
+                dbHelper.deleteNote(n.id, jobId);
+                container.removeView(row);
+                if (container.getChildCount() == 0 && label != null) {
+                    label.setVisibility(View.GONE);
+                }
+            });
+            container.addView(row);
         }
     }
 
