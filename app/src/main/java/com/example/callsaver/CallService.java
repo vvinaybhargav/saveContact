@@ -28,7 +28,9 @@ import java.util.List;
 public class CallService extends InCallService {
 
     private static CallService sInstance;
-    private static final String CHANNEL_ID = "ongoing_call_channel";
+    // New channel id (v2) so a fresh HIGH-importance channel is created; the old one
+    // may be stuck at Default importance, which makes sound but never peeks/heads-up.
+    private static final String CHANNEL_ID = "incoming_calls_v2";
     static final int CALL_NOTIF_ID = 42;
 
     @Override
@@ -103,8 +105,12 @@ public class CallService extends InCallService {
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
-                    CHANNEL_ID, "Calls", NotificationManager.IMPORTANCE_HIGH);
-            channel.setDescription("Incoming and ongoing call banner.");
+                    CHANNEL_ID, "Incoming calls", NotificationManager.IMPORTANCE_HIGH);
+            channel.setDescription("Shows the incoming-call banner at the top of the screen.");
+            channel.enableVibration(true);
+            channel.enableLights(true);
+            channel.setShowBadge(true);
+            channel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
             nm.createNotificationChannel(channel);
         }
 
