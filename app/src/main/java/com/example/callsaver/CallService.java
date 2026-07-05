@@ -15,6 +15,7 @@ import android.telecom.CallAudioState;
 import android.telecom.InCallService;
 
 import androidx.core.app.NotificationCompat;
+import androidx.core.app.Person;
 
 import java.util.List;
 
@@ -116,13 +117,12 @@ public class CallService extends InCallService {
 
         NotificationCompat.Builder b = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.sym_action_call)
-                .setContentTitle(name)
-                .setContentText(subtitle)
-                .setStyle(new NotificationCompat.BigTextStyle().bigText(subtitle))
                 .setPriority(NotificationCompat.PRIORITY_MAX)
                 .setCategory(NotificationCompat.CATEGORY_CALL)
                 .setOngoing(true)
                 .setAutoCancel(false)
+                .setColorized(true)
+                .setColor(0xFF6366F1)
                 .setFullScreenIntent(contentPi, true)
                 .setContentIntent(contentPi);
 
@@ -136,8 +136,16 @@ public class CallService extends InCallService {
             Intent declineBc = new Intent(this, CallActionReceiver.class)
                     .setAction(CallActionReceiver.ACTION_DECLINE);
             PendingIntent declinePi = PendingIntent.getBroadcast(this, 2, declineBc, piFlags());
-            b.addAction(android.R.drawable.ic_menu_close_clear_cancel, "Decline", declinePi);
-            b.addAction(android.R.drawable.sym_action_call, "Answer", answerPi);
+
+            // Official incoming-call style: the system shows this prominently as a
+            // heads-up banner with Answer/Decline (far more reliable than a plain one).
+            Person caller = new Person.Builder().setName(name).build();
+            b.setStyle(NotificationCompat.CallStyle.forIncomingCall(caller, declinePi, answerPi));
+            b.setContentText(subtitle);
+        } else {
+            b.setContentTitle(name)
+                    .setContentText(subtitle)
+                    .setStyle(new NotificationCompat.BigTextStyle().bigText(subtitle));
         }
 
         try {
