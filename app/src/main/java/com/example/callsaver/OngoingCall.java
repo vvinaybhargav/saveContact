@@ -16,8 +16,12 @@ public final class OngoingCall {
         void onStateChanged(int state);
     }
 
+    public static final int DIR_INCOMING = 0;
+    public static final int DIR_OUTGOING = 1;
+
     private static Call sCall;
     private static Listener sListener;
+    private static int sDirection = DIR_INCOMING;
 
     private static final Call.Callback CALLBACK = new Call.Callback() {
         @Override
@@ -90,5 +94,25 @@ public final class OngoingCall {
         if (sCall != null) {
             sCall.disconnect();
         }
+    }
+
+    public static void playDtmf(char digit) {
+        if (sCall != null) {
+            sCall.playDtmfTone(digit);
+        }
+    }
+
+    public static void stopDtmf() {
+        if (sCall != null) {
+            sCall.stopDtmfTone();
+        }
+    }
+
+    public static void setDirection(int direction) {
+        sDirection = direction;
+    }
+
+    public static int getDirection() {
+        return sDirection;
     }
 }

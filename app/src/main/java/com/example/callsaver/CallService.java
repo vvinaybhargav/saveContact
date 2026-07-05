@@ -32,6 +32,14 @@ public class CallService extends InCallService {
         super.onCallAdded(call);
         sInstance = this;
         OngoingCall.setCall(call);
+        // Incoming calls start RINGING; outgoing start CONNECTING/DIALING.
+        try {
+            int state = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+                    ? call.getDetails().getState() : call.getState();
+            OngoingCall.setDirection(state == Call.STATE_RINGING
+                    ? OngoingCall.DIR_INCOMING : OngoingCall.DIR_OUTGOING);
+        } catch (Exception ignored) {
+        }
         try {
             showCallUi(call);
         } catch (Exception e) {
@@ -42,6 +50,11 @@ public class CallService extends InCallService {
     @Override
     public void onCallRemoved(Call call) {
         super.onCallRemoved(call);
+        try {
+            logCallHistory(call);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         OngoingCall.setCall(null);
         try {
             NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
@@ -114,6 +127,41 @@ public class CallService extends InCallService {
             startActivity(intent);
         } catch (Exception ignored) {
         }
+    }
+
+    /**
+     * Logs this call against its tracked job entry (if the number is tracked).
+     */
+    private void logCallHistory(Call call) {
+        if (call == null || call.getDetails() == null) {
+            return;
+        }
+        String number = "";
+        Uri handle = call.getDetails().getHandle();
+        if (handle != null) {
+            number = handle.getSchemeSpecificPart();
+        }
+        if (number.isEmpty()) {
+            return;
+        }
+
+        DatabaseHelper db = new DatabaseHelper(this);
+        JobCall job = db.getJobCallByNumber(this, number);
+        if (job == null || job.getId() <= 0) {
+            return; // only log for tracked entries
+        }
+
+        long connectTime = call.getDetails().getConnectTimeMillis();
+        boolean answered = connectTime > 0;
+        int duration = answered ? (int) Math.max(0, (System.currentTimeMillis() - connectTime) / 1000) : 0;
+
+        String type;
+        if (OngoingCall.getDirection() == OngoingCall.DIR_OUTGOING) {
+            type = "Outgoing";
+        } else {
+            type = answered ? "Incoming" : "Missed";
+        }
+        db.insertCallHistory(job.getId(), type, duration, System.currentTimeMillis());
     }
 
     static void applyMute(boolean muted) {

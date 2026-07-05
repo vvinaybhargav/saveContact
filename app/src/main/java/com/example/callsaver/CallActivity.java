@@ -44,8 +44,9 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
     };
 
     private TextView tvName, tvNumber, tvStatus, tvDuration, tvTrackInfo, tvMute, tvSpeaker, tvAvatarLetter, tvLatestNote;
-    private View layoutIncoming, layoutOngoing, layoutPostCall;
+    private View layoutIncoming, layoutOngoing, layoutPostCall, layoutDialpad;
     private View btnAnswer, btnDecline, btnHangup, btnMute, btnSpeaker, btnNoteSave, btnNoteSkip, btnInCallNote;
+    private View btnKeypad, btnDialpadHide;
     private ImageView ivAvatarIcon;
     private MaterialCardView cardAvatar;
     private EditText etNote, etCompany;
@@ -81,6 +82,9 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
         layoutIncoming = findViewById(R.id.layout_incoming_actions);
         layoutOngoing = findViewById(R.id.layout_ongoing_actions);
         layoutPostCall = findViewById(R.id.layout_postcall);
+        layoutDialpad = findViewById(R.id.layout_dialpad);
+        btnKeypad = findViewById(R.id.btn_keypad);
+        btnDialpadHide = findViewById(R.id.btn_dialpad_hide);
         etNote = findViewById(R.id.et_postcall_note);
         etCompany = findViewById(R.id.et_postcall_company);
         spinnerStage = findViewById(R.id.spinner_postcall_stage);
@@ -114,6 +118,9 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
         btnNoteSave.setOnClickListener(v -> onPostCallSave());
         btnNoteSkip.setOnClickListener(v -> finish());
         btnInCallNote.setOnClickListener(v -> showInCallNoteDialog());
+        btnKeypad.setOnClickListener(v -> toggleDialpad(true));
+        btnDialpadHide.setOnClickListener(v -> toggleDialpad(false));
+        setupDtmfKeys();
 
         updateUi(OngoingCall.getState());
     }
@@ -209,6 +216,32 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
             }
         } catch (Exception ignored) {
         }
+    }
+
+    private void toggleDialpad(boolean show) {
+        layoutDialpad.setVisibility(show ? View.VISIBLE : View.GONE);
+        layoutOngoing.setVisibility(show ? View.GONE : View.VISIBLE);
+    }
+
+    private void setupDtmfKeys() {
+        int[] ids = {
+                R.id.dtmf_1, R.id.dtmf_2, R.id.dtmf_3, R.id.dtmf_4, R.id.dtmf_5,
+                R.id.dtmf_6, R.id.dtmf_7, R.id.dtmf_8, R.id.dtmf_9,
+                R.id.dtmf_star, R.id.dtmf_0, R.id.dtmf_hash
+        };
+        char[] chars = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#'};
+        for (int i = 0; i < ids.length; i++) {
+            final char c = chars[i];
+            View key = findViewById(ids[i]);
+            if (key != null) {
+                key.setOnClickListener(v -> sendDtmf(c));
+            }
+        }
+    }
+
+    private void sendDtmf(char c) {
+        OngoingCall.playDtmf(c);
+        handler.postDelayed(OngoingCall::stopDtmf, 160);
     }
 
     private void showInCallNoteDialog() {
@@ -322,6 +355,7 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
         tvDuration.setVisibility(View.GONE);
         layoutIncoming.setVisibility(View.GONE);
         layoutOngoing.setVisibility(View.GONE);
+        layoutDialpad.setVisibility(View.GONE);
         layoutPostCall.setVisibility(View.VISIBLE);
 
         ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(

@@ -13,7 +13,7 @@ import java.util.List;
 public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "JobTracker.db";
-    private static final int DATABASE_VERSION = 4; // V4: per-note timeline table
+    private static final int DATABASE_VERSION = 5; // V5: per-entry call history
 
     public static final String TABLE_NAME = "job_calls";
     public static final String COLUMN_ID = "id";
@@ -31,6 +31,14 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public static final String COLUMN_NOTE_JOB_ID = "job_call_id";
     public static final String COLUMN_NOTE_TEXT = "note_text";
     public static final String COLUMN_NOTE_TIME = "note_time";
+
+    // V5: per-entry call history (each in/out/missed call logged against a job call).
+    public static final String TABLE_HISTORY = "call_history";
+    public static final String COLUMN_HIST_ID = "id";
+    public static final String COLUMN_HIST_JOB_ID = "job_call_id";
+    public static final String COLUMN_HIST_TYPE = "call_type";
+    public static final String COLUMN_HIST_DURATION = "duration";
+    public static final String COLUMN_HIST_TIME = "call_time";
 
     public DatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -50,6 +58,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 + ")";
         db.execSQL(CREATE_TABLE);
         db.execSQL(createNotesTableSql());
+        db.execSQL(createHistoryTableSql());
     }
 
     @Override
@@ -66,6 +75,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             db.execSQL(createNotesTableSql());
             migrateBlobNotes(db);
         }
+        if (oldVersion < 5) {
+            db.execSQL(createHistoryTableSql());
+        }
     }
 
     private static String createNotesTableSql() {
@@ -74,6 +86,16 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 + COLUMN_NOTE_JOB_ID + " INTEGER,"
                 + COLUMN_NOTE_TEXT + " TEXT,"
                 + COLUMN_NOTE_TIME + " INTEGER"
+                + ")";
+    }
+
+    private static String createHistoryTableSql() {
+        return "CREATE TABLE IF NOT EXISTS " + TABLE_HISTORY + "("
+                + COLUMN_HIST_ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
+                + COLUMN_HIST_JOB_ID + " INTEGER,"
+                + COLUMN_HIST_TYPE + " TEXT,"
+                + COLUMN_HIST_DURATION + " INTEGER,"
+                + COLUMN_HIST_TIME + " INTEGER"
                 + ")";
     }
 
@@ -244,6 +266,41 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         v.put(COLUMN_NOTES, latest);
         db.update(TABLE_NAME, v, COLUMN_ID + "=?", new String[]{String.valueOf(jobCallId)});
         db.close();
+    }
+
+    /**
+     * Logs a call (Incoming / Outgoing / Missed) against a job entry.
+     */
+    public long insertCallHistory(long jobCallId, String type, int durationSec, long timestamp) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues v = new ContentValues();
+        v.put(COLUMN_HIST_JOB_ID, jobCallId);
+        v.put(COLUMN_HIST_TYPE, type);
+        v.put(COLUMN_HIST_DURATION, durationSec);
+        v.put(COLUMN_HIST_TIME, timestamp);
+        long id = db.insert(TABLE_HISTORY, null, v);
+        db.close();
+        return id;
+    }
+
+    public List<CallHistory> getCallHistoryForJob(long jobCallId) {
+        List<CallHistory> list = new ArrayList<>();
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor c = db.query(TABLE_HISTORY, null, COLUMN_HIST_JOB_ID + "=?",
+                new String[]{String.valueOf(jobCallId)}, null, null, COLUMN_HIST_TIME + " DESC");
+        if (c != null) {
+            while (c.moveToNext()) {
+                list.add(new CallHistory(
+                        c.getLong(c.getColumnIndexOrThrow(COLUMN_HIST_ID)),
+                        c.getLong(c.getColumnIndexOrThrow(COLUMN_HIST_JOB_ID)),
+                        c.getString(c.getColumnIndexOrThrow(COLUMN_HIST_TYPE)),
+                        c.getInt(c.getColumnIndexOrThrow(COLUMN_HIST_DURATION)),
+                        c.getLong(c.getColumnIndexOrThrow(COLUMN_HIST_TIME))));
+            }
+            c.close();
+        }
+        db.close();
+        return list;
     }
 
     /**

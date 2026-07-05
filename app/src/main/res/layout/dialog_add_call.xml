@@ -98,12 +98,12 @@
             android:textColor="@color/text_primary" />
     </com.google.android.material.textfield.TextInputLayout>
 
-    <!-- Notes timeline (dated notes, populated for existing entries) -->
+    <!-- Timeline: merged calls + dated notes, populated for existing entries -->
     <TextView
         android:id="@+id/label_notes"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Notes"
+        android:text="Call history &amp; notes"
         android:textColor="@color/text_secondary"
         android:textSize="12sp"
         android:textStyle="bold"

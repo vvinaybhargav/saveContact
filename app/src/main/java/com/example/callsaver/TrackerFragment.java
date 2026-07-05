@@ -43,6 +43,7 @@ import com.google.android.material.switchmaterial.SwitchMaterial;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -397,8 +398,8 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             etPhone.setText(editCall.getPhoneNumber());
             etCompany.setText(editCall.getCompanyName());
             etTags.setText(editCall.getTags());
-            // Notes are shown as a dated timeline below; the field is for adding a new note.
-            populateNotesTimeline(llNotesTimeline, labelNotes, editCall.getId());
+            // Calls + notes are shown as a merged timeline below; the field adds a new note.
+            populateTimeline(llNotesTimeline, labelNotes, editCall.getId());
             btnSave.setText(R.string.btn_update);
             btnDelete.setVisibility(View.VISIBLE);
             btnReminder.setVisibility(View.VISIBLE);
@@ -542,33 +543,74 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         }
     }
 
+    private static class TimelineRow {
+        long ts;
+        String text;
+        boolean isNote;
+        long noteId;
+    }
+
     /**
-     * Fills the edit dialog's notes timeline with dated, individually-deletable notes.
+     * Fills the edit dialog's timeline with a merged, chronological list of calls
+     * (in/out/missed + duration) and dated notes. Notes are individually deletable.
      */
-    private void populateNotesTimeline(LinearLayout container, View label, long jobId) {
+    private void populateTimeline(LinearLayout container, View label, long jobId) {
         if (container == null) return;
         container.removeAllViews();
-        List<CallNote> notes = dbHelper.getNotesForJob(jobId);
-        if (notes.isEmpty()) {
+
+        List<TimelineRow> rows = new ArrayList<>();
+        for (CallNote n : dbHelper.getNotesForJob(jobId)) {
+            TimelineRow r = new TimelineRow();
+            r.ts = n.timestamp;
+            r.text = n.note;
+            r.isNote = true;
+            r.noteId = n.id;
+            rows.add(r);
+        }
+        for (CallHistory h : dbHelper.getCallHistoryForJob(jobId)) {
+            TimelineRow r = new TimelineRow();
+            r.ts = h.timestamp;
+            r.text = describeCall(h);
+            r.isNote = false;
+            rows.add(r);
+        }
+
+        if (rows.isEmpty()) {
             if (label != null) label.setVisibility(View.GONE);
             return;
         }
         if (label != null) label.setVisibility(View.VISIBLE);
+
+        Collections.sort(rows, (a, b) -> Long.compare(b.ts, a.ts));
+
         LayoutInflater inflater = getLayoutInflater();
         SimpleDateFormat sdf = new SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault());
-        for (CallNote n : notes) {
+        for (TimelineRow r : rows) {
             View row = inflater.inflate(R.layout.item_note_row, container, false);
-            ((TextView) row.findViewById(R.id.tv_note_text)).setText(n.note);
-            ((TextView) row.findViewById(R.id.tv_note_time)).setText(sdf.format(new Date(n.timestamp)));
-            row.findViewById(R.id.btn_delete_note).setOnClickListener(v -> {
-                dbHelper.deleteNote(n.id, jobId);
-                container.removeView(row);
-                if (container.getChildCount() == 0 && label != null) {
-                    label.setVisibility(View.GONE);
-                }
-            });
+            ((TextView) row.findViewById(R.id.tv_note_text)).setText(r.text);
+            ((TextView) row.findViewById(R.id.tv_note_time)).setText(sdf.format(new Date(r.ts)));
+            View delete = row.findViewById(R.id.btn_delete_note);
+            if (r.isNote) {
+                delete.setOnClickListener(v -> {
+                    dbHelper.deleteNote(r.noteId, jobId);
+                    container.removeView(row);
+                    if (container.getChildCount() == 0 && label != null) {
+                        label.setVisibility(View.GONE);
+                    }
+                });
+            } else {
+                delete.setVisibility(View.GONE);
+            }
             container.addView(row);
         }
+    }
+
+    private String describeCall(CallHistory h) {
+        String label = h.type + " call";
+        if (h.duration > 0) {
+            label += " · " + String.format(Locale.getDefault(), "%d:%02d", h.duration / 60, h.duration % 60);
+        }
+        return label;
     }
 
     private boolean isContactExists(String number) {
