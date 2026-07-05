@@ -1,9 +1,12 @@
 package com.example.callsaver;
 
+import android.database.Cursor;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.ContactsContract;
 import android.telecom.Call;
 import android.view.View;
 import android.view.WindowManager;
@@ -102,13 +105,13 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
     private void bindCallerInfo(String number) {
         tvNumber.setText(number == null || number.isEmpty() ? "Unknown number" : number);
 
-        String display = number;
+        String trackerName = null;
         try {
             DatabaseHelper db = new DatabaseHelper(this);
             JobCall jc = db.getJobCallByNumber(this, number);
             if (jc != null) {
                 if (jc.getCompanyName() != null && !jc.getCompanyName().trim().isEmpty()) {
-                    display = jc.getCompanyName();
+                    trackerName = jc.getCompanyName();
                 }
                 StringBuilder sb = new StringBuilder();
                 if (jc.getRoundStatus() != null && !jc.getRoundStatus().trim().isEmpty()) {
@@ -126,7 +129,36 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
         } catch (Exception ignored) {
         }
 
-        tvName.setText(display == null || display.isEmpty() ? "Unknown" : display);
+        // Prefer the tracker company; otherwise fall back to the phone's saved contact name.
+        String display = trackerName;
+        if (display == null || display.trim().isEmpty()) {
+            display = lookupContactName(number);
+        }
+        if (display == null || display.trim().isEmpty()) {
+            display = (number == null || number.isEmpty()) ? "Unknown" : number;
+        }
+        tvName.setText(display);
+    }
+
+    /**
+     * Looks up the display name for a number in the device's saved contacts.
+     */
+    private String lookupContactName(String number) {
+        if (number == null || number.isEmpty()) {
+            return null;
+        }
+        try {
+            Uri uri = Uri.withAppendedPath(
+                    ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(number));
+            String[] projection = {ContactsContract.PhoneLookup.DISPLAY_NAME};
+            try (Cursor c = getContentResolver().query(uri, projection, null, null, null)) {
+                if (c != null && c.moveToFirst()) {
+                    return c.getString(0);
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return null;
     }
 
     private void updateUi(int state) {
