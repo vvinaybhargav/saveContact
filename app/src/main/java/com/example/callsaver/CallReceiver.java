@@ -52,18 +52,9 @@ public class CallReceiver extends BroadcastReceiver {
                 // The number can arrive on a later RINGING broadcast; store it whenever present.
                 editor.putString(KEY_INCOMING_NUMBER, incomingNumber);
                 Log.d(TAG, "Incoming call detected from number: " + incomingNumber);
-
-                // Show the caller-ID overlay banner if this is a tracked recruiter.
-                DatabaseHelper dbHelper = new DatabaseHelper(context);
-                JobCall jobCall = dbHelper.getJobCallByNumber(context, incomingNumber);
-                if (jobCall != null) {
-                    Log.d(TAG, "Tracked job caller detected! Starting Caller ID Overlay service.");
-                    Intent serviceIntent = new Intent(context, CallerIdService.class);
-                    serviceIntent.putExtra("company_name", jobCall.getCompanyName());
-                    serviceIntent.putExtra("round_status", jobCall.getRoundStatus());
-                    serviceIntent.putExtra("tags", jobCall.getTags());
-                    context.startService(serviceIntent);
-                }
+                // Note: the old caller-ID overlay service is retired. Starting a service from
+                // this background receiver crashed on Android 8+; the full-screen CallActivity
+                // now shows the tracked company / stage / tags instead.
             }
             editor.apply();
         } else if (stateStr.equals(TelephonyManager.EXTRA_STATE_OFFHOOK)) {
