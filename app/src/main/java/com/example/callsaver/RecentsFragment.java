@@ -8,6 +8,7 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.CallLog;
+import android.telecom.PhoneAccountHandle;
 import android.telecom.TelecomManager;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -23,6 +24,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -105,6 +107,9 @@ public class RecentsFragment extends Fragment implements RecentsAdapter.OnCallAc
 
         // Setup Keypad clicks
         setupKeypad(view);
+
+        // Swipe right = call via SIM 1, swipe left = call via SIM 2
+        setupSwipeToCall();
 
         // Fade the header smoothly as it collapses on scroll
         AppBarLayout appBar = view.findViewById(R.id.appbar_recents);
@@ -197,6 +202,75 @@ public class RecentsFragment extends Fragment implements RecentsAdapter.OnCallAc
                 }
             });
         }
+    }
+
+    /**
+     * Swipe a recents row RIGHT to call the number via SIM 1, LEFT to call via SIM 2.
+     * The row snaps back after the swipe (nothing is deleted).
+     */
+    private void setupSwipeToCall() {
+        if (rvRecents == null) return;
+        ItemTouchHelper.SimpleCallback callback = new ItemTouchHelper.SimpleCallback(
+                0, ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT) {
+            @Override
+            public boolean onMove(@NonNull RecyclerView rv, @NonNull RecyclerView.ViewHolder vh,
+                                  @NonNull RecyclerView.ViewHolder target) {
+                return false;
+            }
+
+            @Override
+            public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
+                int pos = viewHolder.getAdapterPosition();
+                if (pos < 0 || pos >= callLogsList.size()) {
+                    return;
+                }
+                String number = callLogsList.get(pos).number;
+                if (direction == ItemTouchHelper.RIGHT) {
+                    placeCallWithSim(number, 0);
+                } else {
+                    placeCallWithSim(number, 1);
+                }
+                adapter.notifyItemChanged(pos); // reset the swiped row
+            }
+        };
+        new ItemTouchHelper(callback).attachToRecyclerView(rvRecents);
+    }
+
+    /**
+     * Places a call through a specific SIM (0 = SIM 1, 1 = SIM 2) using its
+     * PhoneAccountHandle. Falls back to the default SIM if that slot isn't available.
+     */
+    private void placeCallWithSim(String number, int simIndex) {
+        if (number == null || number.isEmpty()) return;
+        Uri uri = Uri.fromParts("tel", number, null);
+
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CALL_PHONE)
+                != PackageManager.PERMISSION_GRANTED) {
+            onDialClick(number);
+            return;
+        }
+        try {
+            TelecomManager tm = (TelecomManager) requireContext().getSystemService(Context.TELECOM_SERVICE);
+            if (tm != null) {
+                Bundle extras = new Bundle();
+                List<PhoneAccountHandle> handles = null;
+                try {
+                    handles = tm.getCallCapablePhoneAccounts();
+                } catch (SecurityException ignored) {
+                }
+                if (handles != null && simIndex < handles.size()) {
+                    extras.putParcelable(TelecomManager.EXTRA_PHONE_ACCOUNT_HANDLE, handles.get(simIndex));
+                    Toast.makeText(requireContext(), "Calling via SIM " + (simIndex + 1), Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(requireContext(), "SIM " + (simIndex + 1) + " not available", Toast.LENGTH_SHORT).show();
+                }
+                tm.placeCall(uri, extras);
+                return;
+            }
+        } catch (SecurityException e) {
+            e.printStackTrace();
+        }
+        onDialClick(number);
     }
 
     private void updateDialerDigitsDisplay() {

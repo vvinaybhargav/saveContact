@@ -14,6 +14,15 @@
         <!-- Status bar color. -->
         <item name="android:statusBarColor">@color/primary_dark</item>
         <item name="android:windowBackground">@color/bg_light</item>
+
+        <!-- App-wide: wrap at whole words, never hyphenate/break mid-word. -->
+        <item name="android:textViewStyle">@style/AppTextView</item>
+    </style>
+
+    <!-- Default TextView style: no hyphenation so words stay whole when wrapping. -->
+    <style name="AppTextView" parent="@android:style/Widget.TextView">
+        <item name="android:hyphenationFrequency">none</item>
+        <item name="android:breakStrategy">simple</item>
     </style>
 
     <!-- Transparent dialog overlay theme -->
