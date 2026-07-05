@@ -6,13 +6,17 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
+import android.provider.ContactsContract;
 import android.telecom.Call;
 import android.telecom.CallAudioState;
 import android.telecom.InCallService;
 
 import androidx.core.app.NotificationCompat;
+
+import java.util.List;
 
 /**
  * The InCallService the OS binds to once this app is the default phone app.
@@ -25,7 +29,7 @@ public class CallService extends InCallService {
 
     private static CallService sInstance;
     private static final String CHANNEL_ID = "ongoing_call_channel";
-    private static final int CALL_NOTIF_ID = 42;
+    static final int CALL_NOTIF_ID = 42;
 
     @Override
     public void onCallAdded(Call call) {
@@ -69,17 +73,6 @@ public class CallService extends InCallService {
     }
 
     private void showCallUi(Call call) {
-        Intent intent = new Intent(this, CallActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
-                | Intent.FLAG_ACTIVITY_CLEAR_TOP
-                | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-
-        int piFlags = PendingIntent.FLAG_UPDATE_CURRENT;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            piFlags |= PendingIntent.FLAG_IMMUTABLE;
-        }
-        PendingIntent pi = PendingIntent.getActivity(this, 0, intent, piFlags);
-
         boolean ringing = false;
         String number = "";
         try {
@@ -93,40 +86,135 @@ public class CallService extends InCallService {
         } catch (Exception ignored) {
         }
 
+        // Name + subtitle (round · tags · latest note) for the notification / heads-up.
+        String[] info = resolveCallerInfo(number, ringing ? "Incoming call" : "Ongoing call");
+        String name = info[0];
+        String subtitle = info[1];
+
+        Intent fullScreen = new Intent(this, CallActivity.class)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
+                        | Intent.FLAG_ACTIVITY_CLEAR_TOP
+                        | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        PendingIntent contentPi = PendingIntent.getActivity(this, 0, fullScreen, piFlags());
+
         NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         if (nm == null) {
             return;
         }
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
-                    CHANNEL_ID, "Ongoing calls", NotificationManager.IMPORTANCE_HIGH);
-            channel.setDescription("Shows the active call screen.");
+                    CHANNEL_ID, "Calls", NotificationManager.IMPORTANCE_HIGH);
+            channel.setDescription("Incoming and ongoing call banner.");
             nm.createNotificationChannel(channel);
         }
 
-        Notification n = new NotificationCompat.Builder(this, CHANNEL_ID)
+        NotificationCompat.Builder b = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.sym_action_call)
-                .setContentTitle(ringing ? "Incoming call" : "Ongoing call")
-                .setContentText(number.isEmpty() ? "Call in progress" : number)
+                .setContentTitle(name)
+                .setContentText(subtitle)
+                .setStyle(new NotificationCompat.BigTextStyle().bigText(subtitle))
                 .setPriority(NotificationCompat.PRIORITY_MAX)
                 .setCategory(NotificationCompat.CATEGORY_CALL)
                 .setOngoing(true)
                 .setAutoCancel(false)
-                .setFullScreenIntent(pi, true)
-                .setContentIntent(pi)
-                .build();
+                .setFullScreenIntent(contentPi, true)
+                .setContentIntent(contentPi);
+
+        if (ringing) {
+            Intent answerAct = new Intent(this, CallActivity.class)
+                    .putExtra("action", "answer")
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
+                            | Intent.FLAG_ACTIVITY_CLEAR_TOP
+                            | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            PendingIntent answerPi = PendingIntent.getActivity(this, 1, answerAct, piFlags());
+            Intent declineBc = new Intent(this, CallActionReceiver.class)
+                    .setAction(CallActionReceiver.ACTION_DECLINE);
+            PendingIntent declinePi = PendingIntent.getBroadcast(this, 2, declineBc, piFlags());
+            b.addAction(android.R.drawable.ic_menu_close_clear_cancel, "Decline", declinePi);
+            b.addAction(android.R.drawable.sym_action_call, "Answer", answerPi);
+        }
 
         try {
-            nm.notify(CALL_NOTIF_ID, n);
+            nm.notify(CALL_NOTIF_ID, b.build());
         } catch (Exception ignored) {
         }
 
-        // Direct launch too (works when the app is already in the foreground / outgoing).
+        // Outgoing calls are user-initiated -> open the full screen immediately.
+        // Incoming calls rely on the full-screen intent: heads-up when unlocked,
+        // full-screen when locked/off. So we do NOT force the activity here.
+        if (!ringing) {
+            try {
+                startActivity(fullScreen);
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
+    private int piFlags() {
+        int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            flags |= PendingIntent.FLAG_IMMUTABLE;
+        }
+        return flags;
+    }
+
+    /**
+     * Returns [displayName, subtitle] for the call notification. Subtitle is the
+     * round · tags · latest note for a tracked caller, else the default.
+     */
+    private String[] resolveCallerInfo(String number, String defaultSubtitle) {
+        String name = (number == null || number.isEmpty()) ? "Unknown" : number;
+        String subtitle = defaultSubtitle;
         try {
-            startActivity(intent);
+            DatabaseHelper db = new DatabaseHelper(this);
+            JobCall job = db.getJobCallByNumber(this, number);
+            if (job != null) {
+                if (job.getCompanyName() != null && !job.getCompanyName().trim().isEmpty()) {
+                    name = job.getCompanyName();
+                }
+                StringBuilder sb = new StringBuilder();
+                if (job.getRoundStatus() != null && !job.getRoundStatus().trim().isEmpty()) {
+                    sb.append(job.getRoundStatus());
+                }
+                if (job.getTags() != null && !job.getTags().trim().isEmpty()) {
+                    if (sb.length() > 0) sb.append(" · ");
+                    sb.append(job.getTags());
+                }
+                List<CallNote> notes = db.getNotesForJob(job.getId());
+                if (!notes.isEmpty() && notes.get(0).note != null && !notes.get(0).note.trim().isEmpty()) {
+                    if (sb.length() > 0) sb.append(" · ");
+                    sb.append(notes.get(0).note);
+                }
+                if (sb.length() > 0) {
+                    subtitle = sb.toString();
+                }
+            } else {
+                String contactName = lookupContactName(number);
+                if (contactName != null && !contactName.trim().isEmpty()) {
+                    name = contactName;
+                }
+            }
         } catch (Exception ignored) {
         }
+        return new String[]{name, subtitle};
+    }
+
+    private String lookupContactName(String number) {
+        if (number == null || number.isEmpty()) {
+            return null;
+        }
+        try {
+            Uri uri = Uri.withAppendedPath(
+                    ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(number));
+            String[] projection = {ContactsContract.PhoneLookup.DISPLAY_NAME};
+            try (Cursor c = getContentResolver().query(uri, projection, null, null, null)) {
+                if (c != null && c.moveToFirst()) {
+                    return c.getString(0);
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return null;
     }
 
     /**

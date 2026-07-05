@@ -128,7 +128,7 @@ Number matching uses `PhoneNumberUtils.compare` (`DatabaseHelper.getJobCallByNum
 
 ## Call flow (default-dialer path)
 
-1. OS binds `CallService` (we hold `ROLE_DIALER`). `onCallAdded` records direction (RINGING⇒incoming, else outgoing) and posts a high-priority **full-screen-intent notification** → launches `CallActivity`.
+1. OS binds `CallService` (we hold `ROLE_DIALER`). `onCallAdded` records direction (RINGING⇒incoming, else outgoing) and posts a high-priority **call notification** carrying the caller name + round + latest note, with Answer/Decline actions and a `fullScreenIntent`. When the phone is **locked/off** the system launches the full-screen `CallActivity`; when **unlocked/in use** it shows a **heads-up banner at the top** (tap Answer or the banner to open the full screen). Outgoing calls open the full screen directly.
 2. `CallActivity` reads state from `OngoingCall` and shows the incoming or ongoing UI, enriched from the tracker DB / contacts, including the **latest note**.
 3. During a call: Mute/Speaker route audio via `CallService`; **Keypad** sends DTMF via `Call.playDtmfTone`; **Note** appends to the timeline live.
 4. On disconnect: `CallService.onCallRemoved` **logs a `call_history` row** for tracked numbers. `CallActivity` shows the **post-call panel** if the call was connected and the caller is tracked or unknown (ordinary saved contacts just close).

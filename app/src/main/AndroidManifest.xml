@@ -90,6 +90,11 @@
             android:exported="false"
             android:parentActivityName=".MainActivity" />
 
+        <!-- Handles Answer/Decline from the incoming-call notification -->
+        <receiver
+            android:name=".CallActionReceiver"
+            android:exported="false" />
+
         <!-- Broadcast Receiver for call state changes -->
         <receiver
             android:name=".CallReceiver"

@@ -122,7 +122,21 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
         btnDialpadHide.setOnClickListener(v -> toggleDialpad(false));
         setupDtmfKeys();
 
+        // Answer immediately if launched from the notification's Answer action.
+        if ("answer".equals(getIntent().getStringExtra("action"))) {
+            OngoingCall.answer();
+        }
+
         updateUi(OngoingCall.getState());
+    }
+
+    @Override
+    protected void onNewIntent(android.content.Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        if (intent != null && "answer".equals(intent.getStringExtra("action"))) {
+            OngoingCall.answer();
+        }
     }
 
     @Override
