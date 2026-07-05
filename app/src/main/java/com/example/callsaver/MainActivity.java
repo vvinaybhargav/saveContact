@@ -1,12 +1,15 @@
 package com.example.callsaver;
 
 import android.Manifest;
+import android.app.role.RoleManager;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.telecom.TelecomManager;
 import android.view.MenuItem;
 import android.widget.Toast;
 
@@ -24,6 +27,7 @@ import java.util.List;
 public class MainActivity extends AppCompatActivity {
 
     private static final int ALL_PERMISSIONS_REQUEST_CODE = 200;
+    private static final int REQ_DEFAULT_DIALER = 300;
 
     private BottomNavigationView bottomNavigation;
     private RecentsFragment recentsFragment;
@@ -33,7 +37,8 @@ public class MainActivity extends AppCompatActivity {
             Manifest.permission.READ_PHONE_STATE,
             Manifest.permission.READ_CALL_LOG,
             Manifest.permission.READ_CONTACTS,
-            Manifest.permission.WRITE_CONTACTS
+            Manifest.permission.WRITE_CONTACTS,
+            Manifest.permission.CALL_PHONE
     };
 
     @Override
@@ -77,6 +82,42 @@ public class MainActivity extends AppCompatActivity {
 
         // Auto check/request permissions on first launch
         requestRequiredPermissionsIfMissing();
+
+        // Offer to become the default phone app (enables the full-screen call UI)
+        offerDefaultDialer();
+    }
+
+    /**
+     * Prompts the user to make this the default phone app if it isn't already.
+     * Uses RoleManager on Android 10+ and TelecomManager on older versions.
+     */
+    private void offerDefaultDialer() {
+        if (isAlreadyDefaultDialer()) {
+            return;
+        }
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                RoleManager roleManager = (RoleManager) getSystemService(Context.ROLE_SERVICE);
+                if (roleManager != null
+                        && roleManager.isRoleAvailable(RoleManager.ROLE_DIALER)
+                        && !roleManager.isRoleHeld(RoleManager.ROLE_DIALER)) {
+                    Intent intent = roleManager.createRequestRoleIntent(RoleManager.ROLE_DIALER);
+                    startActivityForResult(intent, REQ_DEFAULT_DIALER);
+                }
+            } else {
+                Intent intent = new Intent(TelecomManager.ACTION_CHANGE_DEFAULT_DIALER)
+                        .putExtra(TelecomManager.EXTRA_CHANGE_DEFAULT_DIALER_PACKAGE_NAME,
+                                getPackageName());
+                startActivity(intent);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private boolean isAlreadyDefaultDialer() {
+        TelecomManager tm = (TelecomManager) getSystemService(Context.TELECOM_SERVICE);
+        return tm != null && getPackageName().equals(tm.getDefaultDialerPackage());
     }
 
     /**

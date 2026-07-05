@@ -8,6 +8,7 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.CallLog;
+import android.telecom.TelecomManager;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
@@ -287,9 +288,38 @@ public class RecentsFragment extends Fragment implements RecentsAdapter.OnCallAc
     @Override
     public void onDialClick(String phoneNumber) {
         if (phoneNumber == null || phoneNumber.isEmpty()) return;
+        Uri uri = Uri.fromParts("tel", phoneNumber, null);
+
+        boolean canCall = ContextCompat.checkSelfPermission(requireContext(),
+                Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED;
+
+        if (canCall) {
+            // Preferred: place the call via Telecom so our own in-call screen shows
+            // (works when we are the default dialer).
+            try {
+                TelecomManager tm = (TelecomManager) requireContext().getSystemService(Context.TELECOM_SERVICE);
+                if (tm != null) {
+                    tm.placeCall(uri, null);
+                    return;
+                }
+            } catch (SecurityException e) {
+                e.printStackTrace();
+            }
+            // Not the default dialer yet: let the system place the call directly.
+            try {
+                Intent call = new Intent(Intent.ACTION_CALL, uri);
+                call.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(call);
+                return;
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        // No call permission: open a dialer to place it manually.
         try {
-            Intent intent = new Intent(Intent.ACTION_DIAL);
-            intent.setData(Uri.parse("tel:" + phoneNumber));
+            Intent intent = new Intent(Intent.ACTION_DIAL, uri);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(intent);
         } catch (Exception e) {
             e.printStackTrace();

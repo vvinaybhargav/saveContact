@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/primary_dark">
+
+    <!-- Caller info block -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:layout_marginTop="96dp"
+        android:layout_alignParentTop="true"
+        android:paddingHorizontal="24dp">
+
+        <TextView
+            android:id="@+id/tv_call_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Incoming call"
+            android:textColor="@color/text_muted"
+            android:textSize="15sp"
+            android:letterSpacing="0.05" />
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="88dp"
+            android:layout_height="88dp"
+            android:layout_marginTop="20dp"
+            app:cardCornerRadius="44dp"
+            app:cardElevation="0dp"
+            app:strokeWidth="0dp"
+            app:cardBackgroundColor="@color/accent_indigo">
+
+            <ImageView
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_gravity="center"
+                android:src="@android:drawable/sym_action_call"
+                app:tint="@color/white_constant"
+                android:contentDescription="Caller" />
+        </com.google.android.material.card.MaterialCardView>
+
+        <TextView
+            android:id="@+id/tv_call_name"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="Unknown"
+            android:textColor="@color/white_constant"
+            android:textSize="28sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:maxLines="1"
+            android:ellipsize="end" />
+
+        <TextView
+            android:id="@+id/tv_call_number"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="+91 00000 00000"
+            android:textColor="@color/text_muted"
+            android:textSize="16sp"
+            android:gravity="center" />
+
+        <TextView
+            android:id="@+id/tv_call_track_info"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:paddingHorizontal="14dp"
+            android:paddingVertical="6dp"
+            android:text="Screening · Remote"
+            android:textColor="@color/accent_indigo"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:background="@color/card_bg_dark"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/tv_call_duration"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="00:00"
+            android:textColor="@color/status_green"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <!-- Ongoing controls: mute / speaker / hangup -->
+    <LinearLayout
+        android:id="@+id/layout_ongoing_actions"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_alignParentBottom="true"
+        android:layout_marginBottom="56dp"
+        android:visibility="gone">
+
+        <LinearLayout style="@style/CallActionColumn">
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/btn_mute"
+                style="@style/CallActionButtonNeutral">
+                <ImageView style="@style/CallActionIcon"
+                    android:src="@android:drawable/ic_lock_silent_mode"
+                    app:tint="@color/white_constant" />
+            </com.google.android.material.card.MaterialCardView>
+            <TextView android:id="@+id/tv_mute" style="@style/CallActionLabel" android:text="Mute" />
+        </LinearLayout>
+
+        <LinearLayout style="@style/CallActionColumn">
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/btn_speaker"
+                style="@style/CallActionButtonNeutral">
+                <ImageView style="@style/CallActionIcon"
+                    android:src="@android:drawable/stat_sys_speakerphone"
+                    app:tint="@color/white_constant" />
+            </com.google.android.material.card.MaterialCardView>
+            <TextView android:id="@+id/tv_speaker" style="@style/CallActionLabel" android:text="Speaker" />
+        </LinearLayout>
+
+        <LinearLayout style="@style/CallActionColumn">
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/btn_hangup"
+                style="@style/CallActionButtonRed">
+                <ImageView style="@style/CallActionIcon"
+                    android:src="@android:drawable/ic_menu_close_clear_cancel"
+                    app:tint="@color/white_constant" />
+            </com.google.android.material.card.MaterialCardView>
+            <TextView style="@style/CallActionLabel" android:text="End" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Incoming controls: decline / answer -->
+    <LinearLayout
+        android:id="@+id/layout_incoming_actions"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_alignParentBottom="true"
+        android:layout_marginBottom="56dp"
+        android:paddingHorizontal="40dp">
+
+        <LinearLayout style="@style/CallActionColumn" android:layout_weight="1">
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/btn_decline"
+                style="@style/CallActionButtonRed">
+                <ImageView style="@style/CallActionIcon"
+                    android:src="@android:drawable/ic_menu_close_clear_cancel"
+                    app:tint="@color/white_constant" />
+            </com.google.android.material.card.MaterialCardView>
+            <TextView style="@style/CallActionLabel" android:text="Decline" />
+        </LinearLayout>
+
+        <LinearLayout style="@style/CallActionColumn" android:layout_weight="1">
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/btn_answer"
+                style="@style/CallActionButtonGreen">
+                <ImageView style="@style/CallActionIcon"
+                    android:src="@android:drawable/sym_action_call"
+                    app:tint="@color/white_constant" />
+            </com.google.android.material.card.MaterialCardView>
+            <TextView style="@style/CallActionLabel" android:text="Answer" />
+        </LinearLayout>
+    </LinearLayout>
+
+</RelativeLayout>
