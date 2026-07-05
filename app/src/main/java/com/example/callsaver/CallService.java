@@ -7,6 +7,10 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.graphics.Rect;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.ContactsContract;
@@ -16,6 +20,7 @@ import android.telecom.InCallService;
 
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.Person;
+import androidx.core.graphics.drawable.IconCompat;
 
 import java.util.List;
 
@@ -33,6 +38,10 @@ public class CallService extends InCallService {
     // may be stuck at Default importance, which makes sound but never peeks/heads-up.
     private static final String CHANNEL_ID = "incoming_calls_v2";
     static final int CALL_NOTIF_ID = 42;
+
+    private static final int[] AVATAR_COLORS = {
+            0xFF6366F1, 0xFF10B981, 0xFF3B82F6, 0xFF8B5CF6, 0xFFEC4899, 0xFFF59E0B, 0xFF14B8A6
+    };
 
     @Override
     public void onCallAdded(Call call) {
@@ -139,7 +148,12 @@ public class CallService extends InCallService {
 
             // Official incoming-call style: the system shows this prominently as a
             // heads-up banner with Answer/Decline (far more reliable than a plain one).
-            Person caller = new Person.Builder().setName(name).build();
+            Person.Builder personBuilder = new Person.Builder().setName(name);
+            boolean named = name != null && !name.equalsIgnoreCase(number) && !name.equals("Unknown");
+            if (named) {
+                personBuilder.setIcon(IconCompat.createWithBitmap(buildAvatar(name)));
+            }
+            Person caller = personBuilder.build();
             b.setStyle(NotificationCompat.CallStyle.forIncomingCall(caller, declinePi, answerPi));
             b.setContentText(subtitle);
         } else {
@@ -162,6 +176,31 @@ public class CallService extends InCallService {
             } catch (Exception ignored) {
             }
         }
+    }
+
+    /**
+     * Draws a round avatar (colored circle + the name's initial) for the call banner.
+     */
+    private Bitmap buildAvatar(String name) {
+        int size = 128;
+        Bitmap bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bmp);
+
+        int color = AVATAR_COLORS[Math.abs(name.hashCode()) % AVATAR_COLORS.length];
+        Paint circle = new Paint(Paint.ANTI_ALIAS_FLAG);
+        circle.setColor(color);
+        canvas.drawCircle(size / 2f, size / 2f, size / 2f, circle);
+
+        String letter = String.valueOf(Character.toUpperCase(name.trim().charAt(0)));
+        Paint text = new Paint(Paint.ANTI_ALIAS_FLAG);
+        text.setColor(0xFFFFFFFF);
+        text.setTextSize(size * 0.5f);
+        text.setFakeBoldText(true);
+        text.setTextAlign(Paint.Align.CENTER);
+        Rect bounds = new Rect();
+        text.getTextBounds(letter, 0, letter.length(), bounds);
+        canvas.drawText(letter, size / 2f, size / 2f - bounds.exactCenterY(), text);
+        return bmp;
     }
 
     private int piFlags() {
