@@ -35,6 +35,7 @@ import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.switchmaterial.SwitchMaterial;
@@ -139,6 +140,21 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
 
         // Setup Live Search
         setupSearchListener();
+
+        // Fade the header smoothly as it collapses on scroll
+        AppBarLayout appBar = view.findViewById(R.id.appbar_tracker);
+        View header = view.findViewById(R.id.header_layout);
+        if (appBar != null && header != null) {
+            appBar.addOnOffsetChangedListener(new AppBarLayout.OnOffsetChangedListener() {
+                @Override
+                public void onOffsetChanged(AppBarLayout bar, int verticalOffset) {
+                    int h = header.getHeight();
+                    if (h > 0) {
+                        header.setAlpha(1f - Math.min(1f, (float) Math.abs(verticalOffset) / h));
+                    }
+                }
+            });
+        }
 
         // Load logs
         refreshDashboardList();

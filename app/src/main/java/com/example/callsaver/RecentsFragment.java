@@ -26,6 +26,7 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
@@ -104,6 +105,21 @@ public class RecentsFragment extends Fragment implements RecentsAdapter.OnCallAc
 
         // Setup Keypad clicks
         setupKeypad(view);
+
+        // Fade the header smoothly as it collapses on scroll
+        AppBarLayout appBar = view.findViewById(R.id.appbar_recents);
+        View header = view.findViewById(R.id.header_layout);
+        if (appBar != null && header != null) {
+            appBar.addOnOffsetChangedListener(new AppBarLayout.OnOffsetChangedListener() {
+                @Override
+                public void onOffsetChanged(AppBarLayout bar, int verticalOffset) {
+                    int h = header.getHeight();
+                    if (h > 0) {
+                        header.setAlpha(1f - Math.min(1f, (float) Math.abs(verticalOffset) / h));
+                    }
+                }
+            });
+        }
 
         loadCallLogs();
     }

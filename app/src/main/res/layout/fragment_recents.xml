@@ -1,11 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/bg_light">
 
-    <!-- Header Card -->
+    <com.google.android.material.appbar.AppBarLayout
+        android:id="@+id/appbar_recents"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/bg_light"
+        app:elevation="0dp">
+
+    <!-- Header Card (collapses on scroll) -->
     <LinearLayout
         android:id="@+id/header_layout"
         android:layout_width="match_parent"
@@ -14,7 +21,8 @@
         android:background="@color/primary_dark"
         android:paddingHorizontal="24dp"
         android:paddingTop="28dp"
-        android:paddingBottom="24dp">
+        android:paddingBottom="24dp"
+        app:layout_scrollFlags="scroll|enterAlways">
 
         <TextView
             android:layout_width="wrap_content"
@@ -35,14 +43,7 @@
             android:lineSpacingMultiplier="1.1" />
     </LinearLayout>
 
-    <!-- Main Content Stack -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_below="@id/header_layout"
-        android:orientation="vertical">
-
-        <!-- Search Bar Container -->
+        <!-- Search Bar Container (pinned below the collapsing header) -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -76,10 +77,13 @@
             </com.google.android.material.textfield.TextInputLayout>
         </LinearLayout>
 
-        <!-- Container for List or Empty State -->
-        <FrameLayout
-            android:layout_width="match_parent"
-            android:layout_height="match_parent">
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <!-- Container for List or Empty State -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
             <!-- Call Log List -->
             <androidx.recyclerview.widget.RecyclerView
@@ -128,14 +132,13 @@
                     android:lineSpacingMultiplier="1.2" />
             </LinearLayout>
         </FrameLayout>
-    </LinearLayout>
 
     <!-- Keypad Drawer (Floating Card View sliding up) -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/card_dialer_drawer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
+        android:layout_gravity="bottom"
         android:layout_marginHorizontal="8dp"
         android:layout_marginBottom="8dp"
         app:cardCornerRadius="24dp"
@@ -296,8 +299,7 @@
         android:id="@+id/fab_show_dialer"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignParentEnd="true"
-        android:layout_alignParentBottom="true"
+        android:layout_gravity="bottom|end"
         android:layout_margin="24dp"
         android:src="@android:drawable/ic_dialog_dialer"
         app:tint="@color/white"
@@ -306,4 +308,4 @@
         app:elevation="6dp"
         android:backgroundTint="@color/accent_indigo" />
 
-</RelativeLayout>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

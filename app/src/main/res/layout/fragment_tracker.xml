@@ -1,11 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/bg_light">
 
-    <!-- Header Card -->
+    <com.google.android.material.appbar.AppBarLayout
+        android:id="@+id/appbar_tracker"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/bg_light"
+        app:elevation="0dp">
+
+    <!-- Header Card (collapses on scroll) -->
     <LinearLayout
         android:id="@+id/header_layout"
         android:layout_width="match_parent"
@@ -14,7 +21,8 @@
         android:background="@color/primary_dark"
         android:paddingHorizontal="24dp"
         android:paddingTop="28dp"
-        android:paddingBottom="24dp">
+        android:paddingBottom="24dp"
+        app:layout_scrollFlags="scroll|enterAlways">
 
         <TextView
             android:layout_width="wrap_content"
@@ -35,15 +43,7 @@
             android:lineSpacingMultiplier="1.1" />
     </LinearLayout>
 
-    <!-- Main Content Container Stack -->
-    <LinearLayout
-        android:id="@+id/content_stack"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_below="@id/header_layout"
-        android:orientation="vertical">
-
-        <!-- Analytics Stats Dashboard Card -->
+        <!-- Analytics Stats Dashboard Card (pinned below the collapsing header) -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/card_stats_dashboard"
             android:layout_width="match_parent"
@@ -314,11 +314,13 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Main List Container (Swaps between RecyclerView and Empty State Stack) -->
-        <FrameLayout
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1">
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <!-- Main List Container (Swaps between RecyclerView and Empty State Stack) -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
             <!-- Call Log List -->
             <androidx.recyclerview.widget.RecyclerView
@@ -367,15 +369,13 @@
                     android:lineSpacingMultiplier="1.2" />
             </LinearLayout>
         </FrameLayout>
-    </LinearLayout>
 
     <!-- FAB to log a call manually -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fab_add_call"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignParentEnd="true"
-        android:layout_alignParentBottom="true"
+        android:layout_gravity="bottom|end"
         android:layout_margin="24dp"
         android:src="@android:drawable/ic_input_add"
         app:tint="@color/white"
@@ -384,4 +384,4 @@
         app:elevation="6dp"
         android:backgroundTint="@color/accent_indigo" />
 
-</RelativeLayout>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>
