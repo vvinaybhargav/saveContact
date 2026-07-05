@@ -92,6 +92,25 @@
             android:background="@color/card_bg_dark"
             android:visibility="gone" />
 
+        <!-- Latest note for this caller (shown like the tag) -->
+        <TextView
+            android:id="@+id/tv_call_latest_note"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:maxWidth="300dp"
+            android:paddingHorizontal="14dp"
+            android:paddingVertical="10dp"
+            android:text="Latest note"
+            android:textColor="@color/text_secondary"
+            android:textSize="13sp"
+            android:gravity="center"
+            android:maxLines="3"
+            android:ellipsize="end"
+            android:lineSpacingMultiplier="1.15"
+            android:background="@color/card_bg_dark"
+            android:visibility="gone" />
+
         <TextView
             android:id="@+id/tv_call_duration"
             android:layout_width="wrap_content"
@@ -135,6 +154,17 @@
                     app:tint="@color/white_constant" />
             </com.google.android.material.card.MaterialCardView>
             <TextView android:id="@+id/tv_speaker" style="@style/CallActionLabel" android:text="Speaker" />
+        </LinearLayout>
+
+        <LinearLayout style="@style/CallActionColumn">
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/btn_incall_note"
+                style="@style/CallActionButtonNeutral">
+                <ImageView style="@style/CallActionIcon"
+                    android:src="@android:drawable/ic_menu_edit"
+                    app:tint="@color/white_constant" />
+            </com.google.android.material.card.MaterialCardView>
+            <TextView style="@style/CallActionLabel" android:text="Note" />
         </LinearLayout>
 
         <LinearLayout style="@style/CallActionColumn">

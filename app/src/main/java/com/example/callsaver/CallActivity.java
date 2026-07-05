@@ -9,6 +9,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.provider.ContactsContract;
 import android.telecom.Call;
+import android.text.InputType;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.ArrayAdapter;
@@ -18,6 +19,7 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.material.card.MaterialCardView;
@@ -25,6 +27,7 @@ import com.google.android.material.card.MaterialCardView;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 
 /**
@@ -40,9 +43,9 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
             0xFF6366F1, 0xFF10B981, 0xFF3B82F6, 0xFF8B5CF6, 0xFFEC4899, 0xFFF59E0B, 0xFF14B8A6
     };
 
-    private TextView tvName, tvNumber, tvStatus, tvDuration, tvTrackInfo, tvMute, tvSpeaker, tvAvatarLetter;
+    private TextView tvName, tvNumber, tvStatus, tvDuration, tvTrackInfo, tvMute, tvSpeaker, tvAvatarLetter, tvLatestNote;
     private View layoutIncoming, layoutOngoing, layoutPostCall;
-    private View btnAnswer, btnDecline, btnHangup, btnMute, btnSpeaker, btnNoteSave, btnNoteSkip;
+    private View btnAnswer, btnDecline, btnHangup, btnMute, btnSpeaker, btnNoteSave, btnNoteSkip, btnInCallNote;
     private ImageView ivAvatarIcon;
     private MaterialCardView cardAvatar;
     private EditText etNote, etCompany;
@@ -72,6 +75,7 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
         tvMute = findViewById(R.id.tv_mute);
         tvSpeaker = findViewById(R.id.tv_speaker);
         tvAvatarLetter = findViewById(R.id.tv_avatar_letter);
+        tvLatestNote = findViewById(R.id.tv_call_latest_note);
         ivAvatarIcon = findViewById(R.id.iv_avatar_icon);
         cardAvatar = findViewById(R.id.card_avatar);
         layoutIncoming = findViewById(R.id.layout_incoming_actions);
@@ -85,6 +89,7 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
         btnHangup = findViewById(R.id.btn_hangup);
         btnMute = findViewById(R.id.btn_mute);
         btnSpeaker = findViewById(R.id.btn_speaker);
+        btnInCallNote = findViewById(R.id.btn_incall_note);
         btnNoteSave = findViewById(R.id.btn_note_save);
         btnNoteSkip = findViewById(R.id.btn_note_skip);
 
@@ -108,6 +113,7 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
         });
         btnNoteSave.setOnClickListener(v -> onPostCallSave());
         btnNoteSkip.setOnClickListener(v -> finish());
+        btnInCallNote.setOnClickListener(v -> showInCallNoteDialog());
 
         updateUi(OngoingCall.getState());
     }
@@ -183,6 +189,52 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
         }
         tvName.setText(display);
         applyAvatar(display, named);
+
+        // Show the latest note (like the tag) and enable the in-call note button for tracked calls.
+        boolean tracked = trackedCall != null && trackedCall.getId() > 0;
+        btnInCallNote.setVisibility(tracked ? View.VISIBLE : View.GONE);
+        if (tracked) {
+            showLatestNote(trackedCall.getId());
+        }
+    }
+
+    private void showLatestNote(long jobId) {
+        try {
+            List<CallNote> notes = new DatabaseHelper(this).getNotesForJob(jobId);
+            if (!notes.isEmpty() && notes.get(0).note != null && !notes.get(0).note.trim().isEmpty()) {
+                tvLatestNote.setText(notes.get(0).note);
+                tvLatestNote.setVisibility(View.VISIBLE);
+            } else {
+                tvLatestNote.setVisibility(View.GONE);
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void showInCallNoteDialog() {
+        if (trackedCall == null || trackedCall.getId() <= 0) {
+            return;
+        }
+        final EditText input = new EditText(this);
+        input.setHint("Note…");
+        input.setMinLines(2);
+        input.setInputType(InputType.TYPE_CLASS_TEXT
+                | InputType.TYPE_TEXT_FLAG_MULTI_LINE
+                | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+        new AlertDialog.Builder(this)
+                .setTitle("Add note")
+                .setView(input)
+                .setPositiveButton("Save", (d, w) -> {
+                    String t = input.getText().toString().trim();
+                    if (!t.isEmpty()) {
+                        new DatabaseHelper(this).insertNote(
+                                trackedCall.getId(), t, System.currentTimeMillis());
+                        showLatestNote(trackedCall.getId());
+                        Toast.makeText(this, "Note added", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     private void applyAvatar(String name, boolean named) {
