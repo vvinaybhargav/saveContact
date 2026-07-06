@@ -53,7 +53,7 @@ public class RecentsAdapter extends RecyclerView.Adapter<RecentsAdapter.ViewHold
         holder.tvCallerTitle.setText(displayName);
 
         // Format Date
-        SimpleDateFormat sdf = new SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault());
+        SimpleDateFormat sdf = new SimpleDateFormat("dd MMM, h:mm a", Locale.getDefault());
         String dateStr = sdf.format(new Date(call.date));
         holder.tvCallTime.setText(dateStr);
 
