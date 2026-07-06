@@ -1,6 +1,8 @@
 package com.example.callsaver;
 
 import android.Manifest;
+import android.app.Activity;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -8,6 +10,7 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.CallLog;
+import android.provider.ContactsContract;
 import android.telecom.PhoneAccountHandle;
 import android.telecom.TelecomManager;
 import android.text.Editable;
@@ -36,6 +39,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class RecentsFragment extends Fragment implements RecentsAdapter.OnCallActionListener {
+
+    private static final int REQ_PICK_CONTACT = 400;
 
     private RecyclerView rvRecents;
     private View emptyStateLayout;
@@ -170,6 +175,20 @@ public class RecentsFragment extends Fragment implements RecentsAdapter.OnCallAc
             });
         }
 
+        // Search contacts to dial (system picker has built-in search)
+        View btnContacts = view.findViewById(R.id.btn_dialer_contacts);
+        if (btnContacts != null) {
+            btnContacts.setOnClickListener(v -> openContactPicker());
+        }
+
+        // Long-press the number display to paste a copied number
+        if (tvDialerDigits != null) {
+            tvDialerDigits.setOnLongClickListener(v -> {
+                pasteFromClipboard();
+                return true;
+            });
+        }
+
         View btnClose = view.findViewById(R.id.btn_dialer_close);
         if (btnClose != null) {
             btnClose.setOnClickListener(v -> toggleDialerVisibility(false));
@@ -271,6 +290,67 @@ public class RecentsFragment extends Fragment implements RecentsAdapter.OnCallAc
             e.printStackTrace();
         }
         onDialClick(number);
+    }
+
+    /**
+     * Opens the system contact picker (which has built-in search) to choose a number to dial.
+     */
+    private void openContactPicker() {
+        try {
+            Intent intent = new Intent(Intent.ACTION_PICK,
+                    ContactsContract.CommonDataKinds.Phone.CONTENT_URI);
+            startActivityForResult(intent, REQ_PICK_CONTACT);
+        } catch (Exception e) {
+            Toast.makeText(requireContext(), "No contacts app found", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /**
+     * Pastes a copied phone number from the clipboard into the dialer.
+     */
+    private void pasteFromClipboard() {
+        try {
+            ClipboardManager cm = (ClipboardManager) requireContext()
+                    .getSystemService(Context.CLIPBOARD_SERVICE);
+            if (cm != null && cm.hasPrimaryClip() && cm.getPrimaryClip() != null
+                    && cm.getPrimaryClip().getItemCount() > 0) {
+                CharSequence text = cm.getPrimaryClip().getItemAt(0).coerceToText(requireContext());
+                if (text != null) {
+                    String digits = text.toString().replaceAll("[^0-9+*#]", "");
+                    if (!digits.isEmpty()) {
+                        dialedDigits.append(digits);
+                        updateDialerDigitsDisplay();
+                        Toast.makeText(requireContext(), "Pasted", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                }
+            }
+            Toast.makeText(requireContext(), "No number to paste", Toast.LENGTH_SHORT).show();
+        } catch (Exception ignored) {
+        }
+    }
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQ_PICK_CONTACT && resultCode == Activity.RESULT_OK
+                && data != null && data.getData() != null) {
+            try (Cursor c = requireContext().getContentResolver().query(
+                    data.getData(),
+                    new String[]{ContactsContract.CommonDataKinds.Phone.NUMBER},
+                    null, null, null)) {
+                if (c != null && c.moveToFirst()) {
+                    String number = c.getString(0);
+                    if (number != null) {
+                        dialedDigits.setLength(0);
+                        dialedDigits.append(number.replaceAll("[^0-9+*#]", ""));
+                        updateDialerDigitsDisplay();
+                        toggleDialerVisibility(true);
+                    }
+                }
+            } catch (Exception ignored) {
+            }
+        }
     }
 
     private void updateDialerDigitsDisplay() {

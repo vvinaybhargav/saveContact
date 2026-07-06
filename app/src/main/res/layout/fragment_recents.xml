@@ -172,12 +172,21 @@
                 android:gravity="center_vertical"
                 android:layout_marginBottom="12dp">
 
+                <ImageButton
+                    android:id="@+id/btn_dialer_contacts"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:src="@android:drawable/ic_menu_search"
+                    app:tint="@color/accent_indigo"
+                    android:contentDescription="Search contacts" />
+
                 <TextView
                     android:id="@+id/tv_dialer_digits"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:hint="Dial a number"
+                    android:hint="Dial or paste a number"
                     android:textColorHint="@color/text_muted"
                     android:textColor="@color/text_primary"
                     android:textSize="26sp"
@@ -269,12 +278,17 @@
                     android:layout_height="48dp"
                     android:layout_weight="1.2"
                     android:layout_marginEnd="8dp"
-                    android:text="Call Now"
+                    android:text="Call"
                     android:textColor="@color/white"
+                    android:maxLines="1"
+                    android:insetLeft="0dp"
+                    android:insetRight="0dp"
                     app:cornerRadius="16dp"
                     android:backgroundTint="@color/status_green"
                     android:textStyle="bold"
                     app:icon="@android:drawable/ic_menu_call"
+                    app:iconGravity="textStart"
+                    app:iconPadding="4dp"
                     app:iconTint="@color/white"/>
 
                 <!-- Quick Track Button -->
@@ -283,12 +297,17 @@
                     android:layout_width="0dp"
                     android:layout_height="48dp"
                     android:layout_weight="1.2"
-                    android:text="Add Tracker"
+                    android:text="Track"
                     android:textColor="@color/white"
+                    android:maxLines="1"
+                    android:insetLeft="0dp"
+                    android:insetRight="0dp"
                     app:cornerRadius="16dp"
                     android:backgroundTint="@color/accent_indigo"
                     android:textStyle="bold"
                     app:icon="@android:drawable/ic_input_add"
+                    app:iconGravity="textStart"
+                    app:iconPadding="4dp"
                     app:iconTint="@color/white"/>
             </LinearLayout>
         </LinearLayout>

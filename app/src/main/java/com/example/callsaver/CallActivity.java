@@ -1,12 +1,14 @@
 package com.example.callsaver;
 
 import android.content.ContentProviderOperation;
+import android.content.Context;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.PowerManager;
 import android.provider.ContactsContract;
 import android.telecom.Call;
 import android.text.InputType;
@@ -54,6 +56,7 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private Runnable ticker;
+    private PowerManager.WakeLock proximityLock;
     private boolean muted = false;
     private boolean speaker = false;
     private boolean wasConnected = false;
@@ -67,6 +70,12 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
         super.onCreate(savedInstanceState);
         showWhenLockedAndTurnScreenOn();
         setContentView(R.layout.activity_call);
+
+        PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+        if (pm != null && pm.isWakeLockLevelSupported(PowerManager.PROXIMITY_SCREEN_OFF_WAKE_LOCK)) {
+            proximityLock = pm.newWakeLock(
+                    PowerManager.PROXIMITY_SCREEN_OFF_WAKE_LOCK, "callsaver:proximity");
+        }
 
         tvName = findViewById(R.id.tv_call_name);
         tvNumber = findViewById(R.id.tv_call_number);
@@ -157,6 +166,26 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
         super.onDestroy();
         OngoingCall.setListener(null);
         handler.removeCallbacksAndMessages(null);
+        releaseProximity();
+    }
+
+    /** Screen off when the phone is at the ear during a call, on when moved away. */
+    private void acquireProximity() {
+        if (proximityLock != null && !proximityLock.isHeld()) {
+            try {
+                proximityLock.acquire(60 * 60 * 1000L);
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
+    private void releaseProximity() {
+        if (proximityLock != null && proximityLock.isHeld()) {
+            try {
+                proximityLock.release();
+            } catch (Exception ignored) {
+            }
+        }
     }
 
     @Override
@@ -326,6 +355,7 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
                 layoutIncoming.setVisibility(View.VISIBLE);
                 layoutOngoing.setVisibility(View.GONE);
                 tvDuration.setVisibility(View.GONE);
+                releaseProximity(); // keep the screen on while it's ringing
                 break;
             case Call.STATE_DIALING:
             case Call.STATE_CONNECTING:
@@ -333,6 +363,7 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
                 layoutIncoming.setVisibility(View.GONE);
                 layoutOngoing.setVisibility(View.VISIBLE);
                 tvDuration.setVisibility(View.GONE);
+                acquireProximity();
                 break;
             case Call.STATE_ACTIVE:
                 wasConnected = true;
@@ -341,6 +372,7 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
                 layoutOngoing.setVisibility(View.VISIBLE);
                 tvDuration.setVisibility(View.VISIBLE);
                 startTimer();
+                acquireProximity();
                 break;
             case Call.STATE_HOLDING:
                 tvStatus.setText("On hold");
@@ -348,6 +380,7 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
             case Call.STATE_DISCONNECTING:
             case Call.STATE_DISCONNECTED:
                 handler.removeCallbacksAndMessages(null);
+                releaseProximity();
                 // After a real conversation, offer the post-call panel for a tracked
                 // recruiter (note + stage) or an unknown caller (save + note). Ordinary
                 // saved contacts just close.
@@ -484,7 +517,6 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
             getWindow().addFlags(
                     WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED |
                             WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON |
-                            WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON |
                             WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD);
         }
     }
