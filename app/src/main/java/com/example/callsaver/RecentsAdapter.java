@@ -60,6 +60,11 @@ public class RecentsAdapter extends RecyclerView.Adapter<RecentsAdapter.ViewHold
         // Style based on Call Type
         setupCallTypeStyle(holder, call.type);
 
+        // Append which SIM the call used (dual-SIM only)
+        if (call.sim != null && !call.sim.isEmpty()) {
+            holder.tvCallTypeLabel.setText(holder.tvCallTypeLabel.getText() + " · " + call.sim);
+        }
+
         // Bind action buttons
         holder.btnActionDial.setOnClickListener(v -> {
             if (listener != null) {

@@ -59,12 +59,14 @@ public class RecentsFragment extends Fragment implements RecentsAdapter.OnCallAc
         public String name;
         public int type;
         public long date;
+        public String sim; // "SIM 1" / "SIM 2", or null on single-SIM
 
-        public RecentCallModel(String number, String name, int type, long date) {
+        public RecentCallModel(String number, String name, int type, long date, String sim) {
             this.number = number;
             this.name = name;
             this.type = type;
             this.date = date;
+            this.sim = sim;
         }
     }
 
@@ -240,19 +242,51 @@ public class RecentsFragment extends Fragment implements RecentsAdapter.OnCallAc
             @Override
             public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
                 int pos = viewHolder.getAdapterPosition();
+                adapter.notifyItemChanged(pos); // snap the row back first
                 if (pos < 0 || pos >= callLogsList.size()) {
                     return;
                 }
                 String number = callLogsList.get(pos).number;
-                if (direction == ItemTouchHelper.RIGHT) {
-                    placeCallWithSim(number, 0);
-                } else {
-                    placeCallWithSim(number, 1);
-                }
-                adapter.notifyItemChanged(pos); // reset the swiped row
+                int simIndex = (direction == ItemTouchHelper.RIGHT) ? 0 : 1;
+                confirmSimCall(number, simIndex);
             }
         };
         new ItemTouchHelper(callback).attachToRecyclerView(rvRecents);
+    }
+
+    /**
+     * Maps each call-capable phone-account id to "SIM 1" / "SIM 2".
+     * Returns an empty map on single-SIM devices (so no label is shown).
+     */
+    private java.util.Map<String, String> buildSimLabelMap() {
+        java.util.Map<String, String> map = new java.util.HashMap<>();
+        try {
+            TelecomManager tm = (TelecomManager) requireContext().getSystemService(Context.TELECOM_SERVICE);
+            if (tm != null) {
+                List<PhoneAccountHandle> handles = tm.getCallCapablePhoneAccounts();
+                if (handles != null && handles.size() > 1) {
+                    for (int i = 0; i < handles.size(); i++) {
+                        map.put(handles.get(i).getId(), "SIM " + (i + 1));
+                    }
+                }
+            }
+        } catch (SecurityException ignored) {
+        } catch (Exception ignored) {
+        }
+        return map;
+    }
+
+    /**
+     * Confirms before dialing a swiped number through the chosen SIM.
+     */
+    private void confirmSimCall(String number, int simIndex) {
+        if (number == null || number.isEmpty()) return;
+        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setTitle("Call via SIM " + (simIndex + 1) + "?")
+                .setMessage(number)
+                .setPositiveButton("Call", (d, w) -> placeCallWithSim(number, simIndex))
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     /**
@@ -383,11 +417,15 @@ public class RecentsFragment extends Fragment implements RecentsAdapter.OnCallAc
 
         allCallLogsList.clear();
 
+        // Map each phone-account id to a SIM label (only when there are 2+ SIMs).
+        java.util.Map<String, String> simLabels = buildSimLabelMap();
+
         String[] projection = new String[]{
                 CallLog.Calls.NUMBER,
                 CallLog.Calls.CACHED_NAME,
                 CallLog.Calls.TYPE,
-                CallLog.Calls.DATE
+                CallLog.Calls.DATE,
+                CallLog.Calls.PHONE_ACCOUNT_ID
         };
 
         // Query history cleanly sorted by date. Enforces compatible loop limiting in Java.
@@ -403,6 +441,7 @@ public class RecentsFragment extends Fragment implements RecentsAdapter.OnCallAc
                 int nameIdx = cursor.getColumnIndexOrThrow(CallLog.Calls.CACHED_NAME);
                 int typeIdx = cursor.getColumnIndexOrThrow(CallLog.Calls.TYPE);
                 int dateIdx = cursor.getColumnIndexOrThrow(CallLog.Calls.DATE);
+                int acctIdx = cursor.getColumnIndex(CallLog.Calls.PHONE_ACCOUNT_ID);
 
                 int count = 0;
                 do {
@@ -410,8 +449,12 @@ public class RecentsFragment extends Fragment implements RecentsAdapter.OnCallAc
                     String name = cursor.getString(nameIdx);
                     int type = cursor.getInt(typeIdx);
                     long date = cursor.getLong(dateIdx);
+                    String sim = null;
+                    if (acctIdx >= 0 && !simLabels.isEmpty()) {
+                        sim = simLabels.get(cursor.getString(acctIdx));
+                    }
 
-                    allCallLogsList.add(new RecentCallModel(number, name, type, date));
+                    allCallLogsList.add(new RecentCallModel(number, name, type, date, sim));
                     count++;
                 } while (cursor.moveToNext() && count < 80); // Capped at 80 logs
             }
