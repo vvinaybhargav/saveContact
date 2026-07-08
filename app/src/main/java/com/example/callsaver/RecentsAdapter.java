@@ -52,16 +52,20 @@ public class RecentsAdapter extends RecyclerView.Adapter<RecentsAdapter.ViewHold
         String displayName = (call.name != null && !call.name.trim().isEmpty()) ? call.name : call.number;
         holder.tvCallerTitle.setText(displayName);
 
-        // Format Date
-        SimpleDateFormat sdf = new SimpleDateFormat("dd MMM, h:mm a", Locale.getDefault());
-        String dateStr = sdf.format(new Date(call.date));
-        holder.tvCallTime.setText(dateStr);
+        if (call.type == 100) {
+            holder.tvCallTime.setText(call.number);
+        } else {
+            // Format Date
+            SimpleDateFormat sdf = new SimpleDateFormat("dd MMM, h:mm a", Locale.getDefault());
+            String dateStr = sdf.format(new Date(call.date));
+            holder.tvCallTime.setText(dateStr);
+        }
 
         // Style based on Call Type
         setupCallTypeStyle(holder, call.type);
 
-        // Append which SIM the call used (dual-SIM only)
-        if (call.sim != null && !call.sim.isEmpty()) {
+        // Append which SIM the call used (dual-SIM only, not applicable to generic contacts)
+        if (call.type != 100 && call.sim != null && !call.sim.isEmpty()) {
             holder.tvCallTypeLabel.setText(holder.tvCallTypeLabel.getText() + " · " + call.sim);
         }
 
@@ -85,23 +89,31 @@ public class RecentsAdapter extends RecyclerView.Adapter<RecentsAdapter.ViewHold
         String typeLabel;
         int fgRes, bgRes;
 
-        switch (callType) {
-            case 2: // CallLog.Calls.OUTGOING_TYPE
-                typeLabel = "Outgoing";
-                fgRes = R.color.call_outgoing;
-                bgRes = R.color.call_outgoing_bg;
-                break;
-            case 3: // CallLog.Calls.MISSED_TYPE
-                typeLabel = "Missed";
-                fgRes = R.color.call_missed;
-                bgRes = R.color.call_missed_bg;
-                break;
-            case 1: // CallLog.Calls.INCOMING_TYPE
-            default:
-                typeLabel = (callType == 1) ? "Incoming" : "Call";
-                fgRes = R.color.call_incoming;
-                bgRes = R.color.call_incoming_bg;
-                break;
+        if (callType == 100) {
+            typeLabel = "Contact";
+            fgRes = R.color.accent_indigo;
+            bgRes = R.color.call_incoming_bg;
+            holder.imgCallTypeIcon.setImageResource(android.R.drawable.ic_menu_myplaces);
+        } else {
+            holder.imgCallTypeIcon.setImageResource(android.R.drawable.ic_menu_call);
+            switch (callType) {
+                case 2: // CallLog.Calls.OUTGOING_TYPE
+                    typeLabel = "Outgoing";
+                    fgRes = R.color.call_outgoing;
+                    bgRes = R.color.call_outgoing_bg;
+                    break;
+                case 3: // CallLog.Calls.MISSED_TYPE
+                    typeLabel = "Missed";
+                    fgRes = R.color.call_missed;
+                    bgRes = R.color.call_missed_bg;
+                    break;
+                case 1: // CallLog.Calls.INCOMING_TYPE
+                default:
+                    typeLabel = (callType == 1) ? "Incoming" : "Call";
+                    fgRes = R.color.call_incoming;
+                    bgRes = R.color.call_incoming_bg;
+                    break;
+            }
         }
 
         int fg = ContextCompat.getColor(context, fgRes);

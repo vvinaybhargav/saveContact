@@ -465,6 +465,56 @@ public class RecentsFragment extends Fragment implements RecentsAdapter.OnCallAc
         filterRecents(etSearchRecents != null ? etSearchRecents.getText().toString() : "");
     }
 
+    private void queryContacts(String query, List<RecentCallModel> outList) {
+        if (getContext() == null) return;
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+
+        Uri uri = ContactsContract.CommonDataKinds.Phone.CONTENT_URI;
+        String[] projection = new String[]{
+                ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+                ContactsContract.CommonDataKinds.Phone.NUMBER
+        };
+
+        String selection = ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " LIKE ? OR " +
+                ContactsContract.CommonDataKinds.Phone.NUMBER + " LIKE ?";
+        String[] selectionArgs = new String[]{"%" + query + "%", "%" + query + "%"};
+
+        try (Cursor cursor = requireContext().getContentResolver().query(
+                uri, projection, selection, selectionArgs,
+                ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC")) {
+
+            if (cursor != null) {
+                int nameIdx = cursor.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME);
+                int numIdx = cursor.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.NUMBER);
+
+                int count = 0;
+                while (cursor.moveToNext() && count < 30) {
+                    String name = cursor.getString(nameIdx);
+                    String number = cursor.getString(numIdx);
+
+                    // Avoid duplicating if the number is already in the list
+                    boolean duplicate = false;
+                    for (RecentCallModel existing : outList) {
+                        if (existing.number != null && number != null &&
+                                existing.number.replaceAll("[^0-9]", "").equals(number.replaceAll("[^0-9]", ""))) {
+                            duplicate = true;
+                            break;
+                        }
+                    }
+
+                    if (!duplicate) {
+                        outList.add(new RecentCallModel(number, name, 100, 0, null));
+                        count++;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     /**
      * Filters call logs based on search query (name or number)
      */
@@ -477,6 +527,11 @@ public class RecentsFragment extends Fragment implements RecentsAdapter.OnCallAc
                 filtered.add(item);
             }
         }
+
+        if (!query.trim().isEmpty()) {
+            queryContacts(query.trim(), filtered);
+        }
+
         callLogsList.clear();
         callLogsList.addAll(filtered);
         adapter.notifyDataSetChanged();

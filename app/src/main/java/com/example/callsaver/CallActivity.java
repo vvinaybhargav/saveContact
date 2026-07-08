@@ -72,9 +72,20 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
         setContentView(R.layout.activity_call);
 
         PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
-        if (pm != null && pm.isWakeLockLevelSupported(PowerManager.PROXIMITY_SCREEN_OFF_WAKE_LOCK)) {
-            proximityLock = pm.newWakeLock(
-                    PowerManager.PROXIMITY_SCREEN_OFF_WAKE_LOCK, "callsaver:proximity");
+        if (pm != null) {
+            try {
+                PowerManager.WakeLock screenOnLock = pm.newWakeLock(
+                        PowerManager.FULL_WAKE_LOCK | PowerManager.ACQUIRE_CAUSES_WAKEUP | PowerManager.ON_AFTER_RELEASE,
+                        "callsaver:wake_screen_incoming"
+                );
+                screenOnLock.acquire(5000);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            if (pm.isWakeLockLevelSupported(PowerManager.PROXIMITY_SCREEN_OFF_WAKE_LOCK)) {
+                proximityLock = pm.newWakeLock(
+                        PowerManager.PROXIMITY_SCREEN_OFF_WAKE_LOCK, "callsaver:proximity");
+            }
         }
 
         tvName = findViewById(R.id.tv_call_name);
@@ -345,13 +356,38 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
         return null;
     }
 
+    private String getSimLabel() {
+        try {
+            android.telecom.PhoneAccountHandle handle = OngoingCall.getAccountHandle();
+            if (handle != null) {
+                android.telecom.TelecomManager tm = (android.telecom.TelecomManager) getSystemService(Context.TELECOM_SERVICE);
+                if (tm != null) {
+                    List<android.telecom.PhoneAccountHandle> handles = tm.getCallCapablePhoneAccounts();
+                    if (handles != null && handles.size() > 1) {
+                        for (int i = 0; i < handles.size(); i++) {
+                            if (handles.get(i).getId().equals(handle.getId())) {
+                                return "SIM " + (i + 1);
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (SecurityException ignored) {
+        } catch (Exception ignored) {
+        }
+        return null;
+    }
+
     private void updateUi(int state) {
         if (showingPostCall) {
             return;
         }
+        String simLabel = getSimLabel();
+        String simSuffix = (simLabel != null) ? " (" + simLabel + ")" : "";
+
         switch (state) {
             case Call.STATE_RINGING:
-                tvStatus.setText("Incoming call");
+                tvStatus.setText("Incoming call" + simSuffix);
                 layoutIncoming.setVisibility(View.VISIBLE);
                 layoutOngoing.setVisibility(View.GONE);
                 tvDuration.setVisibility(View.GONE);
@@ -359,7 +395,7 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
                 break;
             case Call.STATE_DIALING:
             case Call.STATE_CONNECTING:
-                tvStatus.setText("Calling…");
+                tvStatus.setText("Calling…" + simSuffix);
                 layoutIncoming.setVisibility(View.GONE);
                 layoutOngoing.setVisibility(View.VISIBLE);
                 tvDuration.setVisibility(View.GONE);
@@ -367,7 +403,7 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
                 break;
             case Call.STATE_ACTIVE:
                 wasConnected = true;
-                tvStatus.setText("Ongoing");
+                tvStatus.setText("Ongoing" + simSuffix);
                 layoutIncoming.setVisibility(View.GONE);
                 layoutOngoing.setVisibility(View.VISIBLE);
                 tvDuration.setVisibility(View.VISIBLE);
@@ -375,7 +411,7 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
                 acquireProximity();
                 break;
             case Call.STATE_HOLDING:
-                tvStatus.setText("On hold");
+                tvStatus.setText("On hold" + simSuffix);
                 break;
             case Call.STATE_DISCONNECTING:
             case Call.STATE_DISCONNECTED:
@@ -466,11 +502,15 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
 
     private void saveContactDirectly(String name, String phoneNumber) {
         try {
+            android.content.SharedPreferences prefs = getSharedPreferences("app_prefs", MODE_PRIVATE);
+            String accName = prefs.getString("preferred_contact_account_name", null);
+            String accType = prefs.getString("preferred_contact_account_type", null);
+
             ArrayList<ContentProviderOperation> ops = new ArrayList<>();
             int idx = ops.size();
             ops.add(ContentProviderOperation.newInsert(ContactsContract.RawContacts.CONTENT_URI)
-                    .withValue(ContactsContract.RawContacts.ACCOUNT_TYPE, null)
-                    .withValue(ContactsContract.RawContacts.ACCOUNT_NAME, null)
+                    .withValue(ContactsContract.RawContacts.ACCOUNT_TYPE, accType)
+                    .withValue(ContactsContract.RawContacts.ACCOUNT_NAME, accName)
                     .build());
             ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
                     .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, idx)
@@ -513,11 +553,13 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
             setShowWhenLocked(true);
             setTurnScreenOn(true);
+            getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         } else {
             getWindow().addFlags(
                     WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED |
                             WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON |
-                            WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD);
+                            WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD |
+                            WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         }
     }
 

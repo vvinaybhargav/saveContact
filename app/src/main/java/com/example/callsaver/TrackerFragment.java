@@ -77,7 +77,8 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             Manifest.permission.READ_PHONE_STATE,
             Manifest.permission.READ_CALL_LOG,
             Manifest.permission.READ_CONTACTS,
-            Manifest.permission.WRITE_CONTACTS
+            Manifest.permission.WRITE_CONTACTS,
+            Manifest.permission.GET_ACCOUNTS
     };
 
     /**
@@ -635,11 +636,15 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
     }
 
     private boolean saveContactDirectly(String name, String phoneNumber) {
+        android.content.SharedPreferences prefs = requireContext().getSharedPreferences("app_prefs", android.content.Context.MODE_PRIVATE);
+        String accName = prefs.getString("preferred_contact_account_name", null);
+        String accType = prefs.getString("preferred_contact_account_type", null);
+
         ArrayList<ContentProviderOperation> ops = new ArrayList<>();
         int rawContactInsertIndex = ops.size();
         ops.add(ContentProviderOperation.newInsert(ContactsContract.RawContacts.CONTENT_URI)
-                .withValue(ContactsContract.RawContacts.ACCOUNT_TYPE, null)
-                .withValue(ContactsContract.RawContacts.ACCOUNT_NAME, null)
+                .withValue(ContactsContract.RawContacts.ACCOUNT_TYPE, accType)
+                .withValue(ContactsContract.RawContacts.ACCOUNT_NAME, accName)
                 .build());
 
         ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)

@@ -165,6 +165,32 @@
                     android:spinnerMode="dropdown" />
             </FrameLayout>
 
+            <!-- Preferred account Spinner Dropdown -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Save Contacts To"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="4dp"
+                android:layout_marginStart="4dp"
+                android:gravity="start" />
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginBottom="20dp"
+                android:background="@drawable/spinner_border">
+
+                <Spinner
+                    android:id="@+id/spinner_account"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:paddingHorizontal="12dp"
+                    android:spinnerMode="dropdown" />
+            </FrameLayout>
+
             <!-- Stacked Premium Actions -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_save_both"

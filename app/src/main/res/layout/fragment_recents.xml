@@ -276,9 +276,8 @@
                     android:id="@+id/btn_dialer_call"
                     android:layout_width="0dp"
                     android:layout_height="48dp"
-                    android:layout_weight="1.2"
+                    android:layout_weight="1"
                     android:layout_marginEnd="8dp"
-                    android:text="Call"
                     android:textColor="@color/white"
                     android:maxLines="1"
                     android:insetLeft="0dp"
@@ -288,7 +287,7 @@
                     android:textStyle="bold"
                     app:icon="@android:drawable/ic_menu_call"
                     app:iconGravity="textStart"
-                    app:iconPadding="4dp"
+                    app:iconPadding="0dp"
                     app:iconTint="@color/white"/>
 
                 <!-- Quick Track Button -->
@@ -296,8 +295,7 @@
                     android:id="@+id/btn_dialer_track"
                     android:layout_width="0dp"
                     android:layout_height="48dp"
-                    android:layout_weight="1.2"
-                    android:text="Track"
+                    android:layout_weight="1"
                     android:textColor="@color/white"
                     android:maxLines="1"
                     android:insetLeft="0dp"
@@ -307,7 +305,7 @@
                     android:textStyle="bold"
                     app:icon="@android:drawable/ic_input_add"
                     app:iconGravity="textStart"
-                    app:iconPadding="4dp"
+                    app:iconPadding="0dp"
                     app:iconTint="@color/white"/>
             </LinearLayout>
         </LinearLayout>

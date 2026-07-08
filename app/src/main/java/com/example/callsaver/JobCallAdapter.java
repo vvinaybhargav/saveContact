@@ -86,13 +86,7 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
 
         // Direct Call back Action
         holder.btnActionCall.setOnClickListener(v -> {
-            try {
-                Intent dialIntent = new Intent(Intent.ACTION_DIAL);
-                dialIntent.setData(Uri.parse("tel:" + call.getPhoneNumber()));
-                context.startActivity(dialIntent);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+            callDirectly(call.getPhoneNumber());
         });
 
         // Card Click Action
@@ -146,6 +140,72 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
         gd.setCornerRadius(10 * density); // 10dp radius
         tv.setBackground(gd);
         tv.setTextColor(textColor);
+    }
+
+    private void callDirectly(String number) {
+        android.telecom.TelecomManager tm = (android.telecom.TelecomManager) context.getSystemService(Context.TELECOM_SERVICE);
+        if (tm == null) {
+            fallbackDial(number);
+            return;
+        }
+
+        try {
+            List<android.telecom.PhoneAccountHandle> handles = null;
+            if (androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.CALL_PHONE)
+                    == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                handles = tm.getCallCapablePhoneAccounts();
+            }
+
+            if (handles != null && handles.size() > 1) {
+                // Show SIM selection dialog
+                String[] items = new String[handles.size()];
+                for (int i = 0; i < handles.size(); i++) {
+                    items[i] = "SIM " + (i + 1);
+                }
+                final List<android.telecom.PhoneAccountHandle> finalHandles = handles;
+                new androidx.appcompat.app.AlertDialog.Builder(context)
+                        .setTitle("Select SIM for call")
+                        .setItems(items, (dialog, which) -> {
+                            placeCallWithSim(number, finalHandles.get(which));
+                        })
+                        .setNegativeButton("Cancel", null)
+                        .show();
+            } else {
+                // Single SIM or permission missing, call directly or fallback
+                placeCallWithSim(number, (handles != null && !handles.isEmpty()) ? handles.get(0) : null);
+            }
+        } catch (SecurityException e) {
+            fallbackDial(number);
+        } catch (Exception e) {
+            fallbackDial(number);
+        }
+    }
+
+    private void placeCallWithSim(String number, android.telecom.PhoneAccountHandle handle) {
+        Uri uri = Uri.fromParts("tel", number, null);
+        Intent intent = new Intent(Intent.ACTION_CALL, uri);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        if (handle != null) {
+            intent.putExtra(android.telecom.TelecomManager.EXTRA_PHONE_ACCOUNT_HANDLE, handle);
+        }
+
+        if (androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.CALL_PHONE)
+                == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            context.startActivity(intent);
+        } else {
+            fallbackDial(number);
+        }
+    }
+
+    private void fallbackDial(String number) {
+        try {
+            Intent dialIntent = new Intent(Intent.ACTION_DIAL);
+            dialIntent.setData(Uri.parse("tel:" + number));
+            dialIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(dialIntent);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     @Override

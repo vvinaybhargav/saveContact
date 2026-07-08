@@ -38,7 +38,8 @@ public class MainActivity extends AppCompatActivity {
             Manifest.permission.READ_CALL_LOG,
             Manifest.permission.READ_CONTACTS,
             Manifest.permission.WRITE_CONTACTS,
-            Manifest.permission.CALL_PHONE
+            Manifest.permission.CALL_PHONE,
+            Manifest.permission.GET_ACCOUNTS
     };
 
     @Override

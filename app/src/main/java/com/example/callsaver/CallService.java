@@ -168,9 +168,20 @@ public class CallService extends InCallService {
         }
 
         // Outgoing calls are user-initiated -> open the full screen immediately.
-        // Incoming calls rely on the full-screen intent: heads-up when unlocked,
-        // full-screen when locked/off. So we do NOT force the activity here.
-        if (!ringing) {
+        // If it is ringing and the screen is off or locked, launch the CallActivity directly as well to wake it up.
+        android.app.KeyguardManager km = (android.app.KeyguardManager) getSystemService(Context.KEYGUARD_SERVICE);
+        android.os.PowerManager pm = (android.os.PowerManager) getSystemService(Context.POWER_SERVICE);
+        boolean isScreenOn = false;
+        if (pm != null) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT_WATCH) {
+                isScreenOn = pm.isInteractive();
+            } else {
+                isScreenOn = pm.isScreenOn();
+            }
+        }
+        boolean isLocked = km != null && km.isKeyguardLocked();
+
+        if (!ringing || !isScreenOn || isLocked) {
             try {
                 startActivity(fullScreen);
             } catch (Exception ignored) {

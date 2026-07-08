@@ -115,4 +115,11 @@ public final class OngoingCall {
     public static int getDirection() {
         return sDirection;
     }
+
+    public static android.telecom.PhoneAccountHandle getAccountHandle() {
+        if (sCall == null || sCall.getDetails() == null) {
+            return null;
+        }
+        return sCall.getDetails().getAccountHandle();
+    }
 }

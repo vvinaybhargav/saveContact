@@ -1,14 +1,14 @@
 <resources>
-    <string name="app_name">Job Call Tracker</string>
-    <string name="title_dashboard">Job Call Tracker</string>
-    <string name="desc_dashboard">Keep track of your interviewer calls, company rounds, and contact details in one place.</string>
+    <string name="app_name">Call Tracker</string>
+    <string name="title_dashboard">Call Tracker</string>
+    <string name="desc_dashboard">Keep track of your calls, company rounds, and contact details in one place.</string>
     
     <!-- Onboarding Permissions Banner -->
     <string name="banner_permissions_title">Missing Permissions!</string>
     <string name="banner_permissions_desc">Tap here to grant phone state, call logs, contacts, and overlay permissions to automate popup logs after calls.</string>
 
-    <string name="title_permissions_setup">Job Tracker Setup</string>
-    <string name="desc_permissions_setup">Please grant the following permissions to enable automatic popup tracking of job calls right after you hang up.</string>
+    <string name="title_permissions_setup">Call Tracker Setup</string>
+    <string name="desc_permissions_setup">Please grant the following permissions to enable automatic popup tracking of calls right after you hang up.</string>
     <string name="btn_grant_permissions">Grant Missing Permissions</string>
     <string name="btn_open_overlay_settings">Enable Draw Over Other Apps</string>
     

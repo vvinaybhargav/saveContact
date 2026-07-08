@@ -8,6 +8,7 @@
     <!-- Permissions for querying and writing contacts -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <uses-permission android:name="android.permission.WRITE_CONTACTS" />
+    <uses-permission android:name="android.permission.GET_ACCOUNTS" />
 
     <!-- Permission to show overlay activity over other apps -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
