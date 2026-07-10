@@ -354,6 +354,13 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
             updateRecordButton(false);
             Toast.makeText(this, "Recording saved", Toast.LENGTH_SHORT).show();
         } else {
+            // Turn on speakerphone: on locked devices the mic is often only reachable
+            // via the loudspeaker route, which also lets it pick up the other side.
+            if (!speaker) {
+                speaker = true;
+                CallService.applySpeaker(true);
+                if (tvSpeaker != null) tvSpeaker.setText("Speaker on");
+            }
             Intent i = new Intent(this, CallRecorderService.class).setAction(CallRecorderService.ACTION_START);
             i.putExtra(CallRecorderService.EXTRA_NAME, tvName.getText().toString());
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -362,7 +369,7 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
                 startService(i);
             }
             updateRecordButton(true);
-            Toast.makeText(this, "Recording… (best effort)", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Recording on speaker… speak up", Toast.LENGTH_SHORT).show();
         }
     }
 

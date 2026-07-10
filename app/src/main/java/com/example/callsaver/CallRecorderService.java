@@ -104,8 +104,11 @@ public class CallRecorderService extends Service {
         String safe = (name == null || name.trim().isEmpty()) ? "Call" : name.replaceAll("[^a-zA-Z0-9]", "_");
         outputFile = new File(dir, safe + "_" + stamp + ".m4a");
 
-        if (tryStart(MediaRecorder.AudioSource.VOICE_RECOGNITION)) return true;
+        // Try the sources most likely to yield audio on a locked device, in order.
+        // MIC = your own voice; VOICE_COMMUNICATION = VoIP-style; VOICE_RECOGNITION last.
         if (tryStart(MediaRecorder.AudioSource.MIC)) return true;
+        if (tryStart(MediaRecorder.AudioSource.VOICE_COMMUNICATION)) return true;
+        if (tryStart(MediaRecorder.AudioSource.VOICE_RECOGNITION)) return true;
         sRecording = false;
         return false;
     }
