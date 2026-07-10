@@ -302,6 +302,38 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         }
     }
 
+    private void showDebugLogsDialog() {
+        String logs = DebugLogger.readLogs(requireContext());
+
+        TextView tv = new TextView(requireContext());
+        tv.setText(logs);
+        tv.setTextSize(11);
+        tv.setTextIsSelectable(true);
+        tv.setPadding(40, 24, 40, 24);
+        tv.setTypeface(android.graphics.Typeface.MONOSPACE);
+
+        android.widget.ScrollView scroll = new android.widget.ScrollView(requireContext());
+        scroll.addView(tv);
+
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Diagnostic logs")
+                .setView(scroll)
+                .setPositiveButton("Close", null)
+                .setNeutralButton("Clear", (d, w) -> {
+                    DebugLogger.clearLogs(requireContext());
+                    Toast.makeText(requireContext(), "Logs cleared", Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Copy", (d, w) -> {
+                    android.content.ClipboardManager cm = (android.content.ClipboardManager)
+                            requireContext().getSystemService(android.content.Context.CLIPBOARD_SERVICE);
+                    if (cm != null) {
+                        cm.setPrimaryClip(android.content.ClipData.newPlainText("logs", logs));
+                        Toast.makeText(requireContext(), "Logs copied", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .show();
+    }
+
     private void setupFilterChips(View view) {
         int[] chipIds = {
                 R.id.chip_all, R.id.chip_screening, R.id.chip_1st_round,
