@@ -10,6 +10,7 @@ import android.os.Build;
 import android.os.IBinder;
 import android.view.Gravity;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.ImageView;
@@ -130,11 +131,6 @@ public class CallerIdService extends Service {
             }
         }
 
-        // Close action
-        if (btnClose != null) {
-            btnClose.setOnClickListener(v -> stopSelf());
-        }
-
         // Configure Window Layout parameters (Middle of screen, draw over other apps)
         int layoutType;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -143,7 +139,7 @@ public class CallerIdService extends Service {
             layoutType = WindowManager.LayoutParams.TYPE_PHONE;
         }
 
-        WindowManager.LayoutParams params = new WindowManager.LayoutParams(
+        final WindowManager.LayoutParams params = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.MATCH_PARENT,
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 layoutType,
@@ -155,6 +151,85 @@ public class CallerIdService extends Service {
         );
 
         params.gravity = Gravity.CENTER; // Center overlay in the middle of the screen like Truecaller
+
+        // Close action
+        if (btnClose != null) {
+            btnClose.setOnClickListener(v -> stopSelf());
+        }
+
+        // Edit action
+        ImageView btnEdit = overlayView.findViewById(R.id.btn_overlay_edit);
+        if (btnEdit != null) {
+            btnEdit.setOnClickListener(v -> {
+                Intent editIntent = new Intent(this, SaveContactActivity.class);
+                editIntent.putExtra("phone_number", phoneNumber);
+                editIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(editIntent);
+                stopSelf();
+            });
+        }
+
+        // Touch & Swipe gesture to drag and dismiss
+        View cardRoot = overlayView.findViewById(R.id.card_overlay_root);
+        if (cardRoot != null) {
+            cardRoot.setOnTouchListener(new View.OnTouchListener() {
+                private int initialX;
+                private int initialY;
+                private float initialTouchX;
+                private float initialTouchY;
+
+                @Override
+                public boolean onTouch(View v, MotionEvent event) {
+                    switch (event.getAction()) {
+                        case MotionEvent.ACTION_DOWN:
+                            initialX = params.x;
+                            initialY = params.y;
+                            initialTouchX = event.getRawX();
+                            initialTouchY = event.getRawY();
+                            return true;
+
+                        case MotionEvent.ACTION_MOVE:
+                            float dx = event.getRawX() - initialTouchX;
+                            float dy = event.getRawY() - initialTouchY;
+                            params.x = initialX + (int) dx;
+                            params.y = initialY + (int) dy;
+                            
+                            // Visual feedback: fade opacity during drag
+                            float dist = (float) Math.sqrt(dx * dx + dy * dy);
+                            v.setAlpha(Math.max(0.3f, 1.0f - (dist / 500f)));
+                            
+                            try {
+                                windowManager.updateViewLayout(overlayView, params);
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                            return true;
+
+                        case MotionEvent.ACTION_UP:
+                            float deltaX = event.getRawX() - initialTouchX;
+                            float deltaY = event.getRawY() - initialTouchY;
+                            float totalDist = (float) Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+                            
+                            // Trigger dismiss if swiped past threshold (180 pixels in any direction)
+                            if (totalDist > 180f) {
+                                stopSelf();
+                            } else {
+                                // Snap back to center
+                                params.x = 0;
+                                params.y = 0;
+                                v.setAlpha(1.0f);
+                                try {
+                                    windowManager.updateViewLayout(overlayView, params);
+                                } catch (Exception e) {
+                                    e.printStackTrace();
+                                }
+                            }
+                            return true;
+                    }
+                    return false;
+                }
+            });
+        }
 
         try {
             windowManager.addView(overlayView, params);

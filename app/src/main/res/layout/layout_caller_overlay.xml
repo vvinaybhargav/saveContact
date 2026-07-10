@@ -82,6 +82,21 @@
                 </LinearLayout>
 
                 <!-- Dismiss Button -->
+                <!-- Edit Button -->
+                <ImageView
+                    android:id="@+id/btn_overlay_edit"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:padding="6dp"
+                    android:layout_marginEnd="8dp"
+                    android:src="@android:drawable/ic_menu_edit"
+                    app:tint="@color/text_muted"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Edit"
+                    android:clickable="true"
+                    android:focusable="true" />
+
+                <!-- Dismiss Button -->
                 <ImageView
                     android:id="@+id/btn_overlay_close"
                     android:layout_width="32dp"
