@@ -45,15 +45,13 @@ public class CallerIdService extends Service {
         }
 
         String phoneNumber = intent.getStringExtra("phone_number");
-        if (phoneNumber == null || phoneNumber.isEmpty()) {
-            stopSelf();
-            return START_NOT_STICKY;
-        }
+        String company = intent.getStringExtra("company_name");
+        String roundStatus = intent.getStringExtra("round_status");
+        String tags = intent.getStringExtra("tags");
+        long jobCallId = intent.getLongExtra("job_call_id", -1);
+        String recruiter = intent.getStringExtra("recruiter_name");
 
-        DatabaseHelper db = new DatabaseHelper(this);
-        JobCall call = db.getJobCallByNumber(this, phoneNumber);
-
-        if (call == null) {
+        if (company == null || company.isEmpty()) {
             stopSelf();
             return START_NOT_STICKY;
         }
@@ -67,8 +65,9 @@ public class CallerIdService extends Service {
         // Remove previous overlay if exists
         removeOverlay();
 
-        // Inflate custom Caller ID overlay card
-        overlayView = LayoutInflater.from(this).inflate(R.layout.layout_caller_overlay, null);
+        // Wrap layout inflater context with Theme.CallSaver context so Material Components inflate without crashing
+        android.view.ContextThemeWrapper themeWrapper = new android.view.ContextThemeWrapper(this, R.style.Theme_CallSaver);
+        overlayView = LayoutInflater.from(themeWrapper).inflate(R.layout.layout_caller_overlay, null);
 
         // Bind views
         TextView tvCallerName = overlayView.findViewById(R.id.tv_overlay_caller_name);
@@ -79,8 +78,6 @@ public class CallerIdService extends Service {
         androidx.cardview.widget.CardView cardAvatar = overlayView.findViewById(R.id.card_overlay_avatar);
 
         // Set title (Recruiter @ Company)
-        String company = call.getCompanyName();
-        String recruiter = call.getRecruiterName();
         String title;
         if (company != null && !company.trim().isEmpty() && recruiter != null && !recruiter.trim().isEmpty()) {
             title = recruiter.trim() + " @ " + company.trim();
@@ -94,9 +91,9 @@ public class CallerIdService extends Service {
         tvCallerName.setText(title);
 
         // Set Status
-        String statusText = "Stage: " + (call.getRoundStatus() != null ? call.getRoundStatus() : "Screening");
-        if (call.getTags() != null && !call.getTags().trim().isEmpty()) {
-            statusText += " · " + call.getTags();
+        String statusText = "Stage: " + (roundStatus != null ? roundStatus : "Screening");
+        if (tags != null && !tags.trim().isEmpty()) {
+            statusText += " · " + tags;
         }
         tvCallerStatus.setText(statusText);
 
@@ -110,7 +107,8 @@ public class CallerIdService extends Service {
         }
 
         // Fetch and format pointwise timeline notes (limit to last 5)
-        List<CallNote> notes = db.getNotesForJob(call.getId());
+        DatabaseHelper db = new DatabaseHelper(this);
+        List<CallNote> notes = db.getNotesForJob(jobCallId);
         if (notes == null || notes.isEmpty()) {
             tvNotesTimeline.setText("No notes logged for this lead yet.");
         } else {
@@ -183,7 +181,11 @@ public class CallerIdService extends Service {
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .build();
 
-        startForeground(NOTIFICATION_ID, notification);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(NOTIFICATION_ID, notification, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL);
+        } else {
+            startForeground(NOTIFICATION_ID, notification);
+        }
     }
 
     @Override

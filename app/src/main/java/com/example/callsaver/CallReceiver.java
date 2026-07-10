@@ -55,6 +55,8 @@ public class CallReceiver extends BroadcastReceiver {
                     overlayIntent.putExtra("company_name", call.getCompanyName());
                     overlayIntent.putExtra("round_status", call.getRoundStatus());
                     overlayIntent.putExtra("tags", call.getTags());
+                    overlayIntent.putExtra("job_call_id", (long) call.getId());
+                    overlayIntent.putExtra("recruiter_name", call.getRecruiterName());
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                         context.startForegroundService(overlayIntent);
                     } else {
@@ -94,6 +96,8 @@ public class CallReceiver extends BroadcastReceiver {
                     overlayIntent.putExtra("company_name", call.getCompanyName());
                     overlayIntent.putExtra("round_status", call.getRoundStatus());
                     overlayIntent.putExtra("tags", call.getTags());
+                    overlayIntent.putExtra("job_call_id", (long) call.getId());
+                    overlayIntent.putExtra("recruiter_name", call.getRecruiterName());
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                         context.startForegroundService(overlayIntent);
                     } else {
