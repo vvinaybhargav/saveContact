@@ -261,8 +261,8 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
         applyAvatar(display, named);
 
         // Show the latest note (like the tag) and enable the in-call note button for tracked calls.
+        btnInCallNote.setVisibility(View.VISIBLE);
         boolean tracked = trackedCall != null && trackedCall.getId() > 0;
-        btnInCallNote.setVisibility(tracked ? View.VISIBLE : View.GONE);
         if (tracked) {
             showLatestNote(trackedCall.getId());
         }
@@ -309,6 +309,21 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
 
     private void showInCallNoteDialog() {
         if (trackedCall == null || trackedCall.getId() <= 0) {
+            try {
+                DatabaseHelper db = new DatabaseHelper(this);
+                String displayNum = (callNumber == null || callNumber.isEmpty()) ? "Unknown" : callNumber;
+                String placeholderCompany = "Call Notes - " + displayNum;
+                JobCall placeholderCall = new JobCall(displayNum, placeholderCompany, "Screening", "", "", 0, System.currentTimeMillis());
+                long newId = db.insertJobCall(placeholderCall);
+                if (newId != -1) {
+                    trackedCall = db.getJobCallByNumber(this, displayNum);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        if (trackedCall == null || trackedCall.getId() <= 0) {
+            Toast.makeText(this, "Cannot create note: Database error", Toast.LENGTH_SHORT).show();
             return;
         }
         View dialogView = getLayoutInflater().inflate(R.layout.dialog_incall_note, null);
