@@ -44,7 +44,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public static final String TABLE_PHONES = "job_phones";
     public static final String COLUMN_PHONE_ID = "id";
     public static final String COLUMN_PHONE_JOB_ID = "job_call_id";
-    public static final String COLUMN_PHONE_NUMBER = "phone_number";
     public static final String COLUMN_PHONE_RECRUITER_NAME = "recruiter_name";
 
     public DatabaseHelper(Context context) {
