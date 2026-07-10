@@ -30,6 +30,7 @@ public class MainActivity extends AppCompatActivity {
     private static final int ALL_PERMISSIONS_REQUEST_CODE = 200;
     private static final int REQ_DEFAULT_DIALER = 300;
     private static final int REQ_CODE_OVERLAY = 400;
+    private static final int REQ_CODE_SCREENING = 500;
 
     private BottomNavigationView bottomNavigation;
     private RecentsFragment recentsFragment;
@@ -171,9 +172,33 @@ public class MainActivity extends AppCompatActivity {
                                     Uri.parse("package:" + getPackageName()));
                             startActivityForResult(intent, REQ_CODE_OVERLAY);
                         })
-                        .setNegativeButton("Cancel", null)
+                        .setNegativeButton("Cancel", (dialog, which) -> requestCallScreeningRole())
                         .show();
+            } else {
+                requestCallScreeningRole();
             }
+        } else {
+            requestCallScreeningRole();
+        }
+    }
+
+    private void requestCallScreeningRole() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            RoleManager roleManager = (RoleManager) getSystemService(Context.ROLE_SERVICE);
+            if (roleManager != null
+                    && roleManager.isRoleAvailable(RoleManager.ROLE_CALL_SCREENING)
+                    && !roleManager.isRoleHeld(RoleManager.ROLE_CALL_SCREENING)) {
+                Intent intent = roleManager.createRequestRoleIntent(RoleManager.ROLE_CALL_SCREENING);
+                startActivityForResult(intent, REQ_CODE_SCREENING);
+            }
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQ_CODE_OVERLAY) {
+            requestCallScreeningRole();
         }
     }
 

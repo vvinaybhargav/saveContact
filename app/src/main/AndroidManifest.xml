@@ -120,6 +120,16 @@
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
+        <!-- CallScreeningService: automatically screen calls and launch Caller ID overlays on Android 10+ -->
+        <service
+            android:name=".CallSaverScreeningService"
+            android:permission="android.permission.BIND_SCREENING_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.telecom.CallScreeningService" />
+            </intent-filter>
+        </service>
+
     </application>
 
 </manifest>
