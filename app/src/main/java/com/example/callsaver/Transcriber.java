@@ -10,7 +10,6 @@ import java.io.IOException;
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.MediaType;
-import okhttp3.MultipartBody;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
@@ -29,10 +28,10 @@ public class Transcriber {
 
     public static void transcribeCallRecording(Context context, File audioFile, TranscriptionCallback callback) {
         String apiKey = context.getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE)
-                .getString("openai_api_key", "").trim();
+                .getString("deepgram_api_key", "").trim();
 
         if (apiKey.isEmpty()) {
-            callback.onError("OpenAI API Key is missing. Please save your OpenAI API Key first.");
+            callback.onError("Deepgram API Key is missing. Please save your Deepgram API Key first.");
             return;
         }
 
@@ -46,16 +45,13 @@ public class Transcriber {
         if (audioFile.getName().endsWith(".wav")) mimeType = "audio/wav";
         else if (audioFile.getName().endsWith(".m4a")) mimeType = "audio/x-m4a";
 
-        RequestBody fileBody = RequestBody.create(audioFile, MediaType.parse(mimeType));
-        RequestBody requestBody = new MultipartBody.Builder()
-                .setType(MultipartBody.FORM)
-                .addFormDataPart("file", audioFile.getName(), fileBody)
-                .addFormDataPart("model", "whisper-1")
-                .build();
+        RequestBody requestBody = RequestBody.create(audioFile, MediaType.parse(mimeType));
 
+        // Use Deepgram Nova-2 model with formatting for best results
         Request request = new Request.Builder()
-                .url("https://api.openai.com/v1/audio/transcriptions")
-                .header("Authorization", "Bearer " + apiKey)
+                .url("https://api.deepgram.com/v1/listen?model=nova-2&smart_format=true")
+                .header("Authorization", "Token " + apiKey)
+                .header("Content-Type", mimeType)
                 .post(requestBody)
                 .build();
 
@@ -73,14 +69,20 @@ public class Transcriber {
                     String body = response.body() != null ? response.body().string() : "";
                     if (!response.isSuccessful()) {
                         JSONObject errorObj = new JSONObject(body);
-                        String errMsg = errorObj.optJSONObject("error") != null ? 
-                                errorObj.getJSONObject("error").optString("message", "Unknown error") : "HTTP " + response.code();
-                        mainHandler.post(() -> callback.onError("OpenAI Error: " + errMsg));
+                        String errMsg = errorObj.optString("err_msg", "HTTP " + response.code());
+                        mainHandler.post(() -> callback.onError("Deepgram Error: " + errMsg));
                         return;
                     }
 
                     JSONObject json = new JSONObject(body);
-                    String text = json.optString("text", "").trim();
+                    String text = json.getJSONObject("results")
+                            .getJSONArray("channels")
+                            .getJSONObject(0)
+                            .getJSONArray("alternatives")
+                            .getJSONObject(0)
+                            .getString("transcript")
+                            .trim();
+
                     mainHandler.post(() -> callback.onSuccess(text));
                 } catch (Exception e) {
                     mainHandler.post(() -> callback.onError("Failed to parse response: " + e.getMessage()));

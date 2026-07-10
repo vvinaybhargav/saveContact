@@ -147,25 +147,25 @@ public class SaveContactActivity extends AppCompatActivity {
 
         // Setup API Key preferences and UI controls
         SharedPreferences apiPrefs = getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE);
-        String savedKey = apiPrefs.getString("openai_api_key", "");
+        String savedKey = apiPrefs.getString("deepgram_api_key", "");
         etOpenAiApiKey.setText(savedKey);
 
         tvToggleApiKey.setOnClickListener(v -> {
             if (llApiKeyContainer.getVisibility() == View.VISIBLE) {
                 llApiKeyContainer.setVisibility(View.GONE);
-                tvToggleApiKey.setText("▼ Settings: OpenAI API Key");
+                tvToggleApiKey.setText("▼ Settings: Deepgram API Key");
             } else {
                 llApiKeyContainer.setVisibility(View.VISIBLE);
-                tvToggleApiKey.setText("▲ Settings: OpenAI API Key");
+                tvToggleApiKey.setText("▲ Settings: Deepgram API Key");
             }
         });
 
         btnSaveApiKey.setOnClickListener(v -> {
             String key = etOpenAiApiKey.getText().toString().trim();
-            apiPrefs.edit().putString("openai_api_key", key).apply();
+            apiPrefs.edit().putString("deepgram_api_key", key).apply();
             Toast.makeText(this, "API Key saved successfully!", Toast.LENGTH_SHORT).show();
             llApiKeyContainer.setVisibility(View.GONE);
-            tvToggleApiKey.setText("▼ Settings: OpenAI API Key");
+            tvToggleApiKey.setText("▼ Settings: Deepgram API Key");
         });
 
         // Set up auto-transcribe action
