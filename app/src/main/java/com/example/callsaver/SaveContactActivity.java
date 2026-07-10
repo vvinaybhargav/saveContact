@@ -64,6 +64,7 @@ public class SaveContactActivity extends AppCompatActivity {
     private SeekBar sbRecordingProgress;
     private TextView tvPlayerTime;
     private ProgressBar pbTranscribe;
+    private TextView tvTranscriptionStatus;
     
     private TextView tvToggleApiKey;
     private View llApiKeyContainer;
@@ -138,12 +139,7 @@ public class SaveContactActivity extends AppCompatActivity {
         etOpenAiApiKey = findViewById(R.id.et_openai_api_key);
         btnSaveApiKey = findViewById(R.id.btn_save_api_key);
 
-        // Scan for recording file
-        recordingFile = CallRecordingScanner.findLatestCallRecording(this, phoneNumber, callTimestamp);
-        if (recordingFile != null) {
-            llRecordingPanel.setVisibility(View.VISIBLE);
-            setupAudioPlayer();
-        }
+        tvTranscriptionStatus = findViewById(R.id.tv_transcription_status);
 
         // Setup API Key preferences and UI controls
         SharedPreferences apiPrefs = getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE);
@@ -171,11 +167,18 @@ public class SaveContactActivity extends AppCompatActivity {
         // Set up auto-transcribe action
         btnAutoTranscribe.setOnClickListener(v -> {
             pbTranscribe.setVisibility(View.VISIBLE);
+            if (tvTranscriptionStatus != null) {
+                tvTranscriptionStatus.setVisibility(View.VISIBLE);
+                tvTranscriptionStatus.setText("✨ Transcribing call recording via Deepgram...");
+            }
             btnAutoTranscribe.setEnabled(false);
             Transcriber.transcribeCallRecording(this, recordingFile, new Transcriber.TranscriptionCallback() {
                 @Override
                 public void onSuccess(String text) {
                     pbTranscribe.setVisibility(View.GONE);
+                    if (tvTranscriptionStatus != null) {
+                        tvTranscriptionStatus.setText("✅ Transcribed successfully!");
+                    }
                     btnAutoTranscribe.setEnabled(true);
                     if (text != null && !text.isEmpty()) {
                         String currentNotes = etNotes.getText().toString().trim();
@@ -191,20 +194,59 @@ public class SaveContactActivity extends AppCompatActivity {
                 @Override
                 public void onError(String error) {
                     pbTranscribe.setVisibility(View.GONE);
+                    if (tvTranscriptionStatus != null) {
+                        tvTranscriptionStatus.setText("❌ Error: " + error);
+                    }
                     btnAutoTranscribe.setEnabled(true);
                     Toast.makeText(SaveContactActivity.this, error, Toast.LENGTH_LONG).show();
                 }
             });
         });
 
-        // Auto-transcribe if recording exists and Deepgram key is set up
-        if (recordingFile != null && !savedKey.isEmpty()) {
-            new Handler().postDelayed(() -> {
-                if (!isFinishing()) {
-                    btnAutoTranscribe.performClick();
-                }
-            }, 500);
+        // Scan for recording file with a delayed progress update so the user knows it's searching
+        llRecordingPanel.setVisibility(View.VISIBLE);
+        if (tvTranscriptionStatus != null) {
+            tvTranscriptionStatus.setVisibility(View.VISIBLE);
+            tvTranscriptionStatus.setText("🔍 Locating call recording file...");
         }
+        pbTranscribe.setVisibility(View.VISIBLE);
+        btnAutoTranscribe.setVisibility(View.GONE);
+
+        // Hide player controls until file is verified
+        final View playBtn = findViewById(R.id.iv_play_pause);
+        if (playBtn != null && playBtn.getParent() instanceof View) {
+            ((View) playBtn.getParent()).setVisibility(View.GONE);
+        }
+
+        new Handler().postDelayed(() -> {
+            recordingFile = CallRecordingScanner.findLatestCallRecording(this, phoneNumber, callTimestamp);
+            if (recordingFile == null) {
+                recordingFile = CallRecordingScanner.findLatestCallRecording(this, phoneNumber, 0);
+            }
+
+            if (recordingFile != null) {
+                setupAudioPlayer();
+                // Show player controls
+                if (playBtn != null && playBtn.getParent() instanceof View) {
+                    ((View) playBtn.getParent()).setVisibility(View.VISIBLE);
+                }
+                btnAutoTranscribe.setVisibility(View.VISIBLE);
+
+                if (!savedKey.isEmpty()) {
+                    btnAutoTranscribe.performClick();
+                } else {
+                    pbTranscribe.setVisibility(View.GONE);
+                    if (tvTranscriptionStatus != null) {
+                        tvTranscriptionStatus.setText("✅ Recording located. Tap Auto-Transcribe.");
+                    }
+                }
+            } else {
+                pbTranscribe.setVisibility(View.GONE);
+                if (tvTranscriptionStatus != null) {
+                    tvTranscriptionStatus.setText("ℹ️ No call recording found for this session.");
+                }
+            }
+        }, 1500); // 1.5 seconds delay guarantees file system synchronization
 
         // Fetch accounts
         List<String> accountNames = new ArrayList<>();
