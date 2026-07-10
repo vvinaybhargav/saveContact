@@ -149,7 +149,8 @@ public class CallReceiver extends BroadcastReceiver {
                 public void run() {
                     CallLogEntry entry = getLatestCallLogEntry(context);
                     if (entry != null) {
-                        long diff = Math.abs(System.currentTimeMillis() - entry.date);
+                        long callEndTime = entry.date + (entry.duration * 1000L);
+                        long diff = Math.abs(System.currentTimeMillis() - callEndTime);
                         DebugLogger.log(context, "[Receiver] Call log: number=" + entry.number + ", duration=" + entry.duration + "s, type=" + entry.type + ", timeDiff=" + (diff / 1000) + "s ago");
                         // Make sure the call log was written in the last 15 seconds
                         if (diff < 15000L) {
