@@ -183,6 +183,10 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
         OngoingCall.setListener(null);
         handler.removeCallbacksAndMessages(null);
         releaseProximity();
+        if (voiceNoteHelper != null) {
+            voiceNoteHelper.destroy();
+            voiceNoteHelper = null;
+        }
     }
 
     /** Screen off when the phone is at the ear during a call, on when moved away. */
@@ -726,12 +730,4 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
         }
     }
 
-    @Override
-    protected void onDestroy() {
-        if (voiceNoteHelper != null) {
-            voiceNoteHelper.destroy();
-            voiceNoteHelper = null;
-        }
-        super.onDestroy();
-    }
 }
