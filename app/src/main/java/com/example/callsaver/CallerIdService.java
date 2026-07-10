@@ -191,12 +191,15 @@ public class CallerIdService extends Service {
                         case MotionEvent.ACTION_MOVE:
                             float dx = event.getRawX() - initialTouchX;
                             float dy = event.getRawY() - initialTouchY;
+                            
+                            // Swipe left/right moves horizontally
                             params.x = initialX + (int) dx;
+                            // Swipe up/down repositions the banner height
                             params.y = initialY + (int) dy;
                             
-                            // Visual feedback: fade opacity during drag
-                            float dist = (float) Math.sqrt(dx * dx + dy * dy);
-                            v.setAlpha(Math.max(0.3f, 1.0f - (dist / 500f)));
+                            // Visual feedback: fade opacity based ONLY on horizontal swipe distance
+                            float absDx = Math.abs(dx);
+                            v.setAlpha(Math.max(0.3f, 1.0f - (absDx / 500f)));
                             
                             try {
                                 windowManager.updateViewLayout(overlayView, params);
@@ -208,15 +211,14 @@ public class CallerIdService extends Service {
                         case MotionEvent.ACTION_UP:
                             float deltaX = event.getRawX() - initialTouchX;
                             float deltaY = event.getRawY() - initialTouchY;
-                            float totalDist = (float) Math.sqrt(deltaX * deltaX + deltaY * deltaY);
                             
-                            // Trigger dismiss if swiped past threshold (180 pixels in any direction)
-                            if (totalDist > 180f) {
+                            // Trigger dismiss only if swiped horizontally past threshold (180 pixels)
+                            if (Math.abs(deltaX) > 180f) {
                                 stopSelf();
                             } else {
-                                // Snap back to center
+                                // Snap back horizontally, but keep the new vertical height so user can reposition it!
                                 params.x = 0;
-                                params.y = 0;
+                                params.y = initialY + (int) deltaY;
                                 v.setAlpha(1.0f);
                                 try {
                                     windowManager.updateViewLayout(overlayView, params);
