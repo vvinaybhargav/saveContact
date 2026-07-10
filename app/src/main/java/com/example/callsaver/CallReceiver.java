@@ -134,40 +134,53 @@ public class CallReceiver extends BroadcastReceiver {
                     .apply();
             Log.d(TAG, "Call active (OFFHOOK). Answered incoming: " + answeredIncoming);
         } else if (stateStr.equals(TelephonyManager.EXTRA_STATE_IDLE)) {
-            String incomingNumber = prefs.getString(KEY_INCOMING_NUMBER, null);
-            boolean answered = prefs.getBoolean(KEY_ANSWERED, false);
-            Log.d(TAG, "Call ended (IDLE). Number: " + incomingNumber + ", answered: " + answered);
-
-            int duration = 0;
-            if (incomingNumber != null && !incomingNumber.trim().isEmpty()) {
-                DatabaseHelper db = new DatabaseHelper(context);
-                JobCall call = db.getJobCallByNumber(context, incomingNumber);
-                duration = getLastCallDuration(context, incomingNumber);
-                
-                if (call != null) {
-                    // Log call history to database
-                    String typeLabel = "Incoming";
-                    if ("OUTGOING".equals(lastSavedState)) {
-                        typeLabel = "Outgoing";
-                    } else if (!answered) {
-                        typeLabel = "Missed";
-                    }
-                    db.insertCallHistory(call.getId(), typeLabel, duration, System.currentTimeMillis());
-                }
-            }
-
             // Dismiss overlay banner immediately
             context.stopService(new Intent(context, CallerIdService.class));
 
-            // Launch SaveContactActivity directly as a popup dialogue if answered or outgoing
-            if (incomingNumber != null && (answered || "OUTGOING".equals(lastSavedState))) {
-                Intent dialogIntent = new Intent(context, SaveContactActivity.class);
-                dialogIntent.putExtra("phone_number", incomingNumber);
-                dialogIntent.putExtra("duration", duration);
-                dialogIntent.putExtra("timestamp", System.currentTimeMillis());
-                dialogIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                context.startActivity(dialogIntent);
-            }
+            // Query call log with a brief delay to allow system write synchronization
+            new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    CallLogEntry entry = getLatestCallLogEntry(context);
+                    if (entry != null) {
+                        long diff = Math.abs(System.currentTimeMillis() - entry.date);
+                        // Make sure the call log was written in the last 15 seconds
+                        if (diff < 15000L) {
+                            Log.d(TAG, "Matched call log entry: " + entry.number + ", duration: " + entry.duration);
+                            
+                            DatabaseHelper db = new DatabaseHelper(context);
+                            JobCall call = db.getJobCallByNumber(context, entry.number);
+                            
+                            // Check call direction and answered status
+                            boolean isOutgoing = entry.type == android.provider.CallLog.Calls.OUTGOING_TYPE;
+                            boolean isIncomingAnswered = entry.type == android.provider.CallLog.Calls.INCOMING_TYPE && entry.duration > 0;
+                            
+                            if (call != null) {
+                                String typeLabel = "Incoming";
+                                if (isOutgoing) {
+                                    typeLabel = "Outgoing";
+                                } else if (entry.type == android.provider.CallLog.Calls.MISSED_TYPE || entry.type == android.provider.CallLog.Calls.REJECTED_TYPE) {
+                                    typeLabel = "Missed";
+                                }
+                                db.insertCallHistory(call.getId(), typeLabel, entry.duration, entry.date);
+                            }
+                            
+                            if (isOutgoing || isIncomingAnswered) {
+                                Intent dialogIntent = new Intent(context, SaveContactActivity.class);
+                                dialogIntent.putExtra("phone_number", entry.number);
+                                dialogIntent.putExtra("duration", entry.duration);
+                                dialogIntent.putExtra("timestamp", entry.date);
+                                dialogIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                                context.startActivity(dialogIntent);
+                            }
+                        } else {
+                            Log.d(TAG, "Latest call log is too old: diff = " + diff / 1000 + "s");
+                        }
+                    } else {
+                        Log.d(TAG, "No call log entry found");
+                    }
+                }
+            }, 800);
 
             // Clean up state
             prefs.edit()
@@ -295,5 +308,57 @@ public class CallReceiver extends BroadcastReceiver {
             Log.e(TAG, "Exception querying call duration: " + e.getMessage());
         }
         return 0;
+    }
+
+    private static CallLogEntry getLatestCallLogEntry(Context context) {
+        if (androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_CALL_LOG) 
+                != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            return null;
+        }
+        
+        android.database.Cursor cursor = null;
+        try {
+            cursor = context.getContentResolver().query(
+                    android.provider.CallLog.Calls.CONTENT_URI,
+                    new String[] {
+                            android.provider.CallLog.Calls.NUMBER,
+                            android.provider.CallLog.Calls.DATE,
+                            android.provider.CallLog.Calls.DURATION,
+                            android.provider.CallLog.Calls.TYPE
+                    },
+                    null,
+                    null,
+                    android.provider.CallLog.Calls.DATE + " DESC LIMIT 1"
+            );
+            
+            if (cursor != null && cursor.moveToFirst()) {
+                String number = cursor.getString(0);
+                long date = cursor.getLong(1);
+                int duration = cursor.getInt(2);
+                int type = cursor.getInt(3);
+                return new CallLogEntry(number, date, duration, type);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error querying call log: ", e);
+        } finally {
+            if (cursor != null) {
+                cursor.close();
+            }
+        }
+        return null;
+    }
+    
+    private static class CallLogEntry {
+        String number;
+        long date;
+        int duration;
+        int type;
+        
+        CallLogEntry(String number, long date, int duration, int type) {
+            this.number = number;
+            this.date = date;
+            this.duration = duration;
+            this.type = type;
+        }
     }
 }
