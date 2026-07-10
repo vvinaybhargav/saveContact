@@ -872,8 +872,4 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         }
     }
 
-    @Override
-    public void onDestroyView() {
-        super.onDestroyView();
-    }
 }
