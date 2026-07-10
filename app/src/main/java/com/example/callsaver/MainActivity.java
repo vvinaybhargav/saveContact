@@ -22,6 +22,7 @@ import androidx.fragment.app.Fragment;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
@@ -147,9 +148,17 @@ public class MainActivity extends AppCompatActivity {
         }, 250);
     }
 
+    private String[] getRequiredPermissions() {
+        List<String> perms = new ArrayList<>(Arrays.asList(requiredPermissions));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            perms.add(Manifest.permission.POST_NOTIFICATIONS);
+        }
+        return perms.toArray(new String[0]);
+    }
+
     private void requestRequiredPermissionsIfMissing() {
         List<String> listPermissionsNeeded = new ArrayList<>();
-        for (String perm : requiredPermissions) {
+        for (String perm : getRequiredPermissions()) {
             if (ContextCompat.checkSelfPermission(this, perm) != PackageManager.PERMISSION_GRANTED) {
                 listPermissionsNeeded.add(perm);
             }
