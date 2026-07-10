@@ -67,8 +67,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
     private TextView tvStatOffers;
 
     private DatabaseHelper dbHelper;
-    private static final int REQ_RECORD_AUDIO = 2001;
-    private VoiceNoteHelper voiceNoteHelper;
+    private static final int REQ_CODE_SPEECH_INPUT = 1001;
     private EditText activeDialogNotesField;
     private Chip activeDialogAiChip;
     private TextInputLayout activeDialogTilNotes;
@@ -396,7 +395,6 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         TextInputLayout tilNotes = dialogView.findViewById(R.id.til_notes);
         Chip chipAiPolish = dialogView.findViewById(R.id.chip_ai_polish);
 
-        initVoiceHelper();
         activeDialogNotesField = etNotes;
         activeDialogAiChip = chipAiPolish;
         activeDialogTilNotes = tilNotes;
@@ -411,19 +409,20 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                 if (s.toString().trim().isEmpty()) {
                     chipAiPolish.setVisibility(View.GONE);
                 } else {
-                    if (voiceNoteHelper == null || !voiceNoteHelper.isListening()) {
-                        chipAiPolish.setVisibility(View.VISIBLE);
-                    }
+                    chipAiPolish.setVisibility(View.VISIBLE);
                 }
             }
         });
 
         tilNotes.setEndIconOnClickListener(v -> {
-            if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.RECORD_AUDIO)
-                    == PackageManager.PERMISSION_GRANTED) {
-                toggleVoiceNote();
-            } else {
-                requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQ_RECORD_AUDIO);
+            Intent intent = new Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+            intent.putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+            intent.putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE, java.util.Locale.getDefault());
+            intent.putExtra(android.speech.RecognizerIntent.EXTRA_PROMPT, "Speak note...");
+            try {
+                startActivityForResult(intent, REQ_CODE_SPEECH_INPUT);
+            } catch (Exception e) {
+                Toast.makeText(requireContext(), "Speech recognition is not supported on this device.", Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -444,9 +443,6 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
 
         final AlertDialog alertDialog = builder.create();
         alertDialog.setOnDismissListener(dialog -> {
-            if (voiceNoteHelper != null) {
-                voiceNoteHelper.stopListening();
-            }
             activeDialogNotesField = null;
             activeDialogAiChip = null;
             activeDialogTilNotes = null;
@@ -784,62 +780,6 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         itemTouchHelper.attachToRecyclerView(rvJobCalls);
     }
 
-    private void initVoiceHelper() {
-        if (voiceNoteHelper == null && getContext() != null) {
-            voiceNoteHelper = new VoiceNoteHelper(requireContext(), new VoiceNoteHelper.VoiceCallback() {
-                @Override
-                public void onTextReceived(String text) {
-                    if (activeDialogNotesField != null) {
-                        String current = activeDialogNotesField.getText().toString();
-                        if (current.trim().isEmpty()) {
-                            activeDialogNotesField.setText(text);
-                        } else {
-                            activeDialogNotesField.setText(current + " " + text);
-                        }
-                        activeDialogNotesField.setSelection(activeDialogNotesField.getText().length());
-                    }
-                }
-
-                @Override
-                public void onRecordingStateChanged(boolean isRecording) {
-                    if (activeDialogTilNotes != null) {
-                        if (isRecording) {
-                            activeDialogTilNotes.setEndIconTintList(android.content.res.ColorStateList.valueOf(
-                                    ContextCompat.getColor(requireContext(), R.color.status_error))); // red
-                            if (activeDialogAiChip != null) {
-                                activeDialogAiChip.setVisibility(View.GONE);
-                            }
-                        } else {
-                            activeDialogTilNotes.setEndIconTintList(android.content.res.ColorStateList.valueOf(
-                                    ContextCompat.getColor(requireContext(), R.color.accent_indigo))); // active indigo
-                            if (activeDialogAiChip != null && activeDialogNotesField != null
-                                    && !activeDialogNotesField.getText().toString().trim().isEmpty()) {
-                                activeDialogAiChip.setVisibility(View.VISIBLE);
-                            }
-                        }
-                    }
-                }
-
-                @Override
-                public void onError(String errorMessage) {
-                    if (getContext() != null) {
-                        Toast.makeText(requireContext(), errorMessage, Toast.LENGTH_SHORT).show();
-                    }
-                }
-            });
-        }
-    }
-
-    private void toggleVoiceNote() {
-        if (voiceNoteHelper != null) {
-            if (voiceNoteHelper.isListening()) {
-                voiceNoteHelper.stopListening();
-            } else {
-                voiceNoteHelper.startListening();
-            }
-        }
-    }
-
     private void runAiPolish() {
         if (activeDialogNotesField == null || activeDialogAiChip == null) return;
         String currentText = activeDialogNotesField.getText().toString().trim();
@@ -878,25 +818,25 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == REQ_RECORD_AUDIO) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                toggleVoiceNote();
-            } else {
-                if (getContext() != null) {
-                    Toast.makeText(requireContext(), "Permission denied to record audio", Toast.LENGTH_SHORT).show();
+    public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQ_CODE_SPEECH_INPUT && resultCode == android.app.Activity.RESULT_OK && data != null) {
+            ArrayList<String> result = data.getStringArrayListExtra(android.speech.RecognizerIntent.EXTRA_RESULTS);
+            if (result != null && !result.isEmpty() && activeDialogNotesField != null) {
+                String spokenText = result.get(0);
+                String currentText = activeDialogNotesField.getText().toString();
+                if (currentText.trim().isEmpty()) {
+                    activeDialogNotesField.setText(spokenText);
+                } else {
+                    activeDialogNotesField.setText(currentText + " " + spokenText);
                 }
+                activeDialogNotesField.setSelection(activeDialogNotesField.getText().length());
             }
         }
     }
 
     @Override
     public void onDestroyView() {
-        if (voiceNoteHelper != null) {
-            voiceNoteHelper.destroy();
-            voiceNoteHelper = null;
-        }
         super.onDestroyView();
     }
 }

@@ -63,8 +63,9 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
     private boolean showingPostCall = false;
     private boolean isKnownContact = false;
     private String callNumber = "";
-    private static final int REQ_RECORD_AUDIO = 2001;
-    private VoiceNoteHelper voiceNoteHelper;
+    private static final int REQ_CODE_SPEECH_INPUT = 1001;
+    private static final int REQ_CODE_DIRECT_RECORD = 1002;
+    private View btnInCallRecord;
     private EditText activeInCallNotesField;
     private com.google.android.material.chip.Chip activeInCallAiChip;
     private com.google.android.material.textfield.TextInputLayout activeInCallTilNotes;
@@ -119,6 +120,7 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
         btnMute = findViewById(R.id.btn_mute);
         btnSpeaker = findViewById(R.id.btn_speaker);
         btnInCallNote = findViewById(R.id.btn_incall_note);
+        btnInCallRecord = findViewById(R.id.btn_incall_record);
         btnNoteSave = findViewById(R.id.btn_note_save);
         btnNoteSkip = findViewById(R.id.btn_note_skip);
 
@@ -143,6 +145,7 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
         btnNoteSave.setOnClickListener(v -> onPostCallSave());
         btnNoteSkip.setOnClickListener(v -> finish());
         btnInCallNote.setOnClickListener(v -> showInCallNoteDialog());
+        btnInCallRecord.setOnClickListener(v -> startDirectRecordSpeech());
         btnKeypad.setOnClickListener(v -> toggleDialpad(true));
         btnDialpadHide.setOnClickListener(v -> toggleDialpad(false));
         setupDtmfKeys();
@@ -183,10 +186,6 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
         OngoingCall.setListener(null);
         handler.removeCallbacksAndMessages(null);
         releaseProximity();
-        if (voiceNoteHelper != null) {
-            voiceNoteHelper.destroy();
-            voiceNoteHelper = null;
-        }
     }
 
     /** Screen off when the phone is at the ear during a call, on when moved away. */
@@ -262,6 +261,9 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
 
         // Show the latest note (like the tag) and enable the in-call note button for tracked calls.
         btnInCallNote.setVisibility(View.VISIBLE);
+        if (btnInCallRecord != null) {
+            btnInCallRecord.setVisibility(View.VISIBLE);
+        }
         boolean tracked = trackedCall != null && trackedCall.getId() > 0;
         if (tracked) {
             showLatestNote(trackedCall.getId());
@@ -331,7 +333,6 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
         com.google.android.material.textfield.TextInputLayout tilNotes = dialogView.findViewById(R.id.til_notes);
         com.google.android.material.chip.Chip chipAiPolish = dialogView.findViewById(R.id.chip_ai_polish);
 
-        initVoiceHelper();
         activeInCallNotesField = etNotes;
         activeInCallAiChip = chipAiPolish;
         activeInCallTilNotes = tilNotes;
@@ -346,20 +347,20 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
                 if (s.toString().trim().isEmpty()) {
                     chipAiPolish.setVisibility(View.GONE);
                 } else {
-                    if (voiceNoteHelper == null || !voiceNoteHelper.isListening()) {
-                        chipAiPolish.setVisibility(View.VISIBLE);
-                    }
+                    chipAiPolish.setVisibility(View.VISIBLE);
                 }
             }
         });
 
         tilNotes.setEndIconOnClickListener(v -> {
-            if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO)
-                    == android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                toggleVoiceNote();
-            } else {
-                androidx.core.app.ActivityCompat.requestPermissions(this,
-                        new String[]{android.Manifest.permission.RECORD_AUDIO}, REQ_RECORD_AUDIO);
+            Intent intent = new Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+            intent.putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+            intent.putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE, java.util.Locale.getDefault());
+            intent.putExtra(android.speech.RecognizerIntent.EXTRA_PROMPT, "Speak voice note...");
+            try {
+                startActivityForResult(intent, REQ_CODE_SPEECH_INPUT);
+            } catch (Exception e) {
+                Toast.makeText(this, "Speech recognition not supported on this device.", Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -388,9 +389,6 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
                 .create();
 
         alertDialog.setOnDismissListener(dialog -> {
-            if (voiceNoteHelper != null) {
-                voiceNoteHelper.stopListening();
-            }
             activeInCallNotesField = null;
             activeInCallAiChip = null;
             activeInCallTilNotes = null;
@@ -646,60 +644,6 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
         // Otherwise ignore Back during a ringing/active call; use Decline/End.
     }
 
-    private void initVoiceHelper() {
-        if (voiceNoteHelper == null) {
-            voiceNoteHelper = new VoiceNoteHelper(this, new VoiceNoteHelper.VoiceCallback() {
-                @Override
-                public void onTextReceived(String text) {
-                    if (activeInCallNotesField != null) {
-                        String current = activeInCallNotesField.getText().toString();
-                        if (current.trim().isEmpty()) {
-                            activeInCallNotesField.setText(text);
-                        } else {
-                            activeInCallNotesField.setText(current + " " + text);
-                        }
-                        activeInCallNotesField.setSelection(activeInCallNotesField.getText().length());
-                    }
-                }
-
-                @Override
-                public void onRecordingStateChanged(boolean isRecording) {
-                    if (activeInCallTilNotes != null) {
-                        if (isRecording) {
-                            activeInCallTilNotes.setEndIconTintList(android.content.res.ColorStateList.valueOf(
-                                    androidx.core.content.ContextCompat.getColor(CallActivity.this, R.color.status_error))); // red
-                            if (activeInCallAiChip != null) {
-                                activeInCallAiChip.setVisibility(View.GONE);
-                            }
-                        } else {
-                            activeInCallTilNotes.setEndIconTintList(android.content.res.ColorStateList.valueOf(
-                                    androidx.core.content.ContextCompat.getColor(CallActivity.this, R.color.accent_indigo))); // indigo
-                            if (activeInCallAiChip != null && activeInCallNotesField != null
-                                    && !activeInCallNotesField.getText().toString().trim().isEmpty()) {
-                                activeInCallAiChip.setVisibility(View.VISIBLE);
-                            }
-                        }
-                    }
-                }
-
-                @Override
-                public void onError(String errorMessage) {
-                    Toast.makeText(CallActivity.this, errorMessage, Toast.LENGTH_SHORT).show();
-                }
-            });
-        }
-    }
-
-    private void toggleVoiceNote() {
-        if (voiceNoteHelper != null) {
-            if (voiceNoteHelper.isListening()) {
-                voiceNoteHelper.stopListening();
-            } else {
-                voiceNoteHelper.startListening();
-            }
-        }
-    }
-
     private void runAiPolish() {
         if (activeInCallNotesField == null || activeInCallAiChip == null) return;
         String currentText = activeInCallNotesField.getText().toString().trim();
@@ -733,14 +677,62 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
         });
     }
 
+    private void startDirectRecordSpeech() {
+        if (trackedCall == null || trackedCall.getId() <= 0) {
+            try {
+                DatabaseHelper db = new DatabaseHelper(this);
+                String displayNum = (callNumber == null || callNumber.isEmpty()) ? "Unknown" : callNumber;
+                String placeholderCompany = "Call Notes - " + displayNum;
+                JobCall placeholderCall = new JobCall(displayNum, placeholderCompany, "Screening", "", "", 0, System.currentTimeMillis());
+                long newId = db.insertJobCall(placeholderCall);
+                if (newId != -1) {
+                    trackedCall = db.getJobCallByNumber(this, displayNum);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        if (trackedCall == null || trackedCall.getId() <= 0) {
+            Toast.makeText(this, "Cannot record: Database error", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Intent intent = new Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+        intent.putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+        intent.putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE, java.util.Locale.getDefault());
+        intent.putExtra(android.speech.RecognizerIntent.EXTRA_PROMPT, "Speak voice note...");
+        try {
+            startActivityForResult(intent, REQ_CODE_DIRECT_RECORD);
+        } catch (Exception e) {
+            Toast.makeText(this, "Speech recognition not supported on this device.", Toast.LENGTH_SHORT).show();
+        }
+    }
+
     @Override
-    public void onRequestPermissionsResult(int requestCode, @androidx.annotation.NonNull String[] permissions, @androidx.annotation.NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == REQ_RECORD_AUDIO) {
-            if (grantResults.length > 0 && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                toggleVoiceNote();
-            } else {
-                Toast.makeText(this, "Permission denied to record audio", Toast.LENGTH_SHORT).show();
+    protected void onActivityResult(int requestCode, int resultCode, @androidx.annotation.Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (resultCode == RESULT_OK && data != null) {
+            ArrayList<String> result = data.getStringArrayListExtra(android.speech.RecognizerIntent.EXTRA_RESULTS);
+            if (result != null && !result.isEmpty()) {
+                String spokenText = result.get(0);
+                if (requestCode == REQ_CODE_SPEECH_INPUT) {
+                    if (activeInCallNotesField != null) {
+                        String current = activeInCallNotesField.getText().toString();
+                        if (current.trim().isEmpty()) {
+                            activeInCallNotesField.setText(spokenText);
+                        } else {
+                            activeInCallNotesField.setText(current + " " + spokenText);
+                        }
+                        activeInCallNotesField.setSelection(activeInCallNotesField.getText().length());
+                    }
+                } else if (requestCode == REQ_CODE_DIRECT_RECORD) {
+                    if (trackedCall != null && trackedCall.getId() > 0) {
+                        new DatabaseHelper(this).insertNote(
+                                trackedCall.getId(), spokenText, System.currentTimeMillis());
+                        showLatestNote(trackedCall.getId());
+                        Toast.makeText(this, "Voice note recorded!", Toast.LENGTH_SHORT).show();
+                    }
+                }
             }
         }
     }

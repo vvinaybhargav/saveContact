@@ -42,8 +42,7 @@ public class SaveContactActivity extends AppCompatActivity {
     private Spinner spinnerRound;
     private Spinner spinnerAccount;
     private DatabaseHelper dbHelper;
-    private static final int REQ_RECORD_AUDIO = 2001;
-    private VoiceNoteHelper voiceNoteHelper;
+    private static final int REQ_CODE_SPEECH_INPUT = 1001;
     private Chip chipAiPolish;
 
     @Override
@@ -87,54 +86,20 @@ public class SaveContactActivity extends AppCompatActivity {
                 if (s.toString().trim().isEmpty()) {
                     chipAiPolish.setVisibility(View.GONE);
                 } else {
-                    if (voiceNoteHelper == null || !voiceNoteHelper.isListening()) {
-                        chipAiPolish.setVisibility(View.VISIBLE);
-                    }
+                    chipAiPolish.setVisibility(View.VISIBLE);
                 }
-            }
-        });
-
-        // Initialize voice recorder helper
-        voiceNoteHelper = new VoiceNoteHelper(this, new VoiceNoteHelper.VoiceCallback() {
-            @Override
-            public void onTextReceived(String text) {
-                String current = etNotes.getText().toString();
-                if (current.trim().isEmpty()) {
-                    etNotes.setText(text);
-                } else {
-                    etNotes.setText(current + " " + text);
-                }
-                etNotes.setSelection(etNotes.getText().length());
-            }
-
-            @Override
-            public void onRecordingStateChanged(boolean isRecording) {
-                if (isRecording) {
-                    tilNotes.setEndIconTintList(android.content.res.ColorStateList.valueOf(
-                            ContextCompat.getColor(SaveContactActivity.this, R.color.status_error))); // red
-                    chipAiPolish.setVisibility(View.GONE);
-                } else {
-                    tilNotes.setEndIconTintList(android.content.res.ColorStateList.valueOf(
-                            ContextCompat.getColor(SaveContactActivity.this, R.color.accent_indigo))); // active indigo
-                    if (!etNotes.getText().toString().trim().isEmpty()) {
-                        chipAiPolish.setVisibility(View.VISIBLE);
-                    }
-                }
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                Toast.makeText(SaveContactActivity.this, errorMessage, Toast.LENGTH_SHORT).show();
             }
         });
 
         tilNotes.setEndIconOnClickListener(v -> {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
-                    == PackageManager.PERMISSION_GRANTED) {
-                toggleVoiceNote();
-            } else {
-                ActivityCompat.requestPermissions(this,
-                        new String[]{Manifest.permission.RECORD_AUDIO}, REQ_RECORD_AUDIO);
+            Intent intent = new Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+            intent.putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+            intent.putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE, java.util.Locale.getDefault());
+            intent.putExtra(android.speech.RecognizerIntent.EXTRA_PROMPT, "Speak note...");
+            try {
+                startActivityForResult(intent, REQ_CODE_SPEECH_INPUT);
+            } catch (Exception e) {
+                Toast.makeText(this, "Speech recognition is not supported on this device.", Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -329,16 +294,6 @@ public class SaveContactActivity extends AppCompatActivity {
         }
     }
 
-    private void toggleVoiceNote() {
-        if (voiceNoteHelper != null) {
-            if (voiceNoteHelper.isListening()) {
-                voiceNoteHelper.stopListening();
-            } else {
-                voiceNoteHelper.startListening();
-            }
-        }
-    }
-
     private void runAiPolish() {
         String currentText = etNotes.getText().toString().trim();
         if (currentText.isEmpty()) return;
@@ -366,22 +321,20 @@ public class SaveContactActivity extends AppCompatActivity {
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == REQ_RECORD_AUDIO) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                toggleVoiceNote();
-            } else {
-                Toast.makeText(this, "Permission denied to record audio", Toast.LENGTH_SHORT).show();
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQ_CODE_SPEECH_INPUT && resultCode == RESULT_OK && data != null) {
+            ArrayList<String> result = data.getStringArrayListExtra(android.speech.RecognizerIntent.EXTRA_RESULTS);
+            if (result != null && !result.isEmpty()) {
+                String spokenText = result.get(0);
+                String currentText = etNotes.getText().toString();
+                if (currentText.trim().isEmpty()) {
+                    etNotes.setText(spokenText);
+                } else {
+                    etNotes.setText(currentText + " " + spokenText);
+                }
+                etNotes.setSelection(etNotes.getText().length());
             }
         }
-    }
-
-    @Override
-    protected void onDestroy() {
-        if (voiceNoteHelper != null) {
-            voiceNoteHelper.destroy();
-        }
-        super.onDestroy();
     }
 }
