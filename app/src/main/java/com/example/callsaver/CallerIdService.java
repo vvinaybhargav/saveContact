@@ -107,23 +107,27 @@ public class CallerIdService extends Service {
         }
 
         // Fetch and format pointwise timeline notes (limit to last 5)
-        DatabaseHelper db = new DatabaseHelper(this);
-        List<CallNote> notes = db.getNotesForJob(jobCallId);
-        if (notes == null || notes.isEmpty()) {
-            tvNotesTimeline.setText("No notes logged for this lead yet.");
+        if (jobCallId == -1) {
+            tvNotesTimeline.setText("Not saved in Tracker yet. Tap the notification after the call to save and transcribe.");
         } else {
-            StringBuilder sb = new StringBuilder();
-            int count = 0;
-            for (CallNote note : notes) {
-                if (count >= 5) break;
-                count++;
-                sb.append(count).append(". ").append(note.note).append("\n");
+            DatabaseHelper db = new DatabaseHelper(this);
+            List<CallNote> notes = db.getNotesForJob(jobCallId);
+            if (notes == null || notes.isEmpty()) {
+                tvNotesTimeline.setText("No notes logged for this lead yet.");
+            } else {
+                StringBuilder sb = new StringBuilder();
+                int count = 0;
+                for (CallNote note : notes) {
+                    if (count >= 5) break;
+                    count++;
+                    sb.append(count).append(". ").append(note.note).append("\n");
+                }
+                // Trim final newline
+                if (sb.length() > 0) {
+                    sb.setLength(sb.length() - 1);
+                }
+                tvNotesTimeline.setText(sb.toString());
             }
-            // Trim final newline
-            if (sb.length() > 0) {
-                sb.setLength(sb.length() - 1);
-            }
-            tvNotesTimeline.setText(sb.toString());
         }
 
         // Close action

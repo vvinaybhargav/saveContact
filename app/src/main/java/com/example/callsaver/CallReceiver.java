@@ -48,25 +48,30 @@ public class CallReceiver extends BroadcastReceiver {
                 Log.d(TAG, "Outgoing call detected to: " + outgoingNumber);
                 Toast.makeText(context, "CallSaver Diagnostic: Outgoing to " + outgoingNumber, Toast.LENGTH_LONG).show();
 
-                // Show overlay banner if number is tracked
+                // Show overlay banner for all calls
                 DatabaseHelper db = new DatabaseHelper(context);
                 JobCall call = db.getJobCallByNumber(context, outgoingNumber);
+                Intent overlayIntent = new Intent(context, CallerIdService.class);
+                overlayIntent.putExtra("phone_number", outgoingNumber);
                 if (call != null) {
                     Toast.makeText(context, "Match found for " + call.getCompanyName() + "! Showing overlay...", Toast.LENGTH_SHORT).show();
-                    Intent overlayIntent = new Intent(context, CallerIdService.class);
-                    overlayIntent.putExtra("phone_number", outgoingNumber);
                     overlayIntent.putExtra("company_name", call.getCompanyName());
                     overlayIntent.putExtra("round_status", call.getRoundStatus());
                     overlayIntent.putExtra("tags", call.getTags());
                     overlayIntent.putExtra("job_call_id", (long) call.getId());
                     overlayIntent.putExtra("recruiter_name", call.getRecruiterName());
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        context.startForegroundService(overlayIntent);
-                    } else {
-                        context.startService(overlayIntent);
-                    }
                 } else {
-                    Toast.makeText(context, "No match in tracker for outgoing number", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(context, "Unsaved number: Showing overlay...", Toast.LENGTH_SHORT).show();
+                    overlayIntent.putExtra("company_name", "Unknown Recruiter");
+                    overlayIntent.putExtra("round_status", "Not Saved");
+                    overlayIntent.putExtra("tags", "");
+                    overlayIntent.putExtra("job_call_id", -1L);
+                    overlayIntent.putExtra("recruiter_name", "");
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(overlayIntent);
+                } else {
+                    context.startService(overlayIntent);
                 }
             }
             return;
@@ -93,25 +98,30 @@ public class CallReceiver extends BroadcastReceiver {
                 Log.d(TAG, "Incoming call detected from number: " + incomingNumber);
                 Toast.makeText(context, "CallSaver Diagnostic: Incoming from " + incomingNumber, Toast.LENGTH_LONG).show();
 
-                // Show overlay banner if number is tracked
+                // Show overlay banner for all calls
                 DatabaseHelper db = new DatabaseHelper(context);
                 JobCall call = db.getJobCallByNumber(context, incomingNumber);
+                Intent overlayIntent = new Intent(context, CallerIdService.class);
+                overlayIntent.putExtra("phone_number", incomingNumber);
                 if (call != null) {
                     Toast.makeText(context, "Match found for " + call.getCompanyName() + "! Showing overlay...", Toast.LENGTH_SHORT).show();
-                    Intent overlayIntent = new Intent(context, CallerIdService.class);
-                    overlayIntent.putExtra("phone_number", incomingNumber);
                     overlayIntent.putExtra("company_name", call.getCompanyName());
                     overlayIntent.putExtra("round_status", call.getRoundStatus());
                     overlayIntent.putExtra("tags", call.getTags());
                     overlayIntent.putExtra("job_call_id", (long) call.getId());
                     overlayIntent.putExtra("recruiter_name", call.getRecruiterName());
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        context.startForegroundService(overlayIntent);
-                    } else {
-                        context.startService(overlayIntent);
-                    }
                 } else {
-                    Toast.makeText(context, "No match in tracker for incoming number", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(context, "Unsaved number: Showing overlay...", Toast.LENGTH_SHORT).show();
+                    overlayIntent.putExtra("company_name", "Unknown Recruiter");
+                    overlayIntent.putExtra("round_status", "Not Saved");
+                    overlayIntent.putExtra("tags", "");
+                    overlayIntent.putExtra("job_call_id", -1L);
+                    overlayIntent.putExtra("recruiter_name", "");
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(overlayIntent);
+                } else {
+                    context.startService(overlayIntent);
                 }
             }
             editor.apply();
