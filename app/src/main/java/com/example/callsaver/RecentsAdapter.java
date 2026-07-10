@@ -107,6 +107,21 @@ public class RecentsAdapter extends RecyclerView.Adapter<RecentsAdapter.ViewHold
                     fgRes = R.color.call_missed;
                     bgRes = R.color.call_missed_bg;
                     break;
+                case 5: // CallLog.Calls.REJECTED_TYPE
+                    typeLabel = "Rejected";
+                    fgRes = R.color.call_missed;
+                    bgRes = R.color.call_missed_bg;
+                    break;
+                case 6: // CallLog.Calls.BLOCKED_TYPE
+                    typeLabel = "Blocked";
+                    fgRes = R.color.call_missed;
+                    bgRes = R.color.call_missed_bg;
+                    break;
+                case 4: // CallLog.Calls.VOICEMAIL_TYPE
+                    typeLabel = "Voicemail";
+                    fgRes = R.color.call_outgoing;
+                    bgRes = R.color.call_outgoing_bg;
+                    break;
                 case 1: // CallLog.Calls.INCOMING_TYPE
                 default:
                     typeLabel = (callType == 1) ? "Incoming" : "Call";
