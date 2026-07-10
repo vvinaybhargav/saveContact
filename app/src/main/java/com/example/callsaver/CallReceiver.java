@@ -325,6 +325,7 @@ public class CallReceiver extends BroadcastReceiver {
     private static CallLogEntry getLatestCallLogEntry(Context context) {
         if (androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_CALL_LOG) 
                 != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            DebugLogger.log(context, "[Receiver] Call log query skipped: READ_CALL_LOG permission NOT granted.");
             return null;
         }
         
@@ -349,9 +350,13 @@ public class CallReceiver extends BroadcastReceiver {
                 int duration = cursor.getInt(2);
                 int type = cursor.getInt(3);
                 return new CallLogEntry(number, date, duration, type);
+            } else {
+                DebugLogger.log(context, "[Receiver] Call log query returned empty cursor.");
             }
+        } catch (SecurityException se) {
+            DebugLogger.log(context, "[Receiver] Call log query failed with SecurityException: " + se.getMessage());
         } catch (Exception e) {
-            Log.e(TAG, "Error querying call log: ", e);
+            DebugLogger.log(context, "[Receiver] Call log query failed with Exception: " + e.getMessage());
         } finally {
             if (cursor != null) {
                 cursor.close();
