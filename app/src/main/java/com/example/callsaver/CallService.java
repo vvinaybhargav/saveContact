@@ -43,11 +43,26 @@ public class CallService extends InCallService {
             0xFF6366F1, 0xFF10B981, 0xFF3B82F6, 0xFF8B5CF6, 0xFFEC4899, 0xFFF59E0B, 0xFF14B8A6
     };
 
+    private final Call.Callback mCallCallback = new Call.Callback() {
+        @Override
+        public void onStateChanged(Call call, int state) {
+            super.onStateChanged(call, state);
+            try {
+                showCallUi(call);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    };
+
     @Override
     public void onCallAdded(Call call) {
         super.onCallAdded(call);
         sInstance = this;
         OngoingCall.setCall(call);
+        try {
+            call.registerCallback(mCallCallback);
+        } catch (Exception ignored) {}
         // Incoming calls start RINGING; outgoing start CONNECTING/DIALING.
         try {
             int state = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
@@ -66,6 +81,9 @@ public class CallService extends InCallService {
     @Override
     public void onCallRemoved(Call call) {
         super.onCallRemoved(call);
+        try {
+            call.unregisterCallback(mCallCallback);
+        } catch (Exception ignored) {}
         try {
             logCallHistory(call);
         } catch (Exception e) {
@@ -157,9 +175,19 @@ public class CallService extends InCallService {
             b.setStyle(NotificationCompat.CallStyle.forIncomingCall(caller, declinePi, answerPi));
             b.setContentText(subtitle);
         } else {
-            b.setContentTitle(name)
-                    .setContentText(subtitle)
-                    .setStyle(new NotificationCompat.BigTextStyle().bigText(subtitle));
+            // Ongoing / Dialing call notification style with Hangup action.
+            Intent hangupBc = new Intent(this, CallActionReceiver.class)
+                    .setAction(CallActionReceiver.ACTION_HANGUP);
+            PendingIntent hangupPi = PendingIntent.getBroadcast(this, 3, hangupBc, piFlags());
+
+            Person.Builder personBuilder = new Person.Builder().setName(name);
+            boolean named = name != null && !name.equalsIgnoreCase(number) && !name.equals("Unknown");
+            if (named) {
+                personBuilder.setIcon(IconCompat.createWithBitmap(buildAvatar(name)));
+            }
+            Person caller = personBuilder.build();
+            b.setStyle(NotificationCompat.CallStyle.forOngoingCall(caller, hangupPi));
+            b.setContentText(subtitle);
         }
 
         try {

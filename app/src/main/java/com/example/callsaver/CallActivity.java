@@ -27,8 +27,10 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.material.card.MaterialCardView;
 
+import com.google.android.material.textfield.TextInputLayout;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -45,6 +47,9 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
     private static final int[] AVATAR_COLORS = {
             0xFF6366F1, 0xFF10B981, 0xFF3B82F6, 0xFF8B5CF6, 0xFFEC4899, 0xFFF59E0B, 0xFF14B8A6
     };
+
+    private static final int REQ_CODE_SPEECH_INPUT = 1001;
+    private EditText activeDialogNotesField;
 
     private TextView tvName, tvNumber, tvStatus, tvDuration, tvTrackInfo, tvMute, tvSpeaker, tvAvatarLetter, tvLatestNote;
     private View layoutIncoming, layoutOngoing, layoutPostCall, layoutDialpad;
@@ -262,10 +267,52 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
 
     private void showLatestNote(long jobId) {
         try {
-            List<CallNote> notes = new DatabaseHelper(this).getNotesForJob(jobId);
-            if (!notes.isEmpty() && notes.get(0).note != null && !notes.get(0).note.trim().isEmpty()) {
-                tvLatestNote.setText(notes.get(0).note);
+            DatabaseHelper db = new DatabaseHelper(this);
+            List<CallNote> notes = db.getNotesForJob(jobId);
+            List<CallHistory> history = db.getCallHistoryForJob(jobId);
+
+            class TimelineItem {
+                long ts;
+                String text;
+                TimelineItem(long ts, String text) {
+                    this.ts = ts;
+                    this.text = text;
+                }
+            }
+
+            List<TimelineItem> items = new ArrayList<>();
+            for (CallNote n : notes) {
+                if (n.note != null && !n.note.trim().isEmpty()) {
+                    items.add(new TimelineItem(n.timestamp, n.note.trim()));
+                }
+            }
+            for (CallHistory h : history) {
+                String durationStr = "";
+                if (h.duration > 0) {
+                    durationStr = String.format(Locale.getDefault(), "%d:%02d", h.duration / 60, h.duration % 60) + " duration";
+                }
+                String histText = h.type + " call" + (durationStr.isEmpty() ? "" : " - " + durationStr);
+                SimpleDateFormat sdf = new SimpleDateFormat("hh:mm a", Locale.getDefault());
+                histText += " at " + sdf.format(new Date(h.timestamp));
+                items.add(new TimelineItem(h.timestamp, histText));
+            }
+
+            // Sort chronological ascending (oldest first)
+            Collections.sort(items, (a, b) -> Long.compare(a.ts, b.ts));
+
+            if (!items.isEmpty()) {
+                StringBuilder sb = new StringBuilder();
+                int idx = 1;
+                for (TimelineItem item : items) {
+                    if (sb.length() > 0) {
+                        sb.append("\n");
+                    }
+                    sb.append(idx).append(". ").append(item.text);
+                    idx++;
+                }
+                tvLatestNote.setText(sb.toString());
                 tvLatestNote.setVisibility(View.VISIBLE);
+                tvLatestNote.setMovementMethod(new android.text.method.ScrollingMovementMethod());
             } else {
                 tvLatestNote.setVisibility(View.GONE);
             }
@@ -304,7 +351,7 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
             try {
                 DatabaseHelper db = new DatabaseHelper(this);
                 String displayNum = (callNumber == null || callNumber.isEmpty()) ? "Unknown" : callNumber;
-                String placeholderCompany = "Call Notes - " + displayNum;
+                String placeholderCompany = ""; // No name placeholder when creating log automatically
                 JobCall placeholderCall = new JobCall(displayNum, placeholderCompany, "Screening", "", "", 0, System.currentTimeMillis());
                 long newId = db.insertJobCall(placeholderCall);
                 if (newId != -1) {
@@ -320,6 +367,23 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
         }
         View dialogView = getLayoutInflater().inflate(R.layout.dialog_incall_note, null);
         final EditText etNotes = dialogView.findViewById(R.id.et_notes);
+        activeDialogNotesField = etNotes;
+
+        TextInputLayout tilNotes = dialogView.findViewById(R.id.til_notes);
+        if (tilNotes != null) {
+            tilNotes.setEndIconOnClickListener(v -> {
+                Intent intent = new Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+                intent.putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+                intent.putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE, java.util.Locale.getDefault());
+                intent.putExtra(android.speech.RecognizerIntent.EXTRA_PROMPT, "Speak note...");
+                try {
+                    startActivityForResult(intent, REQ_CODE_SPEECH_INPUT);
+                } catch (Exception e) {
+                    Toast.makeText(this, "Speech recognition is not supported on this device.", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+
         final Spinner spinnerRound = dialogView.findViewById(R.id.spinner_round);
 
         ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(
@@ -349,6 +413,24 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
                 })
                 .setNegativeButton("Cancel", null)
                 .show();
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQ_CODE_SPEECH_INPUT && resultCode == RESULT_OK && data != null) {
+            ArrayList<String> result = data.getStringArrayListExtra(android.speech.RecognizerIntent.EXTRA_RESULTS);
+            if (result != null && !result.isEmpty() && activeDialogNotesField != null) {
+                String spokenText = result.get(0);
+                String currentText = activeDialogNotesField.getText().toString();
+                if (currentText.trim().isEmpty()) {
+                    activeDialogNotesField.setText(spokenText);
+                } else {
+                    activeDialogNotesField.setText(currentText + " " + spokenText);
+                }
+                activeDialogNotesField.setSelection(activeDialogNotesField.getText().length());
+            }
+        }
     }
 
     private void applyAvatar(String name, boolean named) {
@@ -502,24 +584,15 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
                 }
                 Toast.makeText(this, "Saved", Toast.LENGTH_SHORT).show();
             } else {
-                // Unknown caller: create a tracker entry + save to contacts + note.
+                // Unknown caller: create a tracker entry (no contacts save).
                 String company = etCompany.getText().toString().trim();
-                if (company.isEmpty()) {
-                    if (note.isEmpty()) {
-                        finish();
-                        return;
-                    }
-                    Toast.makeText(this, "Enter a name to save this caller", Toast.LENGTH_SHORT).show();
-                    return;
-                }
                 JobCall newCall = new JobCall(callNumber, company, stage, "", "", 0,
                         System.currentTimeMillis());
                 long id = db.insertJobCall(newCall);
                 if (id != -1 && !note.isEmpty()) {
                     db.insertNote(id, note, System.currentTimeMillis());
                 }
-                saveContactDirectly(company, callNumber);
-                Toast.makeText(this, "Saved to tracker & contacts", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Saved to tracker", Toast.LENGTH_SHORT).show();
             }
         } catch (Exception e) {
             Toast.makeText(this, "Couldn't save", Toast.LENGTH_SHORT).show();

@@ -432,12 +432,8 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             btnDelete.setVisibility(View.VISIBLE);
             btnReminder.setVisibility(View.VISIBLE);
 
-            // Show/hide 'Save to Contacts' button based on existence
-            if (isContactExists(editCall.getPhoneNumber())) {
-                btnSaveContacts.setVisibility(View.GONE);
-            } else {
-                btnSaveContacts.setVisibility(View.VISIBLE);
-            }
+            // Show/hide 'Save to Contacts' button based on existence (disabled, always hide)
+            btnSaveContacts.setVisibility(View.GONE);
 
             // Set spinner selection
             if (editCall.getRoundStatus() != null) {
@@ -533,13 +529,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                     dbHelper.insertNote(editCall.getId(), noteToAdd, System.currentTimeMillis());
                 }
 
-                // If a name/company is now entered, save to contacts if not already there
-                if (!company.isEmpty() && !isContactExists(phone)) {
-                    saveContactDirectly(company, phone);
-                    Toast.makeText(requireContext(), "Log updated and contact saved!", Toast.LENGTH_SHORT).show();
-                } else {
-                    Toast.makeText(requireContext(), "Log updated!", Toast.LENGTH_SHORT).show();
-                }
+                Toast.makeText(requireContext(), "Log updated!", Toast.LENGTH_SHORT).show();
             } else {
                 // Insert mode
                 JobCall newCall = new JobCall(phone, company, round, tags, "", 0, System.currentTimeMillis());
@@ -547,18 +537,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                 if (newId != -1 && !noteToAdd.isEmpty()) {
                     dbHelper.insertNote(newId, noteToAdd, System.currentTimeMillis());
                 }
-
-                if (!company.isEmpty()) {
-                    // Write to phone contacts address book
-                    boolean contactSaved = saveContactDirectly(company, phone);
-                    if (contactSaved) {
-                        Toast.makeText(requireContext(), "Logged and saved to phone contacts!", Toast.LENGTH_SHORT).show();
-                    } else {
-                        Toast.makeText(requireContext(), "Logged, but failed to save to contacts. Check permissions.", Toast.LENGTH_LONG).show();
-                    }
-                } else {
-                    Toast.makeText(requireContext(), "Call logged to tracker!", Toast.LENGTH_SHORT).show();
-                }
+                Toast.makeText(requireContext(), "Call logged to tracker!", Toast.LENGTH_SHORT).show();
             }
 
             refreshDashboardList();

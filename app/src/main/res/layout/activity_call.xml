@@ -104,9 +104,9 @@
             android:text="Latest note"
             android:textColor="@color/text_secondary"
             android:textSize="13sp"
-            android:gravity="center"
-            android:maxLines="3"
-            android:ellipsize="end"
+            android:gravity="start|left"
+            android:maxLines="12"
+            android:scrollbars="vertical"
             android:lineSpacingMultiplier="1.15"
             android:background="@color/card_bg_dark"
             android:visibility="gone" />

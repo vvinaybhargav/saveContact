@@ -13,6 +13,7 @@ public class CallActionReceiver extends BroadcastReceiver {
 
     public static final String ACTION_ANSWER = "com.example.callsaver.action.ANSWER";
     public static final String ACTION_DECLINE = "com.example.callsaver.action.DECLINE";
+    public static final String ACTION_HANGUP = "com.example.callsaver.action.HANGUP";
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -24,6 +25,8 @@ public class CallActionReceiver extends BroadcastReceiver {
             OngoingCall.answer();
         } else if (ACTION_DECLINE.equals(action)) {
             OngoingCall.reject();
+        } else if (ACTION_HANGUP.equals(action)) {
+            OngoingCall.hangup();
         }
         NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         if (nm != null) {

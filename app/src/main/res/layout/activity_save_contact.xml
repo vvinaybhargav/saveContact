@@ -179,13 +179,15 @@
                 android:textStyle="bold"
                 android:layout_marginBottom="4dp"
                 android:layout_marginStart="4dp"
-                android:gravity="start" />
+                android:gravity="start"
+                android:visibility="gone" />
 
             <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="48dp"
                 android:layout_marginBottom="20dp"
-                android:background="@drawable/spinner_border">
+                android:background="@drawable/spinner_border"
+                android:visibility="gone">
 
                 <Spinner
                     android:id="@+id/spinner_account"

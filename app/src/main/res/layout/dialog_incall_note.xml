@@ -18,7 +18,10 @@
         app:boxStrokeColor="@color/accent_indigo"
         app:hintTextColor="@color/accent_indigo"
         app:startIconDrawable="@android:drawable/ic_menu_edit"
-        app:startIconTint="@color/text_muted">
+        app:startIconTint="@color/text_muted"
+        app:endIconMode="custom"
+        app:endIconDrawable="@drawable/ic_mic"
+        app:endIconTint="@color/accent_indigo">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/et_notes"
