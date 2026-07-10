@@ -15,6 +15,7 @@ import android.provider.ContactsContract;
 import android.telecom.TelecomManager;
 import android.telephony.TelephonyManager;
 import android.util.Log;
+import android.widget.Toast;
 
 import androidx.core.app.NotificationCompat;
 
@@ -45,11 +46,13 @@ public class CallReceiver extends BroadcastReceiver {
                         .putString(KEY_LAST_STATE, "OUTGOING")
                         .apply();
                 Log.d(TAG, "Outgoing call detected to: " + outgoingNumber);
+                Toast.makeText(context, "CallSaver Diagnostic: Outgoing to " + outgoingNumber, Toast.LENGTH_LONG).show();
 
                 // Show overlay banner if number is tracked
                 DatabaseHelper db = new DatabaseHelper(context);
                 JobCall call = db.getJobCallByNumber(context, outgoingNumber);
                 if (call != null) {
+                    Toast.makeText(context, "Match found for " + call.getCompanyName() + "! Showing overlay...", Toast.LENGTH_SHORT).show();
                     Intent overlayIntent = new Intent(context, CallerIdService.class);
                     overlayIntent.putExtra("phone_number", outgoingNumber);
                     overlayIntent.putExtra("company_name", call.getCompanyName());
@@ -62,6 +65,8 @@ public class CallReceiver extends BroadcastReceiver {
                     } else {
                         context.startService(overlayIntent);
                     }
+                } else {
+                    Toast.makeText(context, "No match in tracker for outgoing number", Toast.LENGTH_SHORT).show();
                 }
             }
             return;
@@ -86,11 +91,13 @@ public class CallReceiver extends BroadcastReceiver {
             if (incomingNumber != null && !incomingNumber.isEmpty()) {
                 editor.putString(KEY_INCOMING_NUMBER, incomingNumber);
                 Log.d(TAG, "Incoming call detected from number: " + incomingNumber);
+                Toast.makeText(context, "CallSaver Diagnostic: Incoming from " + incomingNumber, Toast.LENGTH_LONG).show();
 
                 // Show overlay banner if number is tracked
                 DatabaseHelper db = new DatabaseHelper(context);
                 JobCall call = db.getJobCallByNumber(context, incomingNumber);
                 if (call != null) {
+                    Toast.makeText(context, "Match found for " + call.getCompanyName() + "! Showing overlay...", Toast.LENGTH_SHORT).show();
                     Intent overlayIntent = new Intent(context, CallerIdService.class);
                     overlayIntent.putExtra("phone_number", incomingNumber);
                     overlayIntent.putExtra("company_name", call.getCompanyName());
@@ -103,6 +110,8 @@ public class CallReceiver extends BroadcastReceiver {
                     } else {
                         context.startService(overlayIntent);
                     }
+                } else {
+                    Toast.makeText(context, "No match in tracker for incoming number", Toast.LENGTH_SHORT).show();
                 }
             }
             editor.apply();
