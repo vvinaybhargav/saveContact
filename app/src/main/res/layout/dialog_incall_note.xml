@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="20dp">
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/til_notes"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        app:boxCornerRadiusTopStart="12dp"
+        app:boxCornerRadiusTopEnd="12dp"
+        app:boxCornerRadiusBottomStart="12dp"
+        app:boxCornerRadiusBottomEnd="12dp"
+        app:boxStrokeColor="@color/accent_indigo"
+        app:hintTextColor="@color/accent_indigo"
+        app:startIconDrawable="@android:drawable/ic_menu_edit"
+        app:startIconTint="@color/text_muted"
+        app:endIconMode="custom"
+        app:endIconDrawable="@drawable/ic_mic"
+        app:endIconTint="@color/accent_indigo">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/et_notes"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Notes…"
+            android:inputType="textMultiLine|textCapSentences"
+            android:minLines="2"
+            android:textColor="@color/text_primary" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <com.google.android.material.chip.Chip
+        android:id="@+id/chip_ai_polish"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="✨ Polish with AI"
+        style="@style/Widget.MaterialComponents.Chip.Action"
+        android:textColor="@color/accent_indigo"
+        android:layout_gravity="end"
+        android:visibility="gone" />
+</LinearLayout>

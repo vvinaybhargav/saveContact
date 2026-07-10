@@ -63,6 +63,11 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
     private boolean showingPostCall = false;
     private boolean isKnownContact = false;
     private String callNumber = "";
+    private static final int REQ_RECORD_AUDIO = 2001;
+    private VoiceNoteHelper voiceNoteHelper;
+    private EditText activeInCallNotesField;
+    private com.google.android.material.chip.Chip activeInCallAiChip;
+    private com.google.android.material.textfield.TextInputLayout activeInCallTilNotes;
     private JobCall trackedCall;
 
     @Override
@@ -302,17 +307,57 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
         if (trackedCall == null || trackedCall.getId() <= 0) {
             return;
         }
-        final EditText input = new EditText(this);
-        input.setHint("Note…");
-        input.setMinLines(2);
-        input.setInputType(InputType.TYPE_CLASS_TEXT
-                | InputType.TYPE_TEXT_FLAG_MULTI_LINE
-                | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
-        new AlertDialog.Builder(this)
+        View dialogView = getLayoutInflater().inflate(R.layout.dialog_incall_note, null);
+        final EditText etNotes = dialogView.findViewById(R.id.et_notes);
+        com.google.android.material.textfield.TextInputLayout tilNotes = dialogView.findViewById(R.id.til_notes);
+        com.google.android.material.chip.Chip chipAiPolish = dialogView.findViewById(R.id.chip_ai_polish);
+
+        initVoiceHelper();
+        activeInCallNotesField = etNotes;
+        activeInCallAiChip = chipAiPolish;
+        activeInCallTilNotes = tilNotes;
+
+        etNotes.addTextChangedListener(new android.text.TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            @Override
+            public void afterTextChanged(android.text.Editable s) {
+                if (s.toString().trim().isEmpty()) {
+                    chipAiPolish.setVisibility(View.GONE);
+                } else {
+                    if (voiceNoteHelper == null || !voiceNoteHelper.isListening()) {
+                        chipAiPolish.setVisibility(View.VISIBLE);
+                    }
+                }
+            }
+        });
+
+        tilNotes.setEndIconOnClickListener(v -> {
+            if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO)
+                    == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                toggleVoiceNote();
+            } else {
+                androidx.core.app.ActivityCompat.requestPermissions(this,
+                        new String[]{android.Manifest.permission.RECORD_AUDIO}, REQ_RECORD_AUDIO);
+            }
+        });
+
+        chipAiPolish.setOnClickListener(v -> {
+            String apiKey = OpenAiHelper.getApiKey(this);
+            if (apiKey == null || apiKey.isEmpty()) {
+                OpenAiHelper.showApiKeyDialog(this, this::runAiPolish);
+            } else {
+                runAiPolish();
+            }
+        });
+
+        AlertDialog alertDialog = new AlertDialog.Builder(this)
                 .setTitle("Add note")
-                .setView(input)
+                .setView(dialogView)
                 .setPositiveButton("Save", (d, w) -> {
-                    String t = input.getText().toString().trim();
+                    String t = etNotes.getText().toString().trim();
                     if (!t.isEmpty()) {
                         new DatabaseHelper(this).insertNote(
                                 trackedCall.getId(), t, System.currentTimeMillis());
@@ -321,7 +366,18 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
                     }
                 })
                 .setNegativeButton("Cancel", null)
-                .show();
+                .create();
+
+        alertDialog.setOnDismissListener(dialog -> {
+            if (voiceNoteHelper != null) {
+                voiceNoteHelper.stopListening();
+            }
+            activeInCallNotesField = null;
+            activeInCallAiChip = null;
+            activeInCallTilNotes = null;
+        });
+
+        alertDialog.show();
     }
 
     private void applyAvatar(String name, boolean named) {
@@ -569,5 +625,113 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
             finish();
         }
         // Otherwise ignore Back during a ringing/active call; use Decline/End.
+    }
+
+    private void initVoiceHelper() {
+        if (voiceNoteHelper == null) {
+            voiceNoteHelper = new VoiceNoteHelper(this, new VoiceNoteHelper.VoiceCallback() {
+                @Override
+                public void onTextReceived(String text) {
+                    if (activeInCallNotesField != null) {
+                        String current = activeInCallNotesField.getText().toString();
+                        if (current.trim().isEmpty()) {
+                            activeInCallNotesField.setText(text);
+                        } else {
+                            activeInCallNotesField.setText(current + " " + text);
+                        }
+                        activeInCallNotesField.setSelection(activeInCallNotesField.getText().length());
+                    }
+                }
+
+                @Override
+                public void onRecordingStateChanged(boolean isRecording) {
+                    if (activeInCallTilNotes != null) {
+                        if (isRecording) {
+                            activeInCallTilNotes.setEndIconTintList(android.content.res.ColorStateList.valueOf(
+                                    androidx.core.content.ContextCompat.getColor(CallActivity.this, R.color.status_error))); // red
+                            if (activeInCallAiChip != null) {
+                                activeInCallAiChip.setVisibility(View.GONE);
+                            }
+                        } else {
+                            activeInCallTilNotes.setEndIconTintList(android.content.res.ColorStateList.valueOf(
+                                    androidx.core.content.ContextCompat.getColor(CallActivity.this, R.color.accent_indigo))); // indigo
+                            if (activeInCallAiChip != null && activeInCallNotesField != null
+                                    && !activeInCallNotesField.getText().toString().trim().isEmpty()) {
+                                activeInCallAiChip.setVisibility(View.VISIBLE);
+                            }
+                        }
+                    }
+                }
+
+                @Override
+                public void onError(String errorMessage) {
+                    Toast.makeText(CallActivity.this, errorMessage, Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+    }
+
+    private void toggleVoiceNote() {
+        if (voiceNoteHelper != null) {
+            if (voiceNoteHelper.isListening()) {
+                voiceNoteHelper.stopListening();
+            } else {
+                voiceNoteHelper.startListening();
+            }
+        }
+    }
+
+    private void runAiPolish() {
+        if (activeInCallNotesField == null || activeInCallAiChip == null) return;
+        String currentText = activeInCallNotesField.getText().toString().trim();
+        if (currentText.isEmpty()) return;
+
+        activeInCallAiChip.setEnabled(false);
+        activeInCallAiChip.setText("✨ Polishing...");
+
+        OpenAiHelper.polishNotes(this, currentText, new OpenAiHelper.PolishCallback() {
+            @Override
+            public void onSuccess(String polishedText) {
+                if (activeInCallNotesField != null) {
+                    activeInCallNotesField.setText(polishedText);
+                    activeInCallNotesField.setSelection(polishedText.length());
+                }
+                if (activeInCallAiChip != null) {
+                    activeInCallAiChip.setEnabled(true);
+                    activeInCallAiChip.setText("✨ Polish with AI");
+                }
+                Toast.makeText(CallActivity.this, "Notes polished with AI!", Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onError(String errorMessage) {
+                if (activeInCallAiChip != null) {
+                    activeInCallAiChip.setEnabled(true);
+                    activeInCallAiChip.setText("✨ Polish with AI");
+                }
+                Toast.makeText(CallActivity.this, "Error: " + errorMessage, Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @androidx.annotation.NonNull String[] permissions, @androidx.annotation.NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQ_RECORD_AUDIO) {
+            if (grantResults.length > 0 && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                toggleVoiceNote();
+            } else {
+                Toast.makeText(this, "Permission denied to record audio", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (voiceNoteHelper != null) {
+            voiceNoteHelper.destroy();
+            voiceNoteHelper = null;
+        }
+        super.onDestroy();
     }
 }

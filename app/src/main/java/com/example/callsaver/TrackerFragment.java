@@ -40,6 +40,9 @@ import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.switchmaterial.SwitchMaterial;
 
+import com.google.android.material.textfield.TextInputLayout;
+import com.google.android.material.chip.Chip;
+
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -64,6 +67,11 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
     private TextView tvStatOffers;
 
     private DatabaseHelper dbHelper;
+    private static final int REQ_RECORD_AUDIO = 2001;
+    private VoiceNoteHelper voiceNoteHelper;
+    private EditText activeDialogNotesField;
+    private Chip activeDialogAiChip;
+    private TextInputLayout activeDialogTilNotes;
     private JobCallAdapter adapter;
     private List<JobCall> callList; // Current filtered list bound to adapter
     private List<JobCall> allCallsList; // Master copy of all database calls
@@ -385,6 +393,49 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         Button btnSaveContacts = dialogView.findViewById(R.id.btn_dialog_save_contacts);
         Button btnReminder = dialogView.findViewById(R.id.btn_dialog_reminder);
 
+        TextInputLayout tilNotes = dialogView.findViewById(R.id.til_notes);
+        Chip chipAiPolish = dialogView.findViewById(R.id.chip_ai_polish);
+
+        initVoiceHelper();
+        activeDialogNotesField = etNotes;
+        activeDialogAiChip = chipAiPolish;
+        activeDialogTilNotes = tilNotes;
+
+        etNotes.addTextChangedListener(new android.text.TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            @Override
+            public void afterTextChanged(android.text.Editable s) {
+                if (s.toString().trim().isEmpty()) {
+                    chipAiPolish.setVisibility(View.GONE);
+                } else {
+                    if (voiceNoteHelper == null || !voiceNoteHelper.isListening()) {
+                        chipAiPolish.setVisibility(View.VISIBLE);
+                    }
+                }
+            }
+        });
+
+        tilNotes.setEndIconOnClickListener(v -> {
+            if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.RECORD_AUDIO)
+                    == PackageManager.PERMISSION_GRANTED) {
+                toggleVoiceNote();
+            } else {
+                requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQ_RECORD_AUDIO);
+            }
+        });
+
+        chipAiPolish.setOnClickListener(v -> {
+            String apiKey = OpenAiHelper.getApiKey(requireContext());
+            if (apiKey == null || apiKey.isEmpty()) {
+                OpenAiHelper.showApiKeyDialog(requireContext(), this::runAiPolish);
+            } else {
+                runAiPolish();
+            }
+        });
+
         // Bind Spinner choices
         ArrayAdapter<CharSequence> spinnerAdapter = ArrayAdapter.createFromResource(requireContext(),
                 R.array.round_statuses, android.R.layout.simple_spinner_item);
@@ -392,6 +443,14 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         spinnerRound.setAdapter(spinnerAdapter);
 
         final AlertDialog alertDialog = builder.create();
+        alertDialog.setOnDismissListener(dialog -> {
+            if (voiceNoteHelper != null) {
+                voiceNoteHelper.stopListening();
+            }
+            activeDialogNotesField = null;
+            activeDialogAiChip = null;
+            activeDialogTilNotes = null;
+        });
 
         // Configure Dialog Mode (Edit vs. Add)
         if (editCall != null && editCall.getId() > 0) {
@@ -716,5 +775,121 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
 
         ItemTouchHelper itemTouchHelper = new ItemTouchHelper(simpleCallback);
         itemTouchHelper.attachToRecyclerView(rvJobCalls);
+    }
+
+    private void initVoiceHelper() {
+        if (voiceNoteHelper == null && getContext() != null) {
+            voiceNoteHelper = new VoiceNoteHelper(requireContext(), new VoiceNoteHelper.VoiceCallback() {
+                @Override
+                public void onTextReceived(String text) {
+                    if (activeDialogNotesField != null) {
+                        String current = activeDialogNotesField.getText().toString();
+                        if (current.trim().isEmpty()) {
+                            activeDialogNotesField.setText(text);
+                        } else {
+                            activeDialogNotesField.setText(current + " " + text);
+                        }
+                        activeDialogNotesField.setSelection(activeDialogNotesField.getText().length());
+                    }
+                }
+
+                @Override
+                public void onRecordingStateChanged(boolean isRecording) {
+                    if (activeDialogTilNotes != null) {
+                        if (isRecording) {
+                            activeDialogTilNotes.setEndIconTintList(android.content.res.ColorStateList.valueOf(
+                                    ContextCompat.getColor(requireContext(), R.color.status_error))); // red
+                            if (activeDialogAiChip != null) {
+                                activeDialogAiChip.setVisibility(View.GONE);
+                            }
+                        } else {
+                            activeDialogTilNotes.setEndIconTintList(android.content.res.ColorStateList.valueOf(
+                                    ContextCompat.getColor(requireContext(), R.color.accent_indigo))); // active indigo
+                            if (activeDialogAiChip != null && activeDialogNotesField != null
+                                    && !activeDialogNotesField.getText().toString().trim().isEmpty()) {
+                                activeDialogAiChip.setVisibility(View.VISIBLE);
+                            }
+                        }
+                    }
+                }
+
+                @Override
+                public void onError(String errorMessage) {
+                    if (getContext() != null) {
+                        Toast.makeText(requireContext(), errorMessage, Toast.LENGTH_SHORT).show();
+                    }
+                }
+            });
+        }
+    }
+
+    private void toggleVoiceNote() {
+        if (voiceNoteHelper != null) {
+            if (voiceNoteHelper.isListening()) {
+                voiceNoteHelper.stopListening();
+            } else {
+                voiceNoteHelper.startListening();
+            }
+        }
+    }
+
+    private void runAiPolish() {
+        if (activeDialogNotesField == null || activeDialogAiChip == null) return;
+        String currentText = activeDialogNotesField.getText().toString().trim();
+        if (currentText.isEmpty()) return;
+
+        activeDialogAiChip.setEnabled(false);
+        activeDialogAiChip.setText("✨ Polishing...");
+
+        OpenAiHelper.polishNotes(requireContext(), currentText, new OpenAiHelper.PolishCallback() {
+            @Override
+            public void onSuccess(String polishedText) {
+                if (activeDialogNotesField != null) {
+                    activeDialogNotesField.setText(polishedText);
+                    activeDialogNotesField.setSelection(polishedText.length());
+                }
+                if (activeDialogAiChip != null) {
+                    activeDialogAiChip.setEnabled(true);
+                    activeDialogAiChip.setText("✨ Polish with AI");
+                }
+                if (getContext() != null) {
+                    Toast.makeText(requireContext(), "Notes polished with AI!", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onError(String errorMessage) {
+                if (activeDialogAiChip != null) {
+                    activeDialogAiChip.setEnabled(true);
+                    activeDialogAiChip.setText("✨ Polish with AI");
+                }
+                if (getContext() != null) {
+                    Toast.makeText(requireContext(), "Error: " + errorMessage, Toast.LENGTH_LONG).show();
+                }
+            }
+        });
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQ_RECORD_AUDIO) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                toggleVoiceNote();
+            } else {
+                if (getContext() != null) {
+                    Toast.makeText(requireContext(), "Permission denied to record audio", Toast.LENGTH_SHORT).show();
+                }
+            }
+        }
+    }
+
+    @Override
+    public void onDestroyView() {
+        if (voiceNoteHelper != null) {
+            voiceNoteHelper.destroy();
+            voiceNoteHelper = null;
+        }
+        super.onDestroyView();
     }
 }

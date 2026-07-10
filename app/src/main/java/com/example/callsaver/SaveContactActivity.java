@@ -23,6 +23,13 @@ import android.widget.AdapterView;
 import java.util.List;
 import java.util.ArrayList;
 
+import android.Manifest;
+import android.content.pm.PackageManager;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import com.google.android.material.textfield.TextInputLayout;
+import com.google.android.material.chip.Chip;
+
 public class SaveContactActivity extends AppCompatActivity {
 
     private String phoneNumber;
@@ -35,6 +42,9 @@ public class SaveContactActivity extends AppCompatActivity {
     private Spinner spinnerRound;
     private Spinner spinnerAccount;
     private DatabaseHelper dbHelper;
+    private static final int REQ_RECORD_AUDIO = 2001;
+    private VoiceNoteHelper voiceNoteHelper;
+    private Chip chipAiPolish;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -63,6 +73,80 @@ public class SaveContactActivity extends AppCompatActivity {
         spinnerRound = findViewById(R.id.spinner_round);
         spinnerAccount = findViewById(R.id.spinner_account);
         
+        TextInputLayout tilNotes = findViewById(R.id.til_notes);
+        chipAiPolish = findViewById(R.id.chip_ai_polish);
+
+        // Setup AI Polish chip visibility listener
+        etNotes.addTextChangedListener(new android.text.TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            @Override
+            public void afterTextChanged(android.text.Editable s) {
+                if (s.toString().trim().isEmpty()) {
+                    chipAiPolish.setVisibility(View.GONE);
+                } else {
+                    if (voiceNoteHelper == null || !voiceNoteHelper.isListening()) {
+                        chipAiPolish.setVisibility(View.VISIBLE);
+                    }
+                }
+            }
+        });
+
+        // Initialize voice recorder helper
+        voiceNoteHelper = new VoiceNoteHelper(this, new VoiceNoteHelper.VoiceCallback() {
+            @Override
+            public void onTextReceived(String text) {
+                String current = etNotes.getText().toString();
+                if (current.trim().isEmpty()) {
+                    etNotes.setText(text);
+                } else {
+                    etNotes.setText(current + " " + text);
+                }
+                etNotes.setSelection(etNotes.getText().length());
+            }
+
+            @Override
+            public void onRecordingStateChanged(boolean isRecording) {
+                if (isRecording) {
+                    tilNotes.setEndIconTintList(android.content.res.ColorStateList.valueOf(
+                            ContextCompat.getColor(SaveContactActivity.this, R.color.status_error))); // red
+                    chipAiPolish.setVisibility(View.GONE);
+                } else {
+                    tilNotes.setEndIconTintList(android.content.res.ColorStateList.valueOf(
+                            ContextCompat.getColor(SaveContactActivity.this, R.color.accent_indigo))); // active indigo
+                    if (!etNotes.getText().toString().trim().isEmpty()) {
+                        chipAiPolish.setVisibility(View.VISIBLE);
+                    }
+                }
+            }
+
+            @Override
+            public void onError(String errorMessage) {
+                Toast.makeText(SaveContactActivity.this, errorMessage, Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        tilNotes.setEndIconOnClickListener(v -> {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
+                    == PackageManager.PERMISSION_GRANTED) {
+                toggleVoiceNote();
+            } else {
+                ActivityCompat.requestPermissions(this,
+                        new String[]{Manifest.permission.RECORD_AUDIO}, REQ_RECORD_AUDIO);
+            }
+        });
+
+        chipAiPolish.setOnClickListener(v -> {
+            String apiKey = OpenAiHelper.getApiKey(this);
+            if (apiKey == null || apiKey.isEmpty()) {
+                OpenAiHelper.showApiKeyDialog(this, this::runAiPolish);
+            } else {
+                runAiPolish();
+            }
+        });
+
         Button btnDismiss = findViewById(R.id.btn_dismiss);
         Button btnSaveBoth = findViewById(R.id.btn_save_both);
         View rootLayout = findViewById(R.id.root_layout);
@@ -242,5 +326,61 @@ public class SaveContactActivity extends AppCompatActivity {
             e.printStackTrace();
             return false;
         }
+    }
+
+    private void toggleVoiceNote() {
+        if (voiceNoteHelper != null) {
+            if (voiceNoteHelper.isListening()) {
+                voiceNoteHelper.stopListening();
+            } else {
+                voiceNoteHelper.startListening();
+            }
+        }
+    }
+
+    private void runAiPolish() {
+        String currentText = etNotes.getText().toString().trim();
+        if (currentText.isEmpty()) return;
+
+        chipAiPolish.setEnabled(false);
+        chipAiPolish.setText("✨ Polishing...");
+
+        OpenAiHelper.polishNotes(this, currentText, new OpenAiHelper.PolishCallback() {
+            @Override
+            public void onSuccess(String polishedText) {
+                etNotes.setText(polishedText);
+                etNotes.setSelection(polishedText.length());
+                chipAiPolish.setEnabled(true);
+                chipAiPolish.setText("✨ Polish with AI");
+                Toast.makeText(SaveContactActivity.this, "Notes polished with AI!", Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onError(String errorMessage) {
+                chipAiPolish.setEnabled(true);
+                chipAiPolish.setText("✨ Polish with AI");
+                Toast.makeText(SaveContactActivity.this, "Error: " + errorMessage, Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQ_RECORD_AUDIO) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                toggleVoiceNote();
+            } else {
+                Toast.makeText(this, "Permission denied to record audio", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (voiceNoteHelper != null) {
+            voiceNoteHelper.destroy();
+        }
+        super.onDestroy();
     }
 }
