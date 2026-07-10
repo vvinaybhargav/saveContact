@@ -134,18 +134,15 @@ public class CallReceiver extends BroadcastReceiver {
                     .apply();
             Log.d(TAG, "Call active (OFFHOOK). Answered incoming: " + answeredIncoming);
         } else if (stateStr.equals(TelephonyManager.EXTRA_STATE_IDLE)) {
-            // Stop Caller ID banner
-            context.stopService(new Intent(context, CallerIdService.class));
-
             String incomingNumber = prefs.getString(KEY_INCOMING_NUMBER, null);
             boolean answered = prefs.getBoolean(KEY_ANSWERED, false);
             Log.d(TAG, "Call ended (IDLE). Number: " + incomingNumber + ", answered: " + answered);
 
-            // Log call history duration for tracked numbers
+            int duration = 0;
             if (incomingNumber != null && !incomingNumber.trim().isEmpty()) {
                 DatabaseHelper db = new DatabaseHelper(context);
                 JobCall call = db.getJobCallByNumber(context, incomingNumber);
-                int duration = getLastCallDuration(context, incomingNumber);
+                duration = getLastCallDuration(context, incomingNumber);
                 
                 if (call != null) {
                     // Log call history to database
@@ -157,12 +154,22 @@ public class CallReceiver extends BroadcastReceiver {
                     }
                     db.insertCallHistory(call.getId(), typeLabel, duration, System.currentTimeMillis());
                 }
+            }
 
-                // If answered (or outgoing), post notification to log/transcribe
-                if (answered || "OUTGOING".equals(lastSavedState)) {
-                    Log.d(TAG, "Posting save/transcribe notification. Duration: " + duration + "s");
-                    showSaveNotification(context, incomingNumber, duration);
+            // Dismiss overlay and trigger auto-transcription if answered or outgoing
+            if (incomingNumber != null && (answered || "OUTGOING".equals(lastSavedState))) {
+                Intent transcribeIntent = new Intent(context, CallerIdService.class);
+                transcribeIntent.setAction("ACTION_DISMISS_AND_TRANSCRIBE");
+                transcribeIntent.putExtra("phone_number", incomingNumber);
+                transcribeIntent.putExtra("call_duration", duration);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(transcribeIntent);
+                } else {
+                    context.startService(transcribeIntent);
                 }
+            } else {
+                // Otherwise, just stop the service
+                context.stopService(new Intent(context, CallerIdService.class));
             }
 
             // Clean up state

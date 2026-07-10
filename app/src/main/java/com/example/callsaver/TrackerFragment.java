@@ -171,6 +171,36 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             });
         }
 
+        // Deepgram API Key Settings Logic
+        TextView tvToggleDashboardKey = view.findViewById(R.id.tv_toggle_dashboard_key);
+        View llDashboardKeyContainer = view.findViewById(R.id.ll_dashboard_key_container);
+        EditText etDashboardDeepgramKey = view.findViewById(R.id.et_dashboard_deepgram_key);
+        View btnSaveDashboardKey = view.findViewById(R.id.btn_save_dashboard_key);
+
+        if (tvToggleDashboardKey != null && llDashboardKeyContainer != null && etDashboardDeepgramKey != null && btnSaveDashboardKey != null) {
+            android.content.SharedPreferences prefs = requireContext().getSharedPreferences("CallSaverPrefs", android.content.Context.MODE_PRIVATE);
+            String savedKey = prefs.getString("deepgram_api_key", "");
+            etDashboardDeepgramKey.setText(savedKey);
+
+            tvToggleDashboardKey.setOnClickListener(v -> {
+                if (llDashboardKeyContainer.getVisibility() == View.VISIBLE) {
+                    llDashboardKeyContainer.setVisibility(View.GONE);
+                    tvToggleDashboardKey.setText("▼ Settings: Deepgram API Key");
+                } else {
+                    llDashboardKeyContainer.setVisibility(View.VISIBLE);
+                    tvToggleDashboardKey.setText("▲ Settings: Deepgram API Key");
+                }
+            });
+
+            btnSaveDashboardKey.setOnClickListener(v -> {
+                String key = etDashboardDeepgramKey.getText().toString().trim();
+                prefs.edit().putString("deepgram_api_key", key).apply();
+                Toast.makeText(requireContext(), "Deepgram API Key saved successfully!", Toast.LENGTH_SHORT).show();
+                llDashboardKeyContainer.setVisibility(View.GONE);
+                tvToggleDashboardKey.setText("▼ Settings: Deepgram API Key");
+            });
+        }
+
         // Setup filter chips
         setupFilterChips(view);
 

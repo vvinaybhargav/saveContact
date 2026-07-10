@@ -241,6 +241,14 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return count;
     }
 
+    public void updateRoundStatus(long jobId, String newStatus) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues v = new ContentValues();
+        v.put(COLUMN_ROUND_STATUS, newStatus);
+        db.update(TABLE_NAME, v, COLUMN_ID + "=?", new String[]{String.valueOf(jobId)});
+        db.close();
+    }
+
     /**
      * Deletes a job call log entry.
      */

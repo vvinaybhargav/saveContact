@@ -231,6 +231,73 @@
             android:focusable="true"
             android:background="?android:attr/selectableItemBackground" />
 
+        <!-- API Key Settings Card -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="4dp">
+            
+            <TextView
+                android:id="@+id/tv_toggle_dashboard_key"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="▼ Settings: Deepgram API Key"
+                android:textColor="@color/accent_indigo"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:clickable="true"
+                android:focusable="true"
+                android:layout_gravity="end"
+                android:paddingVertical="4dp"
+                android:background="?android:attr/selectableItemBackground" />
+                
+            <LinearLayout
+                android:id="@+id/ll_dashboard_key_container"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:visibility="gone"
+                android:gravity="center_vertical"
+                android:layout_marginTop="4dp">
+                
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:hint="Deepgram API Key"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    app:boxCornerRadiusTopStart="8dp"
+                    app:boxCornerRadiusTopEnd="8dp"
+                    app:boxCornerRadiusBottomStart="8dp"
+                    app:boxCornerRadiusBottomEnd="8dp"
+                    app:boxStrokeColor="@color/accent_indigo"
+                    app:hintTextColor="@color/accent_indigo">
+                    
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/et_dashboard_deepgram_key"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="textPassword"
+                        android:maxLines="1"
+                        android:singleLine="true"/>
+                </com.google.android.material.textfield.TextInputLayout>
+                
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_save_dashboard_key"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Save"
+                    android:textAllCaps="false"
+                    android:textColor="@color/white"
+                    android:layout_marginStart="8dp"
+                    app:cornerRadius="8dp"
+                    android:backgroundTint="@color/accent_indigo"/>
+            </LinearLayout>
+        </LinearLayout>
+
         <!-- Search Bar and Status Chips Container -->
         <LinearLayout
             android:layout_width="match_parent"

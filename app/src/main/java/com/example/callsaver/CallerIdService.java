@@ -13,8 +13,12 @@ import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
+import android.widget.ArrayAdapter;
+import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.Spinner;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
@@ -28,6 +32,12 @@ public class CallerIdService extends Service {
 
     private WindowManager windowManager;
     private View overlayView;
+    private String phoneNumber;
+    private String company;
+    private String roundStatus;
+    private String tags;
+    private long jobCallId;
+    private String recruiter;
 
     @Nullable
     @Override
@@ -45,15 +55,22 @@ public class CallerIdService extends Service {
             return START_NOT_STICKY;
         }
 
-        String phoneNumber = intent.getStringExtra("phone_number");
-        String company = intent.getStringExtra("company_name");
-        String roundStatus = intent.getStringExtra("round_status");
-        String tags = intent.getStringExtra("tags");
-        long jobCallId = intent.getLongExtra("job_call_id", -1);
-        String recruiter = intent.getStringExtra("recruiter_name");
+        phoneNumber = intent.getStringExtra("phone_number");
+        company = intent.getStringExtra("company_name");
+        roundStatus = intent.getStringExtra("round_status");
+        tags = intent.getStringExtra("tags");
+        jobCallId = intent.getLongExtra("job_call_id", -1);
+        recruiter = intent.getStringExtra("recruiter_name");
 
-        if (company == null || company.isEmpty()) {
+        if (phoneNumber == null || phoneNumber.isEmpty()) {
             stopSelf();
+            return START_NOT_STICKY;
+        }
+
+        if ("ACTION_DISMISS_AND_TRANSCRIBE".equals(intent.getAction())) {
+            removeOverlay();
+            int callDuration = intent.getIntExtra("call_duration", 0);
+            startBackgroundTranscription(phoneNumber, callDuration);
             return START_NOT_STICKY;
         }
 
@@ -157,15 +174,124 @@ public class CallerIdService extends Service {
             btnClose.setOnClickListener(v -> stopSelf());
         }
 
-        // Edit action
+        // Edit Action - Toggle Expandable In-Call Notes & Focus
+        View llOverlayEditPanel = overlayView.findViewById(R.id.ll_overlay_edit_panel);
+        EditText etOverlayNoteInput = overlayView.findViewById(R.id.et_overlay_note_input);
+        Spinner spinnerOverlayRound = overlayView.findViewById(R.id.spinner_overlay_round);
+        View btnOverlayCancelNote = overlayView.findViewById(R.id.btn_overlay_cancel_note);
+        View btnOverlaySaveNote = overlayView.findViewById(R.id.btn_overlay_save_note);
+
+        // Populate Spinner
+        if (spinnerOverlayRound != null) {
+            ArrayAdapter<String> roundAdapter = new ArrayAdapter<>(this,
+                    android.R.layout.simple_spinner_item,
+                    new String[]{"Screening", "1st Round", "2nd Round", "Final Round", "HR / Salary", "Offered", "Rejected"});
+            roundAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+            spinnerOverlayRound.setAdapter(roundAdapter);
+            
+            // Prefill spinner selection if round status is known
+            if (roundStatus != null) {
+                for (int i = 0; i < roundAdapter.getCount(); i++) {
+                    if (roundAdapter.getItem(i).equalsIgnoreCase(roundStatus)) {
+                        spinnerOverlayRound.setSelection(i);
+                        break;
+                    }
+                }
+            }
+        }
+
         ImageView btnEdit = overlayView.findViewById(R.id.btn_overlay_edit);
-        if (btnEdit != null) {
+        if (btnEdit != null && llOverlayEditPanel != null) {
             btnEdit.setOnClickListener(v -> {
-                Intent editIntent = new Intent(this, SaveContactActivity.class);
-                editIntent.putExtra("phone_number", phoneNumber);
-                editIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                startActivity(editIntent);
-                stopSelf();
+                if (llOverlayEditPanel.getVisibility() == View.VISIBLE) {
+                    // Collapse edit panel & clear focus
+                    llOverlayEditPanel.setVisibility(View.GONE);
+                    params.flags |= WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
+                    try {
+                        windowManager.updateViewLayout(overlayView, params);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                } else {
+                    // Expand edit panel & request input focus
+                    llOverlayEditPanel.setVisibility(View.VISIBLE);
+                    params.flags &= ~WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
+                    try {
+                        windowManager.updateViewLayout(overlayView, params);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                    if (etOverlayNoteInput != null) {
+                        etOverlayNoteInput.requestFocus();
+                    }
+                }
+            });
+        }
+
+        if (btnOverlayCancelNote != null && llOverlayEditPanel != null) {
+            btnOverlayCancelNote.setOnClickListener(v -> {
+                llOverlayEditPanel.setVisibility(View.GONE);
+                if (etOverlayNoteInput != null) {
+                    etOverlayNoteInput.setText("");
+                }
+                params.flags |= WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
+                try {
+                    windowManager.updateViewLayout(overlayView, params);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            });
+        }
+
+        if (btnOverlaySaveNote != null && llOverlayEditPanel != null && etOverlayNoteInput != null) {
+            btnOverlaySaveNote.setOnClickListener(v -> {
+                String noteText = etOverlayNoteInput.getText().toString().trim();
+                String selectedRound = spinnerOverlayRound != null ? spinnerOverlayRound.getSelectedItem().toString() : "Screening";
+
+                if (!noteText.isEmpty()) {
+                    DatabaseHelper db = new DatabaseHelper(this);
+                    long targetJobId = jobCallId;
+                    
+                    // If this call isn't saved yet, auto-create a lead so notes can link to it
+                    if (targetJobId == -1) {
+                        JobCall newLead = new JobCall(phoneNumber, "Unknown Recruiter", selectedRound, "", noteText, 0, System.currentTimeMillis());
+                        targetJobId = db.insertJobCall(newLead);
+                        jobCallId = targetJobId;
+                    } else {
+                        // Insert note and update status for existing lead
+                        db.insertNote(targetJobId, noteText, System.currentTimeMillis());
+                        db.updateRoundStatus(targetJobId, selectedRound);
+                        db.refreshNotesPreview(targetJobId);
+                    }
+
+                    // Refresh notes timeline on the banner dynamically
+                    List<CallNote> notesList = db.getNotesForJob(targetJobId);
+                    if (notesList != null && !notesList.isEmpty()) {
+                        StringBuilder sb = new StringBuilder();
+                        int count = 0;
+                        for (CallNote note : notesList) {
+                            if (count >= 5) break;
+                            count++;
+                            sb.append(count).append(". ").append(note.note).append("\n");
+                        }
+                        if (sb.length() > 0) sb.setLength(sb.length() - 1);
+                        tvNotesTimeline.setText(sb.toString());
+                    }
+                    
+                    // If we created a new lead, update local stage status text as well
+                    tvCallerStatus.setText("Stage: " + selectedRound);
+                }
+
+                // Collapse edit panel & clear focus
+                llOverlayEditPanel.setVisibility(View.GONE);
+                etOverlayNoteInput.setText("");
+                params.flags |= WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
+                try {
+                    windowManager.updateViewLayout(overlayView, params);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                Toast.makeText(this, "Notes logged successfully!", Toast.LENGTH_SHORT).show();
             });
         }
 
@@ -284,5 +410,136 @@ public class CallerIdService extends Service {
             }
             overlayView = null;
         }
+    }
+
+    private void startBackgroundTranscription(final String number, final int callDuration) {
+        updateNotification("Searching for call recording...");
+
+        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+            java.io.File recordingFile = CallRecordingScanner.findLatestCallRecording(this, number, callDuration);
+            if (recordingFile == null) {
+                recordingFile = CallRecordingScanner.findLatestCallRecording(this, number, 0);
+            }
+
+            if (recordingFile != null) {
+                transcribeFile(recordingFile, number);
+            } else {
+                android.util.Log.d("CallerIdService", "No call recording found for: " + number);
+                showFallbackNotification(number);
+                stopSelf();
+            }
+        }, 2500);
+    }
+
+    private void transcribeFile(java.io.File file, String number) {
+        updateNotification("Transcribing call recording...");
+
+        android.content.SharedPreferences prefs = getSharedPreferences("CallSaverPrefs", MODE_PRIVATE);
+        String apiKey = prefs.getString("deepgram_api_key", "");
+
+        if (apiKey.isEmpty()) {
+            android.util.Log.w("CallerIdService", "Deepgram API key is missing. Skipping auto-transcription.");
+            showFallbackNotification(number);
+            stopSelf();
+            return;
+        }
+
+        Transcriber.transcribeCallRecording(this, file, new Transcriber.TranscriptionCallback() {
+            @Override
+            public void onSuccess(String text) {
+                DatabaseHelper db = new DatabaseHelper(CallerIdService.this);
+                JobCall call = db.getJobCallByNumber(CallerIdService.this, number);
+                long targetJobId;
+                if (call != null) {
+                    targetJobId = call.getId();
+                    db.insertNote(targetJobId, "[Auto-Transcribed Call Notes]\n" + text, System.currentTimeMillis());
+                } else {
+                    JobCall newLead = new JobCall(number, "Unknown Recruiter", "Screening", "", "[Auto-Transcribed Call Notes]\n" + text, 0, System.currentTimeMillis());
+                    targetJobId = db.insertJobCall(newLead);
+                }
+
+                showSuccessNotification(number, text, targetJobId);
+                stopSelf();
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+                android.util.Log.e("CallerIdService", "Transcription failed: ", e);
+                showFallbackNotification(number);
+                stopSelf();
+            }
+        });
+    }
+
+    private void updateNotification(String text) {
+        NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        if (nm == null) return;
+
+        Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.sym_action_call)
+                .setContentTitle("CallSaver Assistant")
+                .setContentText(text)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .build();
+
+        nm.notify(NOTIFICATION_ID, notification);
+    }
+
+    private void showSuccessNotification(String number, String transcript, long jobCallId) {
+        NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        if (nm == null) return;
+
+        String preview = transcript.length() > 60 ? transcript.substring(0, 57) + "..." : transcript;
+
+        Intent intent = new Intent(this, SaveContactActivity.class);
+        intent.putExtra("phone_number", number);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        
+        android.app.PendingIntent pi = android.app.PendingIntent.getActivity(
+                this,
+                (int) System.currentTimeMillis(),
+                intent,
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE
+        );
+
+        Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.sym_action_call)
+                .setContentTitle("Call Transcribed & Saved")
+                .setContentText(preview)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setDefaults(NotificationCompat.DEFAULT_ALL)
+                .setAutoCancel(true)
+                .setContentIntent(pi)
+                .build();
+
+        nm.notify((int) System.currentTimeMillis(), notification);
+    }
+
+    private void showFallbackNotification(String number) {
+        NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        if (nm == null) return;
+
+        Intent intent = new Intent(this, SaveContactActivity.class);
+        intent.putExtra("phone_number", number);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+
+        android.app.PendingIntent pi = android.app.PendingIntent.getActivity(
+                this,
+                (int) System.currentTimeMillis(),
+                intent,
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE
+        );
+
+        Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.sym_action_call)
+                .setContentTitle("Call Ended")
+                .setContentText("Tap to edit details or transcribe recording manually.")
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setDefaults(NotificationCompat.DEFAULT_ALL)
+                .setAutoCancel(true)
+                .setContentIntent(pi)
+                .build();
+
+        nm.notify((int) System.currentTimeMillis(), notification);
     }
 }
