@@ -29,7 +29,43 @@ public class CallReceiver extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        if (intent == null || !TelephonyManager.ACTION_PHONE_STATE_CHANGED.equals(intent.getAction())) {
+        if (intent == null) {
+            return;
+        }
+
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        String lastSavedState = prefs.getString(KEY_LAST_STATE, TelephonyManager.EXTRA_STATE_IDLE);
+
+        if (Intent.ACTION_NEW_OUTGOING_CALL.equals(intent.getAction())) {
+            String outgoingNumber = intent.getStringExtra(Intent.EXTRA_PHONE_NUMBER);
+            if (outgoingNumber != null && !outgoingNumber.trim().isEmpty()) {
+                prefs.edit()
+                        .putString(KEY_INCOMING_NUMBER, outgoingNumber)
+                        .putBoolean(KEY_ANSWERED, true)
+                        .putString(KEY_LAST_STATE, "OUTGOING")
+                        .apply();
+                Log.d(TAG, "Outgoing call detected to: " + outgoingNumber);
+
+                // Show overlay banner if number is tracked
+                DatabaseHelper db = new DatabaseHelper(context);
+                JobCall call = db.getJobCallByNumber(context, outgoingNumber);
+                if (call != null) {
+                    Intent overlayIntent = new Intent(context, CallerIdService.class);
+                    overlayIntent.putExtra("phone_number", outgoingNumber);
+                    overlayIntent.putExtra("company_name", call.getCompanyName());
+                    overlayIntent.putExtra("round_status", call.getRoundStatus());
+                    overlayIntent.putExtra("tags", call.getTags());
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        context.startForegroundService(overlayIntent);
+                    } else {
+                        context.startService(overlayIntent);
+                    }
+                }
+            }
+            return;
+        }
+
+        if (!TelephonyManager.ACTION_PHONE_STATE_CHANGED.equals(intent.getAction())) {
             return;
         }
 
@@ -40,27 +76,33 @@ public class CallReceiver extends BroadcastReceiver {
 
         Log.d(TAG, "Phone State Changed: " + stateStr);
 
-        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        String lastSavedState = prefs.getString(KEY_LAST_STATE, TelephonyManager.EXTRA_STATE_IDLE);
-
         if (stateStr.equals(TelephonyManager.EXTRA_STATE_RINGING)) {
-            // Incoming call ringing - reset the "answered" flag for this new call.
             String incomingNumber = intent.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER);
             SharedPreferences.Editor editor = prefs.edit()
                     .putString(KEY_LAST_STATE, TelephonyManager.EXTRA_STATE_RINGING)
                     .putBoolean(KEY_ANSWERED, false);
             if (incomingNumber != null && !incomingNumber.isEmpty()) {
-                // The number can arrive on a later RINGING broadcast; store it whenever present.
                 editor.putString(KEY_INCOMING_NUMBER, incomingNumber);
                 Log.d(TAG, "Incoming call detected from number: " + incomingNumber);
-                // Note: the old caller-ID overlay service is retired. Starting a service from
-                // this background receiver crashed on Android 8+; the full-screen CallActivity
-                // now shows the tracked company / stage / tags instead.
+
+                // Show overlay banner if number is tracked
+                DatabaseHelper db = new DatabaseHelper(context);
+                JobCall call = db.getJobCallByNumber(context, incomingNumber);
+                if (call != null) {
+                    Intent overlayIntent = new Intent(context, CallerIdService.class);
+                    overlayIntent.putExtra("phone_number", incomingNumber);
+                    overlayIntent.putExtra("company_name", call.getCompanyName());
+                    overlayIntent.putExtra("round_status", call.getRoundStatus());
+                    overlayIntent.putExtra("tags", call.getTags());
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        context.startForegroundService(overlayIntent);
+                    } else {
+                        context.startService(overlayIntent);
+                    }
+                }
             }
             editor.apply();
         } else if (stateStr.equals(TelephonyManager.EXTRA_STATE_OFFHOOK)) {
-            // OFFHOOK after RINGING == the incoming call was answered.
-            // OFFHOOK straight from IDLE == an outgoing call (never marked answered).
             boolean answeredIncoming = TelephonyManager.EXTRA_STATE_RINGING.equals(lastSavedState)
                     || prefs.getBoolean(KEY_ANSWERED, false);
             prefs.edit()
@@ -68,7 +110,6 @@ public class CallReceiver extends BroadcastReceiver {
                     .putBoolean(KEY_ANSWERED, answeredIncoming)
                     .apply();
             Log.d(TAG, "Call active (OFFHOOK). Answered incoming: " + answeredIncoming);
-            context.stopService(new Intent(context, CallerIdService.class));
         } else if (stateStr.equals(TelephonyManager.EXTRA_STATE_IDLE)) {
             // Stop Caller ID banner
             context.stopService(new Intent(context, CallerIdService.class));
@@ -77,17 +118,27 @@ public class CallReceiver extends BroadcastReceiver {
             boolean answered = prefs.getBoolean(KEY_ANSWERED, false);
             Log.d(TAG, "Call ended (IDLE). Number: " + incomingNumber + ", answered: " + answered);
 
-            // Only notify for an ANSWERED INCOMING call whose number is NOT already in contacts.
-            // When we're the default phone app, the in-call screen's post-call panel handles
-            // this instead, so skip the notification to avoid a double prompt.
-            if (answered && incomingNumber != null && !incomingNumber.trim().isEmpty()
-                    && !isDefaultDialer(context)) {
-                if (!isContactExists(context, incomingNumber)) {
-                    int duration = getLastCallDuration(context, incomingNumber);
-                    Log.d(TAG, "Number not in contacts -> posting save notification. Duration: " + duration + "s");
+            // Log call history duration for tracked numbers
+            if (incomingNumber != null && !incomingNumber.trim().isEmpty()) {
+                DatabaseHelper db = new DatabaseHelper(context);
+                JobCall call = db.getJobCallByNumber(context, incomingNumber);
+                int duration = getLastCallDuration(context, incomingNumber);
+                
+                if (call != null) {
+                    // Log call history to database
+                    String typeLabel = "Incoming";
+                    if ("OUTGOING".equals(lastSavedState)) {
+                        typeLabel = "Outgoing";
+                    } else if (!answered) {
+                        typeLabel = "Missed";
+                    }
+                    db.insertCallHistory(call.getId(), typeLabel, duration, System.currentTimeMillis());
+                }
+
+                // If answered (or outgoing), post notification to log/transcribe
+                if (answered || "OUTGOING".equals(lastSavedState)) {
+                    Log.d(TAG, "Posting save/transcribe notification. Duration: " + duration + "s");
                     showSaveNotification(context, incomingNumber, duration);
-                } else {
-                    Log.d(TAG, "Number already exists in contacts. No notification.");
                 }
             }
 
@@ -100,11 +151,6 @@ public class CallReceiver extends BroadcastReceiver {
         }
     }
 
-    /**
-     * Posts a heads-up notification prompting the user to save an unknown caller.
-     * Tapping it opens {@link SaveContactActivity} (a user-initiated launch, so it is
-     * not blocked by background-activity-launch restrictions like the old auto-popup was).
-     */
     private void showSaveNotification(Context context, String number, int duration) {
         NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         if (nm == null) {
@@ -133,12 +179,21 @@ public class CallReceiver extends BroadcastReceiver {
         PendingIntent pendingIntent = PendingIntent.getActivity(
                 context, number.hashCode(), tapIntent, piFlags);
 
+        DatabaseHelper db = new DatabaseHelper(context);
+        JobCall call = db.getJobCallByNumber(context, number);
+        
+        String title = "Save call to Tracker?";
+        String content = "Number: " + number + " isn't logged. Tap to log & transcribe.";
+        if (call != null) {
+            String label = (call.getCompanyName() != null && !call.getCompanyName().isEmpty()) ? call.getCompanyName() : number;
+            title = "Transcribe call for " + label;
+            content = "Tap to review call recording and transcribe notes.";
+        }
+
         Notification notification = new NotificationCompat.Builder(context, CHANNEL_ID)
-                .setSmallIcon(android.R.drawable.ic_menu_call)
-                .setContentTitle("Save this caller?")
-                .setContentText(number + " isn't in your contacts. Tap to log it.")
-                .setStyle(new NotificationCompat.BigTextStyle()
-                        .bigText(number + " isn't saved in your contacts. Tap to add it to your Job Tracker & phone contacts."))
+                .setSmallIcon(android.R.drawable.sym_action_call)
+                .setContentTitle(title)
+                .setContentText(content)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setCategory(NotificationCompat.CATEGORY_RECOMMENDATION)
                 .setAutoCancel(true)
@@ -148,7 +203,6 @@ public class CallReceiver extends BroadcastReceiver {
         try {
             nm.notify(number.hashCode(), notification);
         } catch (SecurityException e) {
-            // POST_NOTIFICATIONS not granted (Android 13+)
             Log.e(TAG, "Cannot post notification: " + e.getMessage());
         }
     }

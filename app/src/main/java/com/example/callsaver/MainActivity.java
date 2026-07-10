@@ -29,6 +29,7 @@ public class MainActivity extends AppCompatActivity {
 
     private static final int ALL_PERMISSIONS_REQUEST_CODE = 200;
     private static final int REQ_DEFAULT_DIALER = 300;
+    private static final int REQ_CODE_OVERLAY = 400;
 
     private BottomNavigationView bottomNavigation;
     private RecentsFragment recentsFragment;
@@ -89,8 +90,8 @@ public class MainActivity extends AppCompatActivity {
         // Auto check/request permissions on first launch
         requestRequiredPermissionsIfMissing();
 
-        // Offer to become the default phone app (enables the full-screen call UI)
-        offerDefaultDialer();
+        // Check overlay window permission for caller ID banner
+        checkOverlayPermission();
     }
 
     /**
@@ -152,8 +153,28 @@ public class MainActivity extends AppCompatActivity {
         List<String> perms = new ArrayList<>(Arrays.asList(requiredPermissions));
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             perms.add(Manifest.permission.POST_NOTIFICATIONS);
+            perms.add(Manifest.permission.READ_MEDIA_AUDIO);
+        } else {
+            perms.add(Manifest.permission.READ_EXTERNAL_STORAGE);
         }
         return perms.toArray(new String[0]);
+    }
+
+    private void checkOverlayPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (!android.provider.Settings.canDrawOverlays(this)) {
+                new androidx.appcompat.app.AlertDialog.Builder(this)
+                        .setTitle("Overlay Permission Required")
+                        .setMessage("This app displays a floating Caller ID banner (like Truecaller) on recruiter calls. Tap 'OK' to enable this in settings.")
+                        .setPositiveButton("OK", (dialog, which) -> {
+                            Intent intent = new Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                    Uri.parse("package:" + getPackageName()));
+                            startActivityForResult(intent, REQ_CODE_OVERLAY);
+                        })
+                        .setNegativeButton("Cancel", null)
+                        .show();
+            }
+        }
     }
 
     private void requestRequiredPermissionsIfMissing() {

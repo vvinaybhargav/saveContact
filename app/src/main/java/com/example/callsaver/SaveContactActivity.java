@@ -31,6 +31,13 @@ import androidx.core.content.ContextCompat;
 import com.google.android.material.textfield.TextInputLayout;
 import com.google.android.material.chip.Chip;
 
+import android.media.MediaPlayer;
+import android.widget.SeekBar;
+import android.widget.ProgressBar;
+import android.widget.ImageView;
+import java.io.File;
+import android.os.Handler;
+
 public class SaveContactActivity extends AppCompatActivity {
 
     private String phoneNumber;
@@ -45,6 +52,24 @@ public class SaveContactActivity extends AppCompatActivity {
     private Spinner spinnerAccount;
     private DatabaseHelper dbHelper;
     private static final int REQ_CODE_SPEECH_INPUT = 1001;
+
+    // Call Recording and Whisper API support
+    private File recordingFile;
+    private MediaPlayer mediaPlayer;
+    private Handler playerHandler = new Handler();
+    private boolean isPlaying = false;
+
+    private View llRecordingPanel;
+    private ImageView ivPlayPause;
+    private SeekBar sbRecordingProgress;
+    private TextView tvPlayerTime;
+    private ProgressBar pbTranscribe;
+    
+    private TextView tvToggleApiKey;
+    private View llApiKeyContainer;
+    private EditText etOpenAiApiKey;
+    private Button btnSaveApiKey;
+    private Button btnAutoTranscribe;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -99,6 +124,78 @@ public class SaveContactActivity extends AppCompatActivity {
                 R.array.round_statuses, android.R.layout.simple_spinner_item);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerRound.setAdapter(adapter);
+
+        // Bind Recording & Transcription views
+        llRecordingPanel = findViewById(R.id.ll_recording_panel);
+        ivPlayPause = findViewById(R.id.iv_play_pause);
+        sbRecordingProgress = findViewById(R.id.sb_recording_progress);
+        tvPlayerTime = findViewById(R.id.tv_player_time);
+        pbTranscribe = findViewById(R.id.pb_transcribe);
+        btnAutoTranscribe = findViewById(R.id.btn_auto_transcribe);
+
+        tvToggleApiKey = findViewById(R.id.tv_toggle_api_key);
+        llApiKeyContainer = findViewById(R.id.ll_api_key_container);
+        etOpenAiApiKey = findViewById(R.id.et_openai_api_key);
+        btnSaveApiKey = findViewById(R.id.btn_save_api_key);
+
+        // Scan for recording file
+        recordingFile = CallRecordingScanner.findLatestCallRecording(this, phoneNumber, callTimestamp);
+        if (recordingFile != null) {
+            llRecordingPanel.setVisibility(View.VISIBLE);
+            setupAudioPlayer();
+        }
+
+        // Setup API Key preferences and UI controls
+        SharedPreferences apiPrefs = getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE);
+        String savedKey = apiPrefs.getString("openai_api_key", "");
+        etOpenAiApiKey.setText(savedKey);
+
+        tvToggleApiKey.setOnClickListener(v -> {
+            if (llApiKeyContainer.getVisibility() == View.VISIBLE) {
+                llApiKeyContainer.setVisibility(View.GONE);
+                tvToggleApiKey.setText("▼ Settings: OpenAI API Key");
+            } else {
+                llApiKeyContainer.setVisibility(View.VISIBLE);
+                tvToggleApiKey.setText("▲ Settings: OpenAI API Key");
+            }
+        });
+
+        btnSaveApiKey.setOnClickListener(v -> {
+            String key = etOpenAiApiKey.getText().toString().trim();
+            apiPrefs.edit().putString("openai_api_key", key).apply();
+            Toast.makeText(this, "API Key saved successfully!", Toast.LENGTH_SHORT).show();
+            llApiKeyContainer.setVisibility(View.GONE);
+            tvToggleApiKey.setText("▼ Settings: OpenAI API Key");
+        });
+
+        // Set up auto-transcribe action
+        btnAutoTranscribe.setOnClickListener(v -> {
+            pbTranscribe.setVisibility(View.VISIBLE);
+            btnAutoTranscribe.setEnabled(false);
+            Transcriber.transcribeCallRecording(this, recordingFile, new Transcriber.TranscriptionCallback() {
+                @Override
+                public void onSuccess(String text) {
+                    pbTranscribe.setVisibility(View.GONE);
+                    btnAutoTranscribe.setEnabled(true);
+                    if (text != null && !text.isEmpty()) {
+                        String currentNotes = etNotes.getText().toString().trim();
+                        if (!currentNotes.isEmpty()) {
+                            etNotes.setText(currentNotes + "\n" + text);
+                        } else {
+                            etNotes.setText(text);
+                        }
+                        Toast.makeText(SaveContactActivity.this, "Call transcribed successfully!", Toast.LENGTH_SHORT).show();
+                    }
+                }
+
+                @Override
+                public void onError(String error) {
+                    pbTranscribe.setVisibility(View.GONE);
+                    btnAutoTranscribe.setEnabled(true);
+                    Toast.makeText(SaveContactActivity.this, error, Toast.LENGTH_LONG).show();
+                }
+            });
+        });
 
         // Fetch accounts
         List<String> accountNames = new ArrayList<>();
@@ -289,6 +386,96 @@ public class SaveContactActivity extends AppCompatActivity {
                     etNotes.setText(currentText + " " + spokenText);
                 }
                 etNotes.setSelection(etNotes.getText().length());
+            }
+        }
+    }
+
+    private void setupAudioPlayer() {
+        mediaPlayer = new MediaPlayer();
+        try {
+            mediaPlayer.setDataSource(recordingFile.getAbsolutePath());
+            mediaPlayer.prepare();
+        } catch (Exception e) {
+            e.printStackTrace();
+            Toast.makeText(this, "Error preparing player: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        int duration = mediaPlayer.getDuration();
+        sbRecordingProgress.setMax(duration);
+        tvPlayerTime.setText(formatTime(0) + " / " + formatTime(duration));
+
+        ivPlayPause.setOnClickListener(v -> {
+            if (isPlaying) {
+                pauseAudio();
+            } else {
+                playAudio();
+            }
+        });
+
+        sbRecordingProgress.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                if (fromUser) {
+                    mediaPlayer.seekTo(progress);
+                    tvPlayerTime.setText(formatTime(progress) + " / " + formatTime(mediaPlayer.getDuration()));
+                }
+            }
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {}
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {}
+        });
+
+        mediaPlayer.setOnCompletionListener(mp -> {
+            isPlaying = false;
+            ivPlayPause.setImageResource(android.R.drawable.ic_media_play);
+            sbRecordingProgress.setProgress(0);
+            tvPlayerTime.setText(formatTime(0) + " / " + formatTime(mediaPlayer.getDuration()));
+        });
+    }
+
+    private void playAudio() {
+        if (mediaPlayer != null) {
+            mediaPlayer.start();
+            isPlaying = true;
+            ivPlayPause.setImageResource(android.R.drawable.ic_media_pause);
+            updateSeekBarProgress();
+        }
+    }
+
+    private void pauseAudio() {
+        if (mediaPlayer != null) {
+            mediaPlayer.pause();
+            isPlaying = false;
+            ivPlayPause.setImageResource(android.R.drawable.ic_media_play);
+        }
+    }
+
+    private void updateSeekBarProgress() {
+        if (mediaPlayer != null && isPlaying) {
+            int current = mediaPlayer.getCurrentPosition();
+            sbRecordingProgress.setProgress(current);
+            tvPlayerTime.setText(formatTime(current) + " / " + formatTime(mediaPlayer.getDuration()));
+            playerHandler.postDelayed(this::updateSeekBarProgress, 250);
+        }
+    }
+
+    private String formatTime(int ms) {
+        int sec = ms / 1000;
+        int min = sec / 60;
+        sec = sec % 60;
+        return String.format("%02d:%02d", min, sec);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (mediaPlayer != null) {
+            try {
+                mediaPlayer.release();
+            } catch (Exception e) {
+                e.printStackTrace();
             }
         }
     }

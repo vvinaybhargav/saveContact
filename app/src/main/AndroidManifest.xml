@@ -17,6 +17,10 @@
     <uses-permission android:name="android.permission.WRITE_CONTACTS" />
     <uses-permission android:name="android.permission.GET_ACCOUNTS" />
 
+    <!-- Permissions for reading call recording files -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+
     <!-- Permission to show overlay activity over other apps -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
@@ -44,25 +48,13 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.CallSaver">
 
-        <!-- Main onboarding and permission setup screen (also the dialer entry point) -->
+        <!-- Main onboarding and permission setup screen -->
         <activity
             android:name=".MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-            <!-- Dialer intent filters so the app is eligible as the default phone app -->
-            <intent-filter>
-                <action android:name="android.intent.action.DIAL" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.DIAL" />
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="tel" />
             </intent-filter>
         </activity>
 
@@ -77,18 +69,7 @@
             android:taskAffinity=""
             android:theme="@style/Theme.CallSaver" />
 
-        <!-- InCallService: lets this app be the default phone app and handle calls -->
-        <service
-            android:name=".CallService"
-            android:permission="android.permission.BIND_INCALL_SERVICE"
-            android:exported="true">
-            <meta-data
-                android:name="android.telecom.IN_CALL_SERVICE_UI"
-                android:value="true" />
-            <intent-filter>
-                <action android:name="android.telecom.InCallService" />
-            </intent-filter>
-        </service>
+
 
         <!-- Transparent dialog-like popup Activity -->
         <activity
@@ -128,6 +109,7 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.PHONE_STATE" />
+                <action android:name="android.intent.action.NEW_OUTGOING_CALL" />
             </intent-filter>
         </receiver>
 

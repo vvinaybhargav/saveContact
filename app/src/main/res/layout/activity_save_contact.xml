@@ -169,6 +169,142 @@
                     android:textColor="@color/text_primary"/>
             </com.google.android.material.textfield.TextInputLayout>
 
+            <!-- Call Recording Player & Auto Transcribe Panel -->
+            <LinearLayout
+                android:id="@+id/ll_recording_panel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="12dp"
+                android:background="#F3F4F6"
+                android:layout_marginBottom="12dp"
+                android:visibility="gone">
+                
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Call Recording Found"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:layout_gravity="start"/>
+                    
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="4dp">
+                    
+                    <ImageView
+                        android:id="@+id/iv_play_pause"
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        android:src="@android:drawable/ic_media_play"
+                        app:tint="@color/accent_indigo"
+                        android:clickable="true"
+                        android:focusable="true"/>
+                        
+                    <SeekBar
+                        android:id="@+id/sb_recording_progress"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"/>
+                        
+                    <TextView
+                        android:id="@+id/tv_player_time"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="00:00"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="12sp"/>
+                </LinearLayout>
+                
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_auto_transcribe"
+                    android:layout_width="match_parent"
+                    android:layout_height="38dp"
+                    android:text="✨ Auto-Transcribe (Whisper)"
+                    android:textAllCaps="false"
+                    android:textColor="@color/white"
+                    android:textSize="12sp"
+                    app:cornerRadius="8dp"
+                    android:backgroundTint="@color/accent_indigo"
+                    android:layout_marginTop="6dp"/>
+                    
+                <ProgressBar
+                    android:id="@+id/pb_transcribe"
+                    style="?android:attr/progressBarStyleSmall"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:layout_marginTop="4dp"
+                    android:visibility="gone"/>
+            </LinearLayout>
+
+            <!-- API Key Expandable Layout -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginBottom="12dp">
+                
+                <TextView
+                    android:id="@+id/tv_toggle_api_key"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="▼ Settings: OpenAI API Key"
+                    android:textColor="@color/accent_indigo"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:layout_gravity="start"
+                    android:layout_marginBottom="4dp"/>
+                    
+                <LinearLayout
+                    android:id="@+id/ll_api_key_container"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:visibility="gone"
+                    android:gravity="center_vertical">
+                    
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:hint="OpenAI Key"
+                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                        app:boxCornerRadiusTopStart="8dp"
+                        app:boxCornerRadiusTopEnd="8dp"
+                        app:boxCornerRadiusBottomStart="8dp"
+                        app:boxCornerRadiusBottomEnd="8dp"
+                        app:boxStrokeColor="@color/accent_indigo"
+                        app:hintTextColor="@color/accent_indigo">
+                        
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/et_openai_api_key"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="textPassword"
+                            android:maxLines="1"
+                            android:singleLine="true"/>
+                    </com.google.android.material.textfield.TextInputLayout>
+                    
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_save_api_key"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Save"
+                        android:textAllCaps="false"
+                        android:textColor="@color/white"
+                        android:layout_marginStart="8dp"
+                        app:cornerRadius="8dp"
+                        android:backgroundTint="@color/accent_indigo"/>
+                </LinearLayout>
+            </LinearLayout>
+
             <!-- Round status Spinner Dropdown -->
             <TextView
                 android:layout_width="match_parent"
