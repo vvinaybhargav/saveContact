@@ -10,7 +10,6 @@
         android:id="@+id/til_notes"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp"
         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
         app:boxCornerRadiusTopStart="12dp"
         app:boxCornerRadiusTopEnd="12dp"
@@ -19,10 +18,7 @@
         app:boxStrokeColor="@color/accent_indigo"
         app:hintTextColor="@color/accent_indigo"
         app:startIconDrawable="@android:drawable/ic_menu_edit"
-        app:startIconTint="@color/text_muted"
-        app:endIconMode="custom"
-        app:endIconDrawable="@drawable/ic_mic"
-        app:endIconTint="@color/accent_indigo">
+        app:startIconTint="@color/text_muted">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/et_notes"
@@ -34,13 +30,27 @@
             android:textColor="@color/text_primary" />
     </com.google.android.material.textfield.TextInputLayout>
 
-    <com.google.android.material.chip.Chip
-        android:id="@+id/chip_ai_polish"
+    <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="✨ Polish with AI"
-        style="@style/Widget.MaterialComponents.Chip.Action"
-        android:textColor="@color/accent_indigo"
-        android:layout_gravity="end"
-        android:visibility="gone" />
+        android:text="Round / Stage"
+        android:textColor="@color/text_secondary"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:layout_marginTop="14dp"
+        android:layout_marginBottom="6dp"
+        android:layout_marginStart="4dp" />
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:background="@drawable/spinner_border">
+
+        <Spinner
+            android:id="@+id/spinner_round"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:paddingHorizontal="12dp"
+            android:spinnerMode="dropdown" />
+    </FrameLayout>
 </LinearLayout>

@@ -64,12 +64,6 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
     private boolean showingPostCall = false;
     private boolean isKnownContact = false;
     private String callNumber = "";
-    private static final int REQ_CODE_SPEECH_INPUT = 1001;
-    private static final int REQ_CODE_DIRECT_RECORD = 1002;
-    private View btnInCallRecord;
-    private EditText activeInCallNotesField;
-    private com.google.android.material.chip.Chip activeInCallAiChip;
-    private com.google.android.material.textfield.TextInputLayout activeInCallTilNotes;
     private JobCall trackedCall;
 
     @Override
@@ -121,7 +115,6 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
         btnMute = findViewById(R.id.btn_mute);
         btnSpeaker = findViewById(R.id.btn_speaker);
         btnInCallNote = findViewById(R.id.btn_incall_note);
-        btnInCallRecord = findViewById(R.id.btn_incall_record);
         btnNoteSave = findViewById(R.id.btn_note_save);
         btnNoteSkip = findViewById(R.id.btn_note_skip);
 
@@ -146,7 +139,6 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
         btnNoteSave.setOnClickListener(v -> onPostCallSave());
         btnNoteSkip.setOnClickListener(v -> finish());
         btnInCallNote.setOnClickListener(v -> showInCallNoteDialog());
-        btnInCallRecord.setOnClickListener(v -> startDirectRecordSpeech());
         btnKeypad.setOnClickListener(v -> toggleDialpad(true));
         btnDialpadHide.setOnClickListener(v -> toggleDialpad(false));
         setupDtmfKeys();
@@ -260,11 +252,8 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
         tvName.setText(display);
         applyAvatar(display, named);
 
-        // Show the latest note (like the tag) and enable the in-call note button for tracked calls.
+        // Show the latest note (like the tag) and enable the in-call note button.
         btnInCallNote.setVisibility(View.VISIBLE);
-        if (btnInCallRecord != null) {
-            btnInCallRecord.setVisibility(View.VISIBLE);
-        }
         boolean tracked = trackedCall != null && trackedCall.getId() > 0;
         if (tracked) {
             showLatestNote(trackedCall.getId());
@@ -331,71 +320,35 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
         }
         View dialogView = getLayoutInflater().inflate(R.layout.dialog_incall_note, null);
         final EditText etNotes = dialogView.findViewById(R.id.et_notes);
-        com.google.android.material.textfield.TextInputLayout tilNotes = dialogView.findViewById(R.id.til_notes);
-        com.google.android.material.chip.Chip chipAiPolish = dialogView.findViewById(R.id.chip_ai_polish);
+        final Spinner spinnerRound = dialogView.findViewById(R.id.spinner_round);
 
-        activeInCallNotesField = etNotes;
-        activeInCallAiChip = chipAiPolish;
-        activeInCallTilNotes = tilNotes;
+        ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(
+                this, R.array.round_statuses, android.R.layout.simple_spinner_item);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinnerRound.setAdapter(adapter);
+        int pos = adapter.getPosition(trackedCall.getRoundStatus());
+        spinnerRound.setSelection(pos >= 0 ? pos : 0);
 
-        etNotes.addTextChangedListener(new android.text.TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {}
-            @Override
-            public void afterTextChanged(android.text.Editable s) {
-                if (s.toString().trim().isEmpty()) {
-                    chipAiPolish.setVisibility(View.GONE);
-                } else {
-                    chipAiPolish.setVisibility(View.VISIBLE);
-                }
-            }
-        });
-
-        tilNotes.setEndIconOnClickListener(v -> {
-            Intent intent = new Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-            intent.putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-            intent.putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE, java.util.Locale.getDefault());
-            intent.putExtra(android.speech.RecognizerIntent.EXTRA_PROMPT, "Speak voice note...");
-            try {
-                startActivityForResult(intent, REQ_CODE_SPEECH_INPUT);
-            } catch (Exception e) {
-                Toast.makeText(this, "Speech recognition not supported on this device.", Toast.LENGTH_SHORT).show();
-            }
-        });
-
-        chipAiPolish.setOnClickListener(v -> {
-            String apiKey = OpenAiHelper.getApiKey(this);
-            if (apiKey == null || apiKey.isEmpty()) {
-                OpenAiHelper.showApiKeyDialog(this, this::runAiPolish);
-            } else {
-                runAiPolish();
-            }
-        });
-
-        AlertDialog alertDialog = new AlertDialog.Builder(this)
+        new AlertDialog.Builder(this)
                 .setTitle("Add note")
                 .setView(dialogView)
                 .setPositiveButton("Save", (d, w) -> {
+                    DatabaseHelper db = new DatabaseHelper(this);
+                    String stage = spinnerRound.getSelectedItem() != null
+                            ? spinnerRound.getSelectedItem().toString() : trackedCall.getRoundStatus();
+                    if (stage != null && !stage.equals(trackedCall.getRoundStatus())) {
+                        trackedCall.setRoundStatus(stage);
+                        db.updateJobCall(trackedCall);
+                    }
                     String t = etNotes.getText().toString().trim();
                     if (!t.isEmpty()) {
-                        new DatabaseHelper(this).insertNote(
-                                trackedCall.getId(), t, System.currentTimeMillis());
-                        showLatestNote(trackedCall.getId());
-                        Toast.makeText(this, "Note added", Toast.LENGTH_SHORT).show();
+                        db.insertNote(trackedCall.getId(), t, System.currentTimeMillis());
                     }
+                    bindCallerInfo(callNumber); // refresh the on-screen stage/note badge
+                    Toast.makeText(this, "Saved", Toast.LENGTH_SHORT).show();
                 })
                 .setNegativeButton("Cancel", null)
-                .create();
-
-        alertDialog.setOnDismissListener(dialog -> {
-            activeInCallNotesField = null;
-            activeInCallAiChip = null;
-            activeInCallTilNotes = null;
-        });
-
-        alertDialog.show();
+                .show();
     }
 
     private void applyAvatar(String name, boolean named) {
@@ -643,99 +596,6 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
             finish();
         }
         // Otherwise ignore Back during a ringing/active call; use Decline/End.
-    }
-
-    private void runAiPolish() {
-        if (activeInCallNotesField == null || activeInCallAiChip == null) return;
-        String currentText = activeInCallNotesField.getText().toString().trim();
-        if (currentText.isEmpty()) return;
-
-        activeInCallAiChip.setEnabled(false);
-        activeInCallAiChip.setText("✨ Polishing...");
-
-        OpenAiHelper.polishNotes(this, currentText, new OpenAiHelper.PolishCallback() {
-            @Override
-            public void onSuccess(String polishedText) {
-                if (activeInCallNotesField != null) {
-                    activeInCallNotesField.setText(polishedText);
-                    activeInCallNotesField.setSelection(polishedText.length());
-                }
-                if (activeInCallAiChip != null) {
-                    activeInCallAiChip.setEnabled(true);
-                    activeInCallAiChip.setText("✨ Polish with AI");
-                }
-                Toast.makeText(CallActivity.this, "Notes polished with AI!", Toast.LENGTH_SHORT).show();
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                if (activeInCallAiChip != null) {
-                    activeInCallAiChip.setEnabled(true);
-                    activeInCallAiChip.setText("✨ Polish with AI");
-                }
-                Toast.makeText(CallActivity.this, "Error: " + errorMessage, Toast.LENGTH_LONG).show();
-            }
-        });
-    }
-
-    private void startDirectRecordSpeech() {
-        if (trackedCall == null || trackedCall.getId() <= 0) {
-            try {
-                DatabaseHelper db = new DatabaseHelper(this);
-                String displayNum = (callNumber == null || callNumber.isEmpty()) ? "Unknown" : callNumber;
-                String placeholderCompany = "Call Notes - " + displayNum;
-                JobCall placeholderCall = new JobCall(displayNum, placeholderCompany, "Screening", "", "", 0, System.currentTimeMillis());
-                long newId = db.insertJobCall(placeholderCall);
-                if (newId != -1) {
-                    trackedCall = db.getJobCallByNumber(this, displayNum);
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-        if (trackedCall == null || trackedCall.getId() <= 0) {
-            Toast.makeText(this, "Cannot record: Database error", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        Intent intent = new Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-        intent.putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-        intent.putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE, java.util.Locale.getDefault());
-        intent.putExtra(android.speech.RecognizerIntent.EXTRA_PROMPT, "Speak voice note...");
-        try {
-            startActivityForResult(intent, REQ_CODE_DIRECT_RECORD);
-        } catch (Exception e) {
-            Toast.makeText(this, "Speech recognition not supported on this device.", Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, @androidx.annotation.Nullable Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (resultCode == RESULT_OK && data != null) {
-            ArrayList<String> result = data.getStringArrayListExtra(android.speech.RecognizerIntent.EXTRA_RESULTS);
-            if (result != null && !result.isEmpty()) {
-                String spokenText = result.get(0);
-                if (requestCode == REQ_CODE_SPEECH_INPUT) {
-                    if (activeInCallNotesField != null) {
-                        String current = activeInCallNotesField.getText().toString();
-                        if (current.trim().isEmpty()) {
-                            activeInCallNotesField.setText(spokenText);
-                        } else {
-                            activeInCallNotesField.setText(current + " " + spokenText);
-                        }
-                        activeInCallNotesField.setSelection(activeInCallNotesField.getText().length());
-                    }
-                } else if (requestCode == REQ_CODE_DIRECT_RECORD) {
-                    if (trackedCall != null && trackedCall.getId() > 0) {
-                        new DatabaseHelper(this).insertNote(
-                                trackedCall.getId(), spokenText, System.currentTimeMillis());
-                        showLatestNote(trackedCall.getId());
-                        Toast.makeText(this, "Voice note recorded!", Toast.LENGTH_SHORT).show();
-                    }
-                }
-            }
-        }
     }
 
 }

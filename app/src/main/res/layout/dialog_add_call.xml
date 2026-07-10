@@ -146,17 +146,6 @@
             android:textColor="@color/text_primary" />
     </com.google.android.material.textfield.TextInputLayout>
 
-    <com.google.android.material.chip.Chip
-        android:id="@+id/chip_ai_polish"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="✨ Polish with AI"
-        style="@style/Widget.MaterialComponents.Chip.Action"
-        android:textColor="@color/accent_indigo"
-        android:layout_gravity="end"
-        android:layout_marginBottom="12dp"
-        android:visibility="gone" />
-
     <!-- Dropdown Selection Label -->
     <TextView
         android:layout_width="wrap_content"

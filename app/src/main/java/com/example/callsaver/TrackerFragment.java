@@ -69,7 +69,6 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
     private DatabaseHelper dbHelper;
     private static final int REQ_CODE_SPEECH_INPUT = 1001;
     private EditText activeDialogNotesField;
-    private Chip activeDialogAiChip;
     private TextInputLayout activeDialogTilNotes;
     private JobCallAdapter adapter;
     private List<JobCall> callList; // Current filtered list bound to adapter
@@ -393,26 +392,9 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         Button btnReminder = dialogView.findViewById(R.id.btn_dialog_reminder);
 
         TextInputLayout tilNotes = dialogView.findViewById(R.id.til_notes);
-        Chip chipAiPolish = dialogView.findViewById(R.id.chip_ai_polish);
 
         activeDialogNotesField = etNotes;
-        activeDialogAiChip = chipAiPolish;
         activeDialogTilNotes = tilNotes;
-
-        etNotes.addTextChangedListener(new android.text.TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {}
-            @Override
-            public void afterTextChanged(android.text.Editable s) {
-                if (s.toString().trim().isEmpty()) {
-                    chipAiPolish.setVisibility(View.GONE);
-                } else {
-                    chipAiPolish.setVisibility(View.VISIBLE);
-                }
-            }
-        });
 
         tilNotes.setEndIconOnClickListener(v -> {
             Intent intent = new Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
@@ -426,15 +408,6 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             }
         });
 
-        chipAiPolish.setOnClickListener(v -> {
-            String apiKey = OpenAiHelper.getApiKey(requireContext());
-            if (apiKey == null || apiKey.isEmpty()) {
-                OpenAiHelper.showApiKeyDialog(requireContext(), this::runAiPolish);
-            } else {
-                runAiPolish();
-            }
-        });
-
         // Bind Spinner choices
         ArrayAdapter<CharSequence> spinnerAdapter = ArrayAdapter.createFromResource(requireContext(),
                 R.array.round_statuses, android.R.layout.simple_spinner_item);
@@ -444,7 +417,6 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         final AlertDialog alertDialog = builder.create();
         alertDialog.setOnDismissListener(dialog -> {
             activeDialogNotesField = null;
-            activeDialogAiChip = null;
             activeDialogTilNotes = null;
         });
 
@@ -778,43 +750,6 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
 
         ItemTouchHelper itemTouchHelper = new ItemTouchHelper(simpleCallback);
         itemTouchHelper.attachToRecyclerView(rvJobCalls);
-    }
-
-    private void runAiPolish() {
-        if (activeDialogNotesField == null || activeDialogAiChip == null) return;
-        String currentText = activeDialogNotesField.getText().toString().trim();
-        if (currentText.isEmpty()) return;
-
-        activeDialogAiChip.setEnabled(false);
-        activeDialogAiChip.setText("✨ Polishing...");
-
-        OpenAiHelper.polishNotes(requireContext(), currentText, new OpenAiHelper.PolishCallback() {
-            @Override
-            public void onSuccess(String polishedText) {
-                if (activeDialogNotesField != null) {
-                    activeDialogNotesField.setText(polishedText);
-                    activeDialogNotesField.setSelection(polishedText.length());
-                }
-                if (activeDialogAiChip != null) {
-                    activeDialogAiChip.setEnabled(true);
-                    activeDialogAiChip.setText("✨ Polish with AI");
-                }
-                if (getContext() != null) {
-                    Toast.makeText(requireContext(), "Notes polished with AI!", Toast.LENGTH_SHORT).show();
-                }
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                if (activeDialogAiChip != null) {
-                    activeDialogAiChip.setEnabled(true);
-                    activeDialogAiChip.setText("✨ Polish with AI");
-                }
-                if (getContext() != null) {
-                    Toast.makeText(requireContext(), "Error: " + errorMessage, Toast.LENGTH_LONG).show();
-                }
-            }
-        });
     }
 
     @Override

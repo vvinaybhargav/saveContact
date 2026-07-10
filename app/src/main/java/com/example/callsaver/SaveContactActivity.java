@@ -44,7 +44,6 @@ public class SaveContactActivity extends AppCompatActivity {
     private Spinner spinnerAccount;
     private DatabaseHelper dbHelper;
     private static final int REQ_CODE_SPEECH_INPUT = 1001;
-    private Chip chipAiPolish;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -74,23 +73,6 @@ public class SaveContactActivity extends AppCompatActivity {
         spinnerAccount = findViewById(R.id.spinner_account);
         
         TextInputLayout tilNotes = findViewById(R.id.til_notes);
-        chipAiPolish = findViewById(R.id.chip_ai_polish);
-
-        // Setup AI Polish chip visibility listener
-        etNotes.addTextChangedListener(new android.text.TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {}
-            @Override
-            public void afterTextChanged(android.text.Editable s) {
-                if (s.toString().trim().isEmpty()) {
-                    chipAiPolish.setVisibility(View.GONE);
-                } else {
-                    chipAiPolish.setVisibility(View.VISIBLE);
-                }
-            }
-        });
 
         tilNotes.setEndIconOnClickListener(v -> {
             Intent intent = new Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
@@ -101,15 +83,6 @@ public class SaveContactActivity extends AppCompatActivity {
                 startActivityForResult(intent, REQ_CODE_SPEECH_INPUT);
             } catch (Exception e) {
                 Toast.makeText(this, "Speech recognition is not supported on this device.", Toast.LENGTH_SHORT).show();
-            }
-        });
-
-        chipAiPolish.setOnClickListener(v -> {
-            String apiKey = OpenAiHelper.getApiKey(this);
-            if (apiKey == null || apiKey.isEmpty()) {
-                OpenAiHelper.showApiKeyDialog(this, this::runAiPolish);
-            } else {
-                runAiPolish();
             }
         });
 
@@ -293,32 +266,6 @@ public class SaveContactActivity extends AppCompatActivity {
             e.printStackTrace();
             return false;
         }
-    }
-
-    private void runAiPolish() {
-        String currentText = etNotes.getText().toString().trim();
-        if (currentText.isEmpty()) return;
-
-        chipAiPolish.setEnabled(false);
-        chipAiPolish.setText("✨ Polishing...");
-
-        OpenAiHelper.polishNotes(this, currentText, new OpenAiHelper.PolishCallback() {
-            @Override
-            public void onSuccess(String polishedText) {
-                etNotes.setText(polishedText);
-                etNotes.setSelection(polishedText.length());
-                chipAiPolish.setEnabled(true);
-                chipAiPolish.setText("✨ Polish with AI");
-                Toast.makeText(SaveContactActivity.this, "Notes polished with AI!", Toast.LENGTH_SHORT).show();
-            }
-
-            @Override
-            public void onError(String errorMessage) {
-                chipAiPolish.setEnabled(true);
-                chipAiPolish.setText("✨ Polish with AI");
-                Toast.makeText(SaveContactActivity.this, "Error: " + errorMessage, Toast.LENGTH_LONG).show();
-            }
-        });
     }
 
     @Override

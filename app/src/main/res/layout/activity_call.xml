@@ -184,16 +184,6 @@
                 <TextView style="@style/CallActionLabel" android:text="Note" />
             </LinearLayout>
 
-            <LinearLayout style="@style/CallActionColumn">
-                <com.google.android.material.card.MaterialCardView
-                    android:id="@+id/btn_incall_record"
-                    style="@style/CallActionButtonNeutral">
-                    <ImageView style="@style/CallActionIcon"
-                        android:src="@drawable/ic_mic"
-                        app:tint="@color/white_constant" />
-                </com.google.android.material.card.MaterialCardView>
-                <TextView style="@style/CallActionLabel" android:text="Record" />
-            </LinearLayout>
         </LinearLayout>
 
         <LinearLayout style="@style/CallActionColumn" android:layout_marginTop="18dp">
