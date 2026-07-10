@@ -148,6 +148,29 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                     startActivity(new Intent(requireContext(), RecordingsActivity.class)));
         }
 
+        View tvTestOverlay = view.findViewById(R.id.tv_test_overlay);
+        if (tvTestOverlay != null) {
+            tvTestOverlay.setOnClickListener(v -> {
+                Toast.makeText(requireContext(), "Starting test banner in 3 seconds. Go to home screen!", Toast.LENGTH_LONG).show();
+                v.postDelayed(() -> {
+                    if (isAdded()) {
+                        Intent intent = new Intent(requireContext(), CallerIdService.class);
+                        intent.putExtra("phone_number", "121");
+                        intent.putExtra("company_name", "Test Recruiter Inc.");
+                        intent.putExtra("round_status", "Interview Round");
+                        intent.putExtra("tags", "Remote, Tech");
+                        intent.putExtra("job_call_id", -1L);
+                        intent.putExtra("recruiter_name", "John Doe");
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            requireContext().startForegroundService(intent);
+                        } else {
+                            requireContext().startService(intent);
+                        }
+                    }
+                }, 3000);
+            });
+        }
+
         // Setup filter chips
         setupFilterChips(view);
 
