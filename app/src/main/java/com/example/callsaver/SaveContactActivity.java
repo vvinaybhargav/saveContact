@@ -87,6 +87,8 @@ public class SaveContactActivity extends AppCompatActivity {
         callTimestamp = getIntent().getLongExtra("timestamp", System.currentTimeMillis());
         callDuration = getIntent().getIntExtra("duration", 0);
 
+        DebugLogger.log(this, "[Activity] Opened for number: " + phoneNumber + ", duration: " + callDuration + "s, timestamp: " + callTimestamp);
+
         if (phoneNumber == null) {
             finish();
             return;
@@ -180,6 +182,8 @@ public class SaveContactActivity extends AppCompatActivity {
                     .putString("transcribing_number", phoneNumber)
                     .apply();
 
+            DebugLogger.log(this, "[Activity] Starting transcription for file: " + (recordingFile != null ? recordingFile.getName() : "null"));
+
             Transcriber.transcribeCallRecording(this, recordingFile, new Transcriber.TranscriptionCallback() {
                 @Override
                 public void onSuccess(String text) {
@@ -193,6 +197,7 @@ public class SaveContactActivity extends AppCompatActivity {
                         tvTranscriptionStatus.setText("✅ Transcribed successfully!");
                     }
                     btnAutoTranscribe.setEnabled(true);
+                    DebugLogger.log(SaveContactActivity.this, "[Activity] Transcription success! length=" + (text != null ? text.length() : 0));
                     if (text != null && !text.isEmpty()) {
                         String currentNotes = etNotes.getText().toString().trim();
                         if (!currentNotes.isEmpty()) {
@@ -216,6 +221,7 @@ public class SaveContactActivity extends AppCompatActivity {
                         tvTranscriptionStatus.setText("❌ Error: " + error);
                     }
                     btnAutoTranscribe.setEnabled(true);
+                    DebugLogger.log(SaveContactActivity.this, "[Activity] Transcription failed: " + error);
                     Toast.makeText(SaveContactActivity.this, error, Toast.LENGTH_LONG).show();
                 }
             });
@@ -236,13 +242,17 @@ public class SaveContactActivity extends AppCompatActivity {
             ((View) playBtn.getParent()).setVisibility(View.GONE);
         }
 
+        DebugLogger.log(this, "[Activity] Scanning call recordings for caller " + phoneNumber + ", timestamp=" + callTimestamp);
+
         new Handler().postDelayed(() -> {
             recordingFile = CallRecordingScanner.findLatestCallRecording(this, phoneNumber, callTimestamp);
             if (recordingFile == null) {
+                DebugLogger.log(this, "[Activity] Call recording timestamp search empty, trying fallback matching...");
                 recordingFile = CallRecordingScanner.findLatestCallRecording(this, phoneNumber, 0);
             }
 
             if (recordingFile != null) {
+                DebugLogger.log(this, "[Activity] Call recording found: " + recordingFile.getAbsolutePath() + " (" + recordingFile.length() + " bytes)");
                 setupAudioPlayer();
                 // Show player controls
                 if (playBtn != null && playBtn.getParent() instanceof View) {
@@ -259,9 +269,18 @@ public class SaveContactActivity extends AppCompatActivity {
                     }
                 }
             } else {
+                DebugLogger.log(this, "[Activity] No matching recording file found inside storage.");
                 pbTranscribe.setVisibility(View.GONE);
                 if (tvTranscriptionStatus != null) {
-                    tvTranscriptionStatus.setText("ℹ️ No call recording found for this session.");
+                    String msg;
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R
+                            && !android.os.Environment.isExternalStorageManager()) {
+                        msg = "❌ No recording found. Grant 'All files access' in Settings so the app can read the OnePlus call recordings.";
+                    } else {
+                        msg = "❌ No recording found for this call. Enable call recording (auto-record) in the OnePlus Phone app, then call again.";
+                    }
+                    tvTranscriptionStatus.setText(msg);
+                    Toast.makeText(this, msg, Toast.LENGTH_LONG).show();
                 }
             }
         }, 1500); // 1.5 seconds delay guarantees file system synchronization

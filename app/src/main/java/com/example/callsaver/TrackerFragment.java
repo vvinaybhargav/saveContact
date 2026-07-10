@@ -174,6 +174,11 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             });
         }
 
+        View tvViewDebugLogs = view.findViewById(R.id.tv_view_debug_logs);
+        if (tvViewDebugLogs != null) {
+            tvViewDebugLogs.setOnClickListener(v -> showDebugLogsDialog());
+        }
+
         // Deepgram API Key Settings Logic
         TextView tvToggleDashboardKey = view.findViewById(R.id.tv_toggle_dashboard_key);
         View llDashboardKeyContainer = view.findViewById(R.id.ll_dashboard_key_container);

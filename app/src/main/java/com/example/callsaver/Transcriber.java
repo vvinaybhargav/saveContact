@@ -40,10 +40,19 @@ public class Transcriber {
             return;
         }
 
-        // Determine mime type
+        if (audioFile.length() == 0) {
+            callback.onError("Recording file is empty (0 bytes) — nothing was recorded.");
+            return;
+        }
+
+        // Determine mime type from extension (Deepgram also auto-detects from bytes)
+        String name = audioFile.getName().toLowerCase();
         String mimeType = "audio/mpeg";
-        if (audioFile.getName().endsWith(".wav")) mimeType = "audio/wav";
-        else if (audioFile.getName().endsWith(".m4a")) mimeType = "audio/x-m4a";
+        if (name.endsWith(".wav")) mimeType = "audio/wav";
+        else if (name.endsWith(".m4a") || name.endsWith(".mp4")) mimeType = "audio/mp4";
+        else if (name.endsWith(".amr")) mimeType = "audio/amr";
+        else if (name.endsWith(".aac")) mimeType = "audio/aac";
+        else if (name.endsWith(".ogg")) mimeType = "audio/ogg";
 
         RequestBody requestBody = RequestBody.create(audioFile, MediaType.parse(mimeType));
 
@@ -68,9 +77,21 @@ public class Transcriber {
                 try {
                     String body = response.body() != null ? response.body().string() : "";
                     if (!response.isSuccessful()) {
-                        JSONObject errorObj = new JSONObject(body);
-                        String errMsg = errorObj.optString("err_msg", "HTTP " + response.code());
-                        mainHandler.post(() -> callback.onError("Deepgram Error: " + errMsg));
+                        String errMsg;
+                        try {
+                            JSONObject errorObj = new JSONObject(body);
+                            errMsg = errorObj.optString("err_msg",
+                                    errorObj.optString("reason",
+                                            errorObj.optString("error", "")));
+                        } catch (Exception ignore) {
+                            errMsg = "";
+                        }
+                        if (errMsg.isEmpty()) {
+                            errMsg = body.length() > 180 ? body.substring(0, 180) : body;
+                        }
+                        final String finalErr = "Deepgram HTTP " + response.code()
+                                + (errMsg.isEmpty() ? "" : ": " + errMsg);
+                        mainHandler.post(() -> callback.onError(finalErr));
                         return;
                     }
 
@@ -83,7 +104,13 @@ public class Transcriber {
                             .getString("transcript")
                             .trim();
 
-                    mainHandler.post(() -> callback.onSuccess(text));
+                    if (text.isEmpty()) {
+                        mainHandler.post(() -> callback.onError(
+                                "Transcribed, but no speech detected — the recording is likely silent."));
+                    } else {
+                        final String finalText = text;
+                        mainHandler.post(() -> callback.onSuccess(finalText));
+                    }
                 } catch (Exception e) {
                     mainHandler.post(() -> callback.onError("Failed to parse response: " + e.getMessage()));
                 }

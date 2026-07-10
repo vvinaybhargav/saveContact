@@ -231,6 +231,22 @@
             android:focusable="true"
             android:background="?android:attr/selectableItemBackground" />
 
+        <TextView
+            android:id="@+id/tv_view_debug_logs"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginTop="2dp"
+            android:paddingVertical="4dp"
+            android:text="View Diagnostic Logs & Errors ›"
+            android:textColor="@color/accent_indigo"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?android:attr/selectableItemBackground" />
+
         <!-- API Key Settings Card -->
         <LinearLayout
             android:layout_width="match_parent"

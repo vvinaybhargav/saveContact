@@ -87,6 +87,7 @@ public class CallReceiver extends BroadcastReceiver {
         }
 
         Log.d(TAG, "Phone State Changed: " + stateStr);
+        DebugLogger.log(context, "[Receiver] State changed to: " + stateStr);
 
         if (stateStr.equals(TelephonyManager.EXTRA_STATE_RINGING)) {
             String incomingNumber = intent.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER);
@@ -96,6 +97,7 @@ public class CallReceiver extends BroadcastReceiver {
             if (incomingNumber != null && !incomingNumber.isEmpty()) {
                 editor.putString(KEY_INCOMING_NUMBER, incomingNumber);
                 Log.d(TAG, "Incoming call detected from number: " + incomingNumber);
+                DebugLogger.log(context, "[Receiver] Incoming call number: " + incomingNumber);
                 Toast.makeText(context, "CallSaver Diagnostic: Incoming from " + incomingNumber, Toast.LENGTH_LONG).show();
 
                 // Show overlay banner for all calls
@@ -123,6 +125,8 @@ public class CallReceiver extends BroadcastReceiver {
                 } else {
                     context.startService(overlayIntent);
                 }
+            } else {
+                DebugLogger.log(context, "[Receiver] Incoming call (No Number Extra)");
             }
             editor.apply();
         } else if (stateStr.equals(TelephonyManager.EXTRA_STATE_OFFHOOK)) {
@@ -133,9 +137,11 @@ public class CallReceiver extends BroadcastReceiver {
                     .putBoolean(KEY_ANSWERED, answeredIncoming)
                     .apply();
             Log.d(TAG, "Call active (OFFHOOK). Answered incoming: " + answeredIncoming);
+            DebugLogger.log(context, "[Receiver] Offhook active. answeredIncoming: " + answeredIncoming);
         } else if (stateStr.equals(TelephonyManager.EXTRA_STATE_IDLE)) {
             // Dismiss overlay banner immediately
             context.stopService(new Intent(context, CallerIdService.class));
+            DebugLogger.log(context, "[Receiver] Idle transition. Dismissed overlay. Scanning Call Log in 800ms...");
 
             // Query call log with a brief delay to allow system write synchronization
             new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(new Runnable() {
@@ -144,6 +150,7 @@ public class CallReceiver extends BroadcastReceiver {
                     CallLogEntry entry = getLatestCallLogEntry(context);
                     if (entry != null) {
                         long diff = Math.abs(System.currentTimeMillis() - entry.date);
+                        DebugLogger.log(context, "[Receiver] Call log: number=" + entry.number + ", duration=" + entry.duration + "s, type=" + entry.type + ", timeDiff=" + (diff / 1000) + "s ago");
                         // Make sure the call log was written in the last 15 seconds
                         if (diff < 15000L) {
                             Log.d(TAG, "Matched call log entry: " + entry.number + ", duration: " + entry.duration);
@@ -166,18 +173,23 @@ public class CallReceiver extends BroadcastReceiver {
                             }
                             
                             if (isOutgoing || isIncomingAnswered) {
+                                DebugLogger.log(context, "[Receiver] Launching SaveContactActivity popup for " + entry.number);
                                 Intent dialogIntent = new Intent(context, SaveContactActivity.class);
                                 dialogIntent.putExtra("phone_number", entry.number);
                                 dialogIntent.putExtra("duration", entry.duration);
                                 dialogIntent.putExtra("timestamp", entry.date);
                                 dialogIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
                                 context.startActivity(dialogIntent);
+                            } else {
+                                DebugLogger.log(context, "[Receiver] Call not answered or not outgoing (Skipped popup)");
                             }
                         } else {
                             Log.d(TAG, "Latest call log is too old: diff = " + diff / 1000 + "s");
+                            DebugLogger.log(context, "[Receiver] Latest call log is too old (diff = " + (diff / 1000) + "s)");
                         }
                     } else {
                         Log.d(TAG, "No call log entry found");
+                        DebugLogger.log(context, "[Receiver] No call log entries found on device.");
                     }
                 }
             }, 800);
