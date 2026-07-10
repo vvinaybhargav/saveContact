@@ -57,7 +57,7 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
     private View btnKeypad, btnDialpadHide;
     private ImageView ivAvatarIcon;
     private MaterialCardView cardAvatar;
-    private EditText etNote, etCompany;
+    private EditText etNote, etCompany, etName;
     private Spinner spinnerStage;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -113,6 +113,7 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
         btnDialpadHide = findViewById(R.id.btn_dialpad_hide);
         etNote = findViewById(R.id.et_postcall_note);
         etCompany = findViewById(R.id.et_postcall_company);
+        etName = findViewById(R.id.et_postcall_name);
         spinnerStage = findViewById(R.id.spinner_postcall_stage);
         btnAnswer = findViewById(R.id.btn_answer);
         btnDecline = findViewById(R.id.btn_decline);
@@ -219,8 +220,14 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
             DatabaseHelper db = new DatabaseHelper(this);
             trackedCall = db.getJobCallByNumber(this, number);
             if (trackedCall != null) {
-                if (trackedCall.getCompanyName() != null && !trackedCall.getCompanyName().trim().isEmpty()) {
-                    trackerName = trackedCall.getCompanyName();
+                String comp = trackedCall.getCompanyName();
+                String rec = trackedCall.getRecruiterName();
+                if (comp != null && !comp.trim().isEmpty() && rec != null && !rec.trim().isEmpty()) {
+                    trackerName = rec.trim() + " @ " + comp.trim();
+                } else if (comp != null && !comp.trim().isEmpty()) {
+                    trackerName = comp.trim();
+                } else if (rec != null && !rec.trim().isEmpty()) {
+                    trackerName = rec.trim();
                 }
                 StringBuilder sb = new StringBuilder();
                 if (trackedCall.getRoundStatus() != null && !trackedCall.getRoundStatus().trim().isEmpty()) {
@@ -538,11 +545,13 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
 
         if (tracked) {
             etCompany.setVisibility(View.GONE);
+            etName.setVisibility(View.GONE);
             int pos = adapter.getPosition(trackedCall.getRoundStatus());
             spinnerStage.setSelection(pos >= 0 ? pos : 0);
             ((TextView) btnNoteSave).setText("Save");
         } else {
             etCompany.setVisibility(View.VISIBLE);
+            etName.setVisibility(View.VISIBLE);
         }
         etNote.requestFocus();
     }
@@ -565,15 +574,33 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
                 }
                 Toast.makeText(this, "Saved", Toast.LENGTH_SHORT).show();
             } else {
-                // Unknown caller: create a tracker entry (no contacts save).
+                // Unknown caller: create or merge tracker entry
                 String company = etCompany.getText().toString().trim();
-                JobCall newCall = new JobCall(callNumber, company, stage, "", "", 0,
-                        System.currentTimeMillis());
-                long id = db.insertJobCall(newCall);
-                if (id != -1 && !note.isEmpty()) {
-                    db.insertNote(id, note, System.currentTimeMillis());
+                String recruiter = etName.getText().toString().trim();
+
+                JobCall existingCall = null;
+                if (!company.isEmpty()) {
+                    existingCall = db.getJobCallByCompany(company);
                 }
-                Toast.makeText(this, "Saved to tracker", Toast.LENGTH_SHORT).show();
+
+                if (existingCall != null) {
+                    // Link new phone number to existing company
+                    db.linkPhoneToJob(existingCall.getId(), callNumber, recruiter);
+                    if (!note.isEmpty()) {
+                        db.insertNote(existingCall.getId(), note, System.currentTimeMillis());
+                    }
+                    Toast.makeText(this, "Linked to existing company " + existingCall.getCompanyName(), Toast.LENGTH_LONG).show();
+                } else {
+                    // Create new recruiter/company entry
+                    JobCall newCall = new JobCall(callNumber, company, stage, "", "", 0,
+                            System.currentTimeMillis());
+                    newCall.setRecruiterName(recruiter);
+                    long id = db.insertJobCall(newCall);
+                    if (id != -1 && !note.isEmpty()) {
+                        db.insertNote(id, note, System.currentTimeMillis());
+                    }
+                    Toast.makeText(this, "Saved to tracker", Toast.LENGTH_SHORT).show();
+                }
             }
         } catch (Exception e) {
             Toast.makeText(this, "Couldn't save", Toast.LENGTH_SHORT).show();

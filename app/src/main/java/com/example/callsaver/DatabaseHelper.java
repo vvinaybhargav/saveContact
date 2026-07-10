@@ -13,7 +13,7 @@ import java.util.List;
 public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "JobTracker.db";
-    private static final int DATABASE_VERSION = 5; // V5: per-entry call history
+    private static final int DATABASE_VERSION = 6; // V6: multiple phones per job entry
 
     public static final String TABLE_NAME = "job_calls";
     public static final String COLUMN_ID = "id";
@@ -40,6 +40,13 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public static final String COLUMN_HIST_DURATION = "duration";
     public static final String COLUMN_HIST_TIME = "call_time";
 
+    // V6: multiple phone numbers and recruiter names mapped to a single company log.
+    public static final String TABLE_PHONES = "job_phones";
+    public static final String COLUMN_PHONE_ID = "id";
+    public static final String COLUMN_PHONE_JOB_ID = "job_call_id";
+    public static final String COLUMN_PHONE_NUMBER = "phone_number";
+    public static final String COLUMN_PHONE_RECRUITER_NAME = "recruiter_name";
+
     public DatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
     }
@@ -59,6 +66,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         db.execSQL(CREATE_TABLE);
         db.execSQL(createNotesTableSql());
         db.execSQL(createHistoryTableSql());
+        db.execSQL(createPhonesTableSql());
     }
 
     @Override
@@ -78,6 +86,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         if (oldVersion < 5) {
             db.execSQL(createHistoryTableSql());
         }
+        if (oldVersion < 6) {
+            db.execSQL(createPhonesTableSql());
+            migratePhonesData(db);
+        }
     }
 
     private static String createNotesTableSql() {
@@ -96,6 +108,15 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 + COLUMN_HIST_TYPE + " TEXT,"
                 + COLUMN_HIST_DURATION + " INTEGER,"
                 + COLUMN_HIST_TIME + " INTEGER"
+                + ")";
+    }
+
+    private static String createPhonesTableSql() {
+        return "CREATE TABLE IF NOT EXISTS " + TABLE_PHONES + "("
+                + COLUMN_PHONE_ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
+                + COLUMN_PHONE_JOB_ID + " INTEGER,"
+                + COLUMN_PHONE_NUMBER + " TEXT,"
+                + COLUMN_PHONE_RECRUITER_NAME + " TEXT"
                 + ")";
     }
 
@@ -124,6 +145,26 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         }
     }
 
+    private void migratePhonesData(SQLiteDatabase db) {
+        Cursor c = db.query(TABLE_NAME,
+                new String[]{COLUMN_ID, COLUMN_PHONE_NUMBER},
+                null, null, null, null, null);
+        if (c != null) {
+            while (c.moveToNext()) {
+                int id = c.getInt(0);
+                String phone = c.getString(1);
+                if (phone != null && !phone.trim().isEmpty()) {
+                    ContentValues v = new ContentValues();
+                    v.put(COLUMN_PHONE_JOB_ID, id);
+                    v.put(COLUMN_PHONE_NUMBER, phone.trim());
+                    v.put(COLUMN_PHONE_RECRUITER_NAME, ""); // Default empty name on migration
+                    db.insert(TABLE_PHONES, null, v);
+                }
+            }
+            c.close();
+        }
+    }
+
     /**
      * Inserts a new job call log into SQLite.
      */
@@ -139,6 +180,13 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         values.put(COLUMN_TIMESTAMP, jobCall.getTimestamp());
 
         long id = db.insert(TABLE_NAME, null, values);
+        if (id != -1) {
+            ContentValues pValues = new ContentValues();
+            pValues.put(COLUMN_PHONE_JOB_ID, id);
+            pValues.put(COLUMN_PHONE_NUMBER, jobCall.getPhoneNumber());
+            pValues.put(COLUMN_PHONE_RECRUITER_NAME, jobCall.getRecruiterName());
+            db.insert(TABLE_PHONES, null, pValues);
+        }
         db.close();
         return id;
     }
@@ -312,12 +360,131 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             return null;
         }
 
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor c = db.query(TABLE_PHONES, new String[]{COLUMN_PHONE_JOB_ID, COLUMN_PHONE_NUMBER, COLUMN_PHONE_RECRUITER_NAME}, null, null, null, null, null);
+        long matchedJobId = -1;
+        String recruiterName = "";
+        String matchedPhone = "";
+        
+        if (c != null) {
+            while (c.moveToNext()) {
+                String dbPhone = c.getString(1);
+                if (PhoneNumberUtils.compare(context, dbPhone, incomingNumber)) {
+                    matchedJobId = c.getLong(0);
+                    recruiterName = c.getString(2);
+                    matchedPhone = dbPhone;
+                    break;
+                }
+            }
+            c.close();
+        }
+        
+        if (matchedJobId != -1) {
+            Cursor cursor = db.query(TABLE_NAME, null, COLUMN_ID + "=?", new String[]{String.valueOf(matchedJobId)}, null, null, null);
+            if (cursor != null) {
+                if (cursor.moveToFirst()) {
+                    JobCall call = new JobCall(
+                            cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_ID)),
+                            matchedPhone,
+                            cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_COMPANY_NAME)),
+                            cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_ROUND_STATUS)),
+                            cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_TAGS)),
+                            cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_NOTES)),
+                            cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_DURATION)),
+                            cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_TIMESTAMP))
+                    );
+                    call.setRecruiterName(recruiterName);
+                    cursor.close();
+                    db.close();
+                    return call;
+                }
+                cursor.close();
+            }
+        }
+        db.close();
+        
+        // Fallback: check legacy phone number column if table mapping has gaps
         List<JobCall> allCalls = getAllJobCalls();
         for (JobCall call : allCalls) {
             if (PhoneNumberUtils.compare(context, call.getPhoneNumber(), incomingNumber)) {
                 return call;
             }
         }
+        
         return null;
+    }
+
+    public JobCall getJobCallByCompany(String companyName) {
+        if (companyName == null || companyName.trim().isEmpty()) {
+            return null;
+        }
+        SQLiteDatabase db = this.getReadableDatabase();
+        // Case-insensitive search using UPPER
+        String query = "SELECT * FROM " + TABLE_NAME + " WHERE UPPER(TRIM(" + COLUMN_COMPANY_NAME + ")) = UPPER(TRIM(?))";
+        Cursor cursor = db.rawQuery(query, new String[]{companyName});
+        JobCall call = null;
+        if (cursor != null) {
+            if (cursor.moveToFirst()) {
+                call = new JobCall(
+                        cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_ID)),
+                        cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_PHONE_NUMBER)),
+                        cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_COMPANY_NAME)),
+                        cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_ROUND_STATUS)),
+                        cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_TAGS)),
+                        cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_NOTES)),
+                        cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_DURATION)),
+                        cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_TIMESTAMP))
+                );
+            }
+            cursor.close();
+        }
+        db.close();
+        return call;
+    }
+
+    public long linkPhoneToJob(long jobId, String phoneNumber, String recruiterName) {
+        if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
+            return -1;
+        }
+        SQLiteDatabase db = this.getWritableDatabase();
+        
+        // Check if number already linked to this jobId
+        Cursor c = db.query(TABLE_PHONES, new String[]{COLUMN_PHONE_ID}, COLUMN_PHONE_JOB_ID + "=? AND " + COLUMN_PHONE_NUMBER + "=?", new String[]{String.valueOf(jobId), phoneNumber.trim()}, null, null, null);
+        boolean exists = c != null && c.moveToFirst();
+        if (c != null) c.close();
+        
+        ContentValues v = new ContentValues();
+        v.put(COLUMN_PHONE_JOB_ID, jobId);
+        v.put(COLUMN_PHONE_NUMBER, phoneNumber.trim());
+        v.put(COLUMN_PHONE_RECRUITER_NAME, recruiterName != null ? recruiterName.trim() : "");
+        
+        long result;
+        if (exists) {
+            result = db.update(TABLE_PHONES, v, COLUMN_PHONE_JOB_ID + "=? AND " + COLUMN_PHONE_NUMBER + "=?", new String[]{String.valueOf(jobId), phoneNumber.trim()});
+        } else {
+            result = db.insert(TABLE_PHONES, null, v);
+        }
+        db.close();
+        return result;
+    }
+
+    public List<String> getPhonesForJob(long jobId) {
+        List<String> list = new ArrayList<>();
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor c = db.query(TABLE_PHONES, new String[]{COLUMN_PHONE_NUMBER, COLUMN_PHONE_RECRUITER_NAME}, COLUMN_PHONE_JOB_ID + "=?", new String[]{String.valueOf(jobId)}, null, null, null);
+        if (c != null) {
+            while (c.moveToNext()) {
+                String number = c.getString(0);
+                String name = c.getString(1);
+                String display = number;
+                if (name != null && !name.trim().isEmpty()) {
+                    display = name.trim() + " (" + number + ")";
+                }
+                list.add(display);
+            }
+            c.close();
+        }
+        db.close();
+        return list;
     }
 }

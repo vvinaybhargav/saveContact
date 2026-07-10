@@ -47,7 +47,17 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
         JobCall call = callList.get(position);
 
         String company = call.getCompanyName();
-        String displayCompany = (company == null || company.trim().isEmpty()) ? call.getPhoneNumber() : company;
+        String recruiter = call.getRecruiterName();
+        String displayCompany;
+        if (company != null && !company.trim().isEmpty() && recruiter != null && !recruiter.trim().isEmpty()) {
+            displayCompany = recruiter.trim() + " @ " + company.trim();
+        } else if (company != null && !company.trim().isEmpty()) {
+            displayCompany = company.trim();
+        } else if (recruiter != null && !recruiter.trim().isEmpty()) {
+            displayCompany = recruiter.trim();
+        } else {
+            displayCompany = call.getPhoneNumber();
+        }
         holder.tvCompanyName.setText(displayCompany);
         holder.tvPhoneNumber.setText(call.getPhoneNumber());
 

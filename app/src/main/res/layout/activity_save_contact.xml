@@ -62,6 +62,32 @@
                 android:textStyle="bold"
                 android:layout_marginBottom="16dp"/>
 
+            <!-- Recruiter Name Input -->
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Recruiter Name"
+                android:layout_marginBottom="10dp"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                app:boxCornerRadiusTopStart="12dp"
+                app:boxCornerRadiusTopEnd="12dp"
+                app:boxCornerRadiusBottomStart="12dp"
+                app:boxCornerRadiusBottomEnd="12dp"
+                app:boxStrokeColor="@color/accent_indigo"
+                app:hintTextColor="@color/accent_indigo"
+                app:startIconDrawable="@android:drawable/ic_menu_myplaces"
+                app:startIconTint="@color/text_muted">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/et_recruiter_name"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="textCapWords"
+                    android:maxLines="1"
+                    android:singleLine="true"
+                    android:textColor="@color/text_primary"/>
+            </com.google.android.material.textfield.TextInputLayout>
+
             <!-- Company Name Input -->
             <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"

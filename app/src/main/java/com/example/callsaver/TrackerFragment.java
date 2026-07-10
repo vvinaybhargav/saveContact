@@ -379,6 +379,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         TextView dialogTitle = dialogView.findViewById(R.id.dialog_title);
         EditText etPhone = dialogView.findViewById(R.id.et_phone);
         EditText etCompany = dialogView.findViewById(R.id.et_company);
+        EditText etRecruiter = dialogView.findViewById(R.id.et_recruiter_name);
         EditText etTags = dialogView.findViewById(R.id.et_tags);
         EditText etNotes = dialogView.findViewById(R.id.et_notes);
         LinearLayout llNotesTimeline = dialogView.findViewById(R.id.ll_notes_timeline);
@@ -425,6 +426,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             dialogTitle.setText(R.string.title_edit_job_call);
             etPhone.setText(editCall.getPhoneNumber());
             etCompany.setText(editCall.getCompanyName());
+            etRecruiter.setText(editCall.getRecruiterName());
             etTags.setText(editCall.getTags());
             // Calls + notes are shown as a merged timeline below; the field adds a new note.
             populateTimeline(llNotesTimeline, labelNotes, editCall.getId());
@@ -508,6 +510,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         btnSave.setOnClickListener(v -> {
             String phone = etPhone.getText().toString().trim();
             String company = etCompany.getText().toString().trim();
+            String recruiter = etRecruiter.getText().toString().trim();
             String tags = etTags.getText().toString().trim();
             String noteToAdd = etNotes != null ? etNotes.getText().toString().trim() : "";
             String round = spinnerRound.getSelectedItem().toString();
@@ -521,10 +524,12 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                 // Update mode
                 editCall.setPhoneNumber(phone);
                 editCall.setCompanyName(company);
+                editCall.setRecruiterName(recruiter);
                 editCall.setTags(tags);
                 editCall.setRoundStatus(round);
 
                 dbHelper.updateJobCall(editCall);
+                dbHelper.linkPhoneToJob(editCall.getId(), phone, recruiter);
                 if (!noteToAdd.isEmpty()) {
                     dbHelper.insertNote(editCall.getId(), noteToAdd, System.currentTimeMillis());
                 }
@@ -532,12 +537,29 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                 Toast.makeText(requireContext(), "Log updated!", Toast.LENGTH_SHORT).show();
             } else {
                 // Insert mode
-                JobCall newCall = new JobCall(phone, company, round, tags, "", 0, System.currentTimeMillis());
-                long newId = dbHelper.insertJobCall(newCall);
-                if (newId != -1 && !noteToAdd.isEmpty()) {
-                    dbHelper.insertNote(newId, noteToAdd, System.currentTimeMillis());
+                // Deduplicate check
+                JobCall existingCall = null;
+                if (!company.isEmpty()) {
+                    existingCall = dbHelper.getJobCallByCompany(company);
                 }
-                Toast.makeText(requireContext(), "Call logged to tracker!", Toast.LENGTH_SHORT).show();
+
+                if (existingCall != null) {
+                    // Link to existing company
+                    dbHelper.linkPhoneToJob(existingCall.getId(), phone, recruiter);
+                    if (!noteToAdd.isEmpty()) {
+                        dbHelper.insertNote(existingCall.getId(), noteToAdd, System.currentTimeMillis());
+                    }
+                    Toast.makeText(requireContext(), "Linked to existing company " + existingCall.getCompanyName(), Toast.LENGTH_LONG).show();
+                } else {
+                    // Create new entry
+                    JobCall newCall = new JobCall(phone, company, round, tags, "", 0, System.currentTimeMillis());
+                    newCall.setRecruiterName(recruiter);
+                    long newId = dbHelper.insertJobCall(newCall);
+                    if (newId != -1 && !noteToAdd.isEmpty()) {
+                        dbHelper.insertNote(newId, noteToAdd, System.currentTimeMillis());
+                    }
+                    Toast.makeText(requireContext(), "Call logged to tracker!", Toast.LENGTH_SHORT).show();
+                }
             }
 
             refreshDashboardList();

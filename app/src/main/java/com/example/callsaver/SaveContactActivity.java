@@ -40,6 +40,7 @@ public class SaveContactActivity extends AppCompatActivity {
     private EditText etCompanyName;
     private EditText etTags;
     private EditText etNotes;
+    private EditText etRecruiterName;
     private Spinner spinnerRound;
     private Spinner spinnerAccount;
     private DatabaseHelper dbHelper;
@@ -67,6 +68,7 @@ public class SaveContactActivity extends AppCompatActivity {
 
         TextView tvPhoneNumber = findViewById(R.id.tv_phone_number);
         etCompanyName = findViewById(R.id.et_company_name);
+        etRecruiterName = findViewById(R.id.et_recruiter_name);
         etTags = findViewById(R.id.et_tags);
         etNotes = findViewById(R.id.et_notes);
         spinnerRound = findViewById(R.id.spinner_round);
@@ -162,6 +164,7 @@ public class SaveContactActivity extends AppCompatActivity {
         JobCall existingCall = dbHelper.getJobCallByNumber(this, phoneNumber);
         if (existingCall != null) {
             etCompanyName.setText(existingCall.getCompanyName());
+            etRecruiterName.setText(existingCall.getRecruiterName());
             etTags.setText(existingCall.getTags());
             etNotes.setText(existingCall.getNotes());
             if (existingCall.getRoundStatus() != null) {
@@ -177,19 +180,37 @@ public class SaveContactActivity extends AppCompatActivity {
 
         btnSaveBoth.setOnClickListener(v -> {
             String company = etCompanyName.getText().toString().trim();
+            String recruiter = etRecruiterName.getText().toString().trim();
             String tags = etTags.getText().toString().trim();
             String notes = etNotes.getText().toString().trim();
             String round = spinnerRound.getSelectedItem().toString();
 
-            // Save to local job calls database
-            JobCall call = new JobCall(phoneNumber, company, round, tags, notes, callDuration, callTimestamp);
-            long id = dbHelper.insertJobCall(call);
+            // Deduplicate check
+            JobCall existing = null;
+            if (!company.isEmpty()) {
+                existing = dbHelper.getJobCallByCompany(company);
+            }
 
-            if (id != -1) {
-                Toast.makeText(SaveContactActivity.this, "Log saved to tracker!", Toast.LENGTH_SHORT).show();
+            if (existing != null) {
+                // Link number/name to existing company lead
+                dbHelper.linkPhoneToJob(existing.getId(), phoneNumber, recruiter);
+                if (!notes.isEmpty()) {
+                    dbHelper.insertNote(existing.getId(), notes, System.currentTimeMillis());
+                }
+                Toast.makeText(SaveContactActivity.this, "Linked to existing company " + existing.getCompanyName(), Toast.LENGTH_LONG).show();
                 finish();
             } else {
-                Toast.makeText(SaveContactActivity.this, R.string.msg_contact_failed, Toast.LENGTH_SHORT).show();
+                // Save new local job calls database
+                JobCall call = new JobCall(phoneNumber, company, round, tags, notes, callDuration, callTimestamp);
+                call.setRecruiterName(recruiter);
+                long id = dbHelper.insertJobCall(call);
+
+                if (id != -1) {
+                    Toast.makeText(SaveContactActivity.this, "Log saved to tracker!", Toast.LENGTH_SHORT).show();
+                    finish();
+                } else {
+                    Toast.makeText(SaveContactActivity.this, R.string.msg_contact_failed, Toast.LENGTH_SHORT).show();
+                }
             }
         });
 

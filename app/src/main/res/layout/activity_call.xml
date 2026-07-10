@@ -292,12 +292,28 @@
         android:paddingBottom="40dp"
         android:visibility="gone">
 
-        <!-- Company/name field, shown only for an unsaved caller -->
+        <!-- Recruiter name field, shown only for an unsaved caller -->
+        <EditText
+            android:id="@+id/et_postcall_name"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Recruiter Name"
+            android:textColorHint="@color/text_muted"
+            android:textColor="@color/white_constant"
+            android:background="@color/card_bg_dark"
+            android:padding="14dp"
+            android:layout_marginBottom="10dp"
+            android:maxLines="1"
+            android:inputType="textCapWords"
+            android:importantForAutofill="no"
+            android:visibility="gone" />
+
+        <!-- Company name field, shown only for an unsaved caller -->
         <EditText
             android:id="@+id/et_postcall_company"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Company / recruiter name"
+            android:hint="Company Name"
             android:textColorHint="@color/text_muted"
             android:textColor="@color/white_constant"
             android:background="@color/card_bg_dark"

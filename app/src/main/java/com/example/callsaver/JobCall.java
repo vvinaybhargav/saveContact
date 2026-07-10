@@ -10,6 +10,8 @@ public class JobCall {
     private int duration; // Call duration in seconds
     private long timestamp;
 
+    private String recruiterName = "";
+
     // Constructor for retrieving from DB (with ID and Duration)
     public JobCall(int id, String phoneNumber, String companyName, String roundStatus, String tags, String notes, int duration, long timestamp) {
         this.id = id;
@@ -31,6 +33,14 @@ public class JobCall {
         this.notes = notes;
         this.duration = duration;
         this.timestamp = timestamp;
+    }
+
+    public String getRecruiterName() {
+        return recruiterName;
+    }
+
+    public void setRecruiterName(String recruiterName) {
+        this.recruiterName = recruiterName == null ? "" : recruiterName;
     }
 
     public int getId() {

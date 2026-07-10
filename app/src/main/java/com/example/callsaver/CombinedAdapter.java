@@ -69,12 +69,22 @@ public class CombinedAdapter extends RecyclerView.Adapter<CombinedAdapter.ViewHo
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         CombinedCallModel item = callList.get(position);
 
-        // Determine title: Company Name > Contact Name > Number
+        // Determine title: Recruiter @ Company > Company > Recruiter > Contact Name > Number
         String displayName = item.number;
         boolean isTracked = item.jobCall != null && item.jobCall.getId() > 0;
 
-        if (isTracked && item.jobCall.getCompanyName() != null && !item.jobCall.getCompanyName().trim().isEmpty()) {
-            displayName = item.jobCall.getCompanyName();
+        if (isTracked) {
+            String comp = item.jobCall.getCompanyName();
+            String rec = item.jobCall.getRecruiterName();
+            if (comp != null && !comp.trim().isEmpty() && rec != null && !rec.trim().isEmpty()) {
+                displayName = rec.trim() + " @ " + comp.trim();
+            } else if (comp != null && !comp.trim().isEmpty()) {
+                displayName = comp.trim();
+            } else if (rec != null && !rec.trim().isEmpty()) {
+                displayName = rec.trim();
+            } else if (item.name != null && !item.name.trim().isEmpty()) {
+                displayName = item.name;
+            }
         } else if (item.name != null && !item.name.trim().isEmpty()) {
             displayName = item.name;
         }
