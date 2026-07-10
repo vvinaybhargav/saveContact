@@ -39,6 +39,11 @@ public class CallRecordingScanner {
         long closestDiff = Long.MAX_VALUE;
         long timeWindowMs = 5 * 60 * 1000L;
 
+        // Fallback: track the newest audio file created within 45 seconds of the call end
+        File newestAudioFile = null;
+        long newestAudioDiff = Long.MAX_VALUE;
+        long fallbackWindowMs = 45 * 1000L;
+
         DebugLogger.log(context, "[Scanner] Checking for recordings matching number: " + cleanNumber + ", endTime timestamp=" + callEndTime);
 
         for (File dir : candidateDirs) {
@@ -66,15 +71,30 @@ public class CallRecordingScanner {
                         
                         DebugLogger.log(context, "  - File: " + f.getName() + " (isAudio: " + isAudio + ", matchesNumber: " + matchesNumber + ", timeDiff: " + (diff / 1000) + "s)");
 
+                        // Exact match (by phone number)
                         if (isAudio && matchesNumber && (callEndTime == 0 || diff < timeWindowMs) && diff < closestDiff) {
                             closestDiff = diff;
                             bestFile = f;
+                        }
+
+                        // Fallback match (newest file created around call end)
+                        if (isAudio && callEndTime > 0 && diff < fallbackWindowMs && diff < newestAudioDiff) {
+                            newestAudioDiff = diff;
+                            newestAudioFile = f;
                         }
                     }
                 }
             } else {
                 DebugLogger.log(context, "[Scanner] listFiles() returned null for: " + dir.getAbsolutePath());
             }
+        }
+
+        // Apply fallback if no exact phone number match was found
+        if (bestFile == null && newestAudioFile != null) {
+            DebugLogger.log(context, "[Scanner] No exact phone number match. Falling back to newest audio file created during call: " 
+                    + newestAudioFile.getName() + " (Time diff: " + (newestAudioDiff / 1000) + "s)");
+            bestFile = newestAudioFile;
+            closestDiff = newestAudioDiff;
         }
 
         if (bestFile != null) {
