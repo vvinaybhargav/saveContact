@@ -75,6 +75,9 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
     private List<JobCall> allCallsList; // Master copy of all database calls
 
     private String searchQuery = "";
+    private View cardLiveTranscribeStatus;
+    private TextView tvLiveTranscribeMessage;
+    private android.content.SharedPreferences.OnSharedPreferenceChangeListener prefsListener;
     private String selectedStatus = "All";
     private TextView[] chips;
     private final String[] statuses = {"All", "Screening", "1st Round", "2nd Round", "Final Round", "HR / Salary", "Offered", "Rejected"};
@@ -222,6 +225,21 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             });
         }
 
+        cardLiveTranscribeStatus = view.findViewById(R.id.card_live_transcribe_status);
+        tvLiveTranscribeMessage = view.findViewById(R.id.tv_live_transcribe_message);
+        
+        android.content.SharedPreferences trackerPrefs = requireContext().getSharedPreferences("CallSaverPrefs", android.content.Context.MODE_PRIVATE);
+        prefsListener = new android.content.SharedPreferences.OnSharedPreferenceChangeListener() {
+            @Override
+            public void onSharedPreferenceChanged(android.content.SharedPreferences sharedPreferences, String key) {
+                if ("is_transcribing".equals(key) || "transcribing_number".equals(key)) {
+                    updateLiveTranscriptionBanner();
+                }
+            }
+        };
+        trackerPrefs.registerOnSharedPreferenceChangeListener(prefsListener);
+        updateLiveTranscriptionBanner();
+
         // Load logs
         refreshDashboardList();
 
@@ -234,6 +252,31 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         super.onResume();
         checkPermissionsBannerVisibility();
         refreshDashboardList();
+        updateLiveTranscriptionBanner();
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        if (prefsListener != null) {
+            android.content.SharedPreferences trackerPrefs = requireContext().getSharedPreferences("CallSaverPrefs", android.content.Context.MODE_PRIVATE);
+            trackerPrefs.unregisterOnSharedPreferenceChangeListener(prefsListener);
+        }
+    }
+
+    private void updateLiveTranscriptionBanner() {
+        if (isAdded()) {
+            android.content.SharedPreferences prefs = requireContext().getSharedPreferences("CallSaverPrefs", android.content.Context.MODE_PRIVATE);
+            boolean isTranscribing = prefs.getBoolean("is_transcribing", false);
+            String transcribingNumber = prefs.getString("transcribing_number", "");
+
+            if (isTranscribing && cardLiveTranscribeStatus != null && tvLiveTranscribeMessage != null) {
+                cardLiveTranscribeStatus.setVisibility(View.VISIBLE);
+                tvLiveTranscribeMessage.setText("⚡ Transcribing latest call with " + transcribingNumber + " via Deepgram...");
+            } else if (cardLiveTranscribeStatus != null) {
+                cardLiveTranscribeStatus.setVisibility(View.GONE);
+            }
+        }
     }
 
     private void setupSearchListener() {

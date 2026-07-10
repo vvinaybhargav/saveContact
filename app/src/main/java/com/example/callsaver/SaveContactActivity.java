@@ -172,9 +172,22 @@ public class SaveContactActivity extends AppCompatActivity {
                 tvTranscriptionStatus.setText("✨ Transcribing call recording via Deepgram...");
             }
             btnAutoTranscribe.setEnabled(false);
+
+            // Notify other app components that we are actively transcribing
+            SharedPreferences prefs = getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE);
+            prefs.edit()
+                    .putBoolean("is_transcribing", true)
+                    .putString("transcribing_number", phoneNumber)
+                    .apply();
+
             Transcriber.transcribeCallRecording(this, recordingFile, new Transcriber.TranscriptionCallback() {
                 @Override
                 public void onSuccess(String text) {
+                    prefs.edit()
+                            .putBoolean("is_transcribing", false)
+                            .remove("transcribing_number")
+                            .apply();
+
                     pbTranscribe.setVisibility(View.GONE);
                     if (tvTranscriptionStatus != null) {
                         tvTranscriptionStatus.setText("✅ Transcribed successfully!");
@@ -193,6 +206,11 @@ public class SaveContactActivity extends AppCompatActivity {
 
                 @Override
                 public void onError(String error) {
+                    prefs.edit()
+                            .putBoolean("is_transcribing", false)
+                            .remove("transcribing_number")
+                            .apply();
+
                     pbTranscribe.setVisibility(View.GONE);
                     if (tvTranscriptionStatus != null) {
                         tvTranscriptionStatus.setText("❌ Error: " + error);
