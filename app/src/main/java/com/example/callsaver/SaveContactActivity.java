@@ -236,30 +236,31 @@ public class SaveContactActivity extends AppCompatActivity {
 
         btnDismiss.setOnClickListener(v -> finish());
 
-        // ACTION: Save to tracker AND system contacts database
         btnSaveBoth.setOnClickListener(v -> {
             String company = etCompanyName.getText().toString().trim();
             String tags = etTags.getText().toString().trim();
             String notes = etNotes.getText().toString().trim();
             String round = spinnerRound.getSelectedItem().toString();
 
-            if (company.isEmpty()) {
-                Toast.makeText(SaveContactActivity.this, R.string.msg_company_empty, Toast.LENGTH_SHORT).show();
-                return;
+            boolean contactsSaved = false;
+            if (!company.isEmpty()) {
+                // Save to Contacts (using company name as contact display name)
+                contactsSaved = saveContactDirectly(company, phoneNumber);
             }
-
-            // Save to Contacts (using company name as contact display name)
-            boolean contactsSaved = saveContactDirectly(company, phoneNumber);
 
             // Save to local job calls database
             JobCall call = new JobCall(phoneNumber, company, round, tags, notes, callDuration, callTimestamp);
             long id = dbHelper.insertJobCall(call);
 
             if (id != -1) {
-                if (contactsSaved) {
-                    Toast.makeText(SaveContactActivity.this, R.string.msg_saved_both, Toast.LENGTH_SHORT).show();
+                if (!company.isEmpty()) {
+                    if (contactsSaved) {
+                        Toast.makeText(SaveContactActivity.this, R.string.msg_saved_both, Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(SaveContactActivity.this, "Saved to tracker, but failed to write to contacts.", Toast.LENGTH_LONG).show();
+                    }
                 } else {
-                    Toast.makeText(SaveContactActivity.this, "Saved to tracker, but failed to write to contacts.", Toast.LENGTH_LONG).show();
+                    Toast.makeText(SaveContactActivity.this, "Log saved to tracker!", Toast.LENGTH_SHORT).show();
                 }
                 finish();
             } else {

@@ -46,7 +46,9 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         JobCall call = callList.get(position);
 
-        holder.tvCompanyName.setText(call.getCompanyName());
+        String company = call.getCompanyName();
+        String displayCompany = (company == null || company.trim().isEmpty()) ? call.getPhoneNumber() : company;
+        holder.tvCompanyName.setText(displayCompany);
         holder.tvPhoneNumber.setText(call.getPhoneNumber());
 
         // Set tags
@@ -73,12 +75,12 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
         holder.tvCallTime.setText(formattedDate);
 
         // Dynamic Avatar Color based on Company Name
-        String company = call.getCompanyName();
-        String initial = company.isEmpty() ? "?" : String.valueOf(company.charAt(0)).toUpperCase();
+        String companyForInitial = (company == null || company.trim().isEmpty()) ? "" : company;
+        String initial = companyForInitial.isEmpty() ? "?" : String.valueOf(companyForInitial.charAt(0)).toUpperCase();
         holder.tvAvatarText.setText(initial);
 
         int[] avatarColors = {0xFF6366F1, 0xFF10B981, 0xFF3B82F6, 0xFF8B5CF6, 0xFFEC4899, 0xFFF59E0B, 0xFF14B8A6};
-        int colorIndex = Math.abs(company.hashCode()) % avatarColors.length;
+        int colorIndex = Math.abs(displayCompany.hashCode()) % avatarColors.length;
         holder.cardAvatar.setCardBackgroundColor(avatarColors[colorIndex]);
 
         // Status Badge customization
