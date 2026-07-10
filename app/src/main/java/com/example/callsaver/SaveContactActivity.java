@@ -197,6 +197,15 @@ public class SaveContactActivity extends AppCompatActivity {
             });
         });
 
+        // Auto-transcribe if recording exists and Deepgram key is set up
+        if (recordingFile != null && !savedKey.isEmpty()) {
+            new Handler().postDelayed(() -> {
+                if (!isFinishing()) {
+                    btnAutoTranscribe.performClick();
+                }
+            }, 500);
+        }
+
         // Fetch accounts
         List<String> accountNames = new ArrayList<>();
         List<Account> emailAccounts = new ArrayList<>();

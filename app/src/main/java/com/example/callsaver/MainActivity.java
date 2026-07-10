@@ -31,6 +31,7 @@ public class MainActivity extends AppCompatActivity {
     private static final int REQ_DEFAULT_DIALER = 300;
     private static final int REQ_CODE_OVERLAY = 400;
     private static final int REQ_CODE_SCREENING = 500;
+    private static final int REQ_CODE_STORAGE_MANAGE = 600;
 
     private BottomNavigationView bottomNavigation;
     private RecentsFragment recentsFragment;
@@ -186,10 +187,39 @@ public class MainActivity extends AppCompatActivity {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             RoleManager roleManager = (RoleManager) getSystemService(Context.ROLE_SERVICE);
             if (roleManager != null
-                    && roleManager.isRoleAvailable(RoleManager.ROLE_CALL_SCREENING)
-                    && !roleManager.isRoleHeld(RoleManager.ROLE_CALL_SCREENING)) {
-                Intent intent = roleManager.createRequestRoleIntent(RoleManager.ROLE_CALL_SCREENING);
-                startActivityForResult(intent, REQ_CODE_SCREENING);
+                    && roleManager.isRoleAvailable(RoleManager.ROLE_CALL_SCREENING)) {
+                if (!roleManager.isRoleHeld(RoleManager.ROLE_CALL_SCREENING)) {
+                    Intent intent = roleManager.createRequestRoleIntent(RoleManager.ROLE_CALL_SCREENING);
+                    startActivityForResult(intent, REQ_CODE_SCREENING);
+                } else {
+                    checkStorageManagerPermission();
+                }
+            } else {
+                checkStorageManagerPermission();
+            }
+        } else {
+            checkStorageManagerPermission();
+        }
+    }
+
+    private void checkStorageManagerPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if (!android.os.Environment.isExternalStorageManager()) {
+                new androidx.appcompat.app.AlertDialog.Builder(this)
+                        .setTitle("All Files Access Required")
+                        .setMessage("On Android 11+, the app needs permission to access call recordings inside your system's folder. Tap 'OK' to enable this in settings.")
+                        .setPositiveButton("OK", (dialog, which) -> {
+                            try {
+                                Intent intent = new Intent(android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                                        Uri.parse("package:" + getPackageName()));
+                                startActivityForResult(intent, REQ_CODE_STORAGE_MANAGE);
+                            } catch (Exception e) {
+                                Intent intent = new Intent(android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION);
+                                startActivityForResult(intent, REQ_CODE_STORAGE_MANAGE);
+                            }
+                        })
+                        .setNegativeButton("Cancel", null)
+                        .show();
             }
         }
     }
@@ -199,6 +229,8 @@ public class MainActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == REQ_CODE_OVERLAY) {
             requestCallScreeningRole();
+        } else if (requestCode == REQ_CODE_SCREENING) {
+            checkStorageManagerPermission();
         }
     }
 

@@ -156,20 +156,17 @@ public class CallReceiver extends BroadcastReceiver {
                 }
             }
 
-            // Dismiss overlay and trigger auto-transcription if answered or outgoing
+            // Dismiss overlay banner immediately
+            context.stopService(new Intent(context, CallerIdService.class));
+
+            // Launch SaveContactActivity directly as a popup dialogue if answered or outgoing
             if (incomingNumber != null && (answered || "OUTGOING".equals(lastSavedState))) {
-                Intent transcribeIntent = new Intent(context, CallerIdService.class);
-                transcribeIntent.setAction("ACTION_DISMISS_AND_TRANSCRIBE");
-                transcribeIntent.putExtra("phone_number", incomingNumber);
-                transcribeIntent.putExtra("call_duration", duration);
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    context.startForegroundService(transcribeIntent);
-                } else {
-                    context.startService(transcribeIntent);
-                }
-            } else {
-                // Otherwise, just stop the service
-                context.stopService(new Intent(context, CallerIdService.class));
+                Intent dialogIntent = new Intent(context, SaveContactActivity.class);
+                dialogIntent.putExtra("phone_number", incomingNumber);
+                dialogIntent.putExtra("duration", duration);
+                dialogIntent.putExtra("timestamp", System.currentTimeMillis());
+                dialogIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                context.startActivity(dialogIntent);
             }
 
             // Clean up state

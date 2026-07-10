@@ -67,13 +67,6 @@ public class CallerIdService extends Service {
             return START_NOT_STICKY;
         }
 
-        if ("ACTION_DISMISS_AND_TRANSCRIBE".equals(intent.getAction())) {
-            removeOverlay();
-            int callDuration = intent.getIntExtra("call_duration", 0);
-            startBackgroundTranscription(phoneNumber, callDuration);
-            return START_NOT_STICKY;
-        }
-
         windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
         if (windowManager == null) {
             stopSelf();
