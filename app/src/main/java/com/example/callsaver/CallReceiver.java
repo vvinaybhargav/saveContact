@@ -308,7 +308,7 @@ public class CallReceiver extends BroadcastReceiver {
             String[] projection = { android.provider.CallLog.Calls.DURATION };
             String selection = android.provider.CallLog.Calls.NUMBER + " = ?";
             String[] selectionArgs = { number };
-            String sortOrder = android.provider.CallLog.Calls.DATE + " DESC LIMIT 1";
+            String sortOrder = android.provider.CallLog.Calls.DATE + " DESC";
             try (Cursor cursor = context.getContentResolver().query(callUri, projection, selection, selectionArgs, sortOrder)) {
                 if (cursor != null && cursor.moveToFirst()) {
                     return cursor.getInt(0); // Returns duration in seconds
@@ -341,7 +341,7 @@ public class CallReceiver extends BroadcastReceiver {
                     },
                     null,
                     null,
-                    android.provider.CallLog.Calls.DATE + " DESC LIMIT 1"
+                    android.provider.CallLog.Calls.DATE + " DESC"
             );
             
             if (cursor != null && cursor.moveToFirst()) {
