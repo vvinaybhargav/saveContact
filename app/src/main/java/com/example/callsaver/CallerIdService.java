@@ -463,8 +463,8 @@ public class CallerIdService extends Service {
             }
 
             @Override
-            public void onFailure(Exception e) {
-                android.util.Log.e("CallerIdService", "Transcription failed: ", e);
+            public void onError(String error) {
+                android.util.Log.e("CallerIdService", "Transcription failed: " + error);
                 showFallbackNotification(number);
                 stopSelf();
             }
