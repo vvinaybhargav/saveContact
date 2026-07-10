@@ -23,6 +23,16 @@ public class CallSaverScreeningService extends CallScreeningService {
             Log.d(TAG, "Screening call: " + phoneNumber);
 
             if (phoneNumber != null && !phoneNumber.trim().isEmpty()) {
+                boolean isOutgoing = callDetails.getCallDirection() == Call.Details.DIRECTION_OUTGOING;
+
+                // Save call metadata details so CallReceiver has reference upon call completion (IDLE state)
+                android.content.SharedPreferences prefs = getSharedPreferences("CallSaverPrefs", MODE_PRIVATE);
+                prefs.edit()
+                        .putString("incoming_number", phoneNumber)
+                        .putString("last_state", isOutgoing ? "OUTGOING" : "RINGING")
+                        .putBoolean("answered", isOutgoing)
+                        .apply();
+
                 // Show overlay banner for all calls
                 DatabaseHelper db = new DatabaseHelper(this);
                 JobCall jobCall = db.getJobCallByNumber(this, phoneNumber);
