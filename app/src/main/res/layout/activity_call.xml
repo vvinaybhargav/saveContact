@@ -92,6 +92,17 @@
             android:background="@color/card_bg_dark"
             android:visibility="gone" />
 
+        <TextView
+            android:id="@+id/tv_call_duration"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="00:00"
+            android:textColor="@color/status_green"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+
         <!-- Latest note for this caller (shown like the tag) -->
         <TextView
             android:id="@+id/tv_call_latest_note"
@@ -109,17 +120,6 @@
             android:scrollbars="vertical"
             android:lineSpacingMultiplier="1.15"
             android:background="@color/card_bg_dark"
-            android:visibility="gone" />
-
-        <TextView
-            android:id="@+id/tv_call_duration"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="00:00"
-            android:textColor="@color/status_green"
-            android:textSize="18sp"
-            android:textStyle="bold"
             android:visibility="gone" />
     </LinearLayout>
 

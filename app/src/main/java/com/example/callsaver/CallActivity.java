@@ -269,46 +269,27 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
         try {
             DatabaseHelper db = new DatabaseHelper(this);
             List<CallNote> notes = db.getNotesForJob(jobId);
-            List<CallHistory> history = db.getCallHistoryForJob(jobId);
 
-            class TimelineItem {
-                long ts;
-                String text;
-                TimelineItem(long ts, String text) {
-                    this.ts = ts;
-                    this.text = text;
-                }
+            // Take the 5 most recent notes
+            List<CallNote> recentNotes = new ArrayList<>();
+            for (int i = 0; i < Math.min(5, notes.size()); i++) {
+                recentNotes.add(notes.get(i));
             }
+            
+            // Sort ascending so oldest of these 5 is shown first, newest last
+            Collections.sort(recentNotes, (a, b) -> Long.compare(a.timestamp, b.timestamp));
 
-            List<TimelineItem> items = new ArrayList<>();
-            for (CallNote n : notes) {
-                if (n.note != null && !n.note.trim().isEmpty()) {
-                    items.add(new TimelineItem(n.timestamp, n.note.trim()));
-                }
-            }
-            for (CallHistory h : history) {
-                String durationStr = "";
-                if (h.duration > 0) {
-                    durationStr = String.format(Locale.getDefault(), "%d:%02d", h.duration / 60, h.duration % 60) + " duration";
-                }
-                String histText = h.type + " call" + (durationStr.isEmpty() ? "" : " - " + durationStr);
-                SimpleDateFormat sdf = new SimpleDateFormat("hh:mm a", Locale.getDefault());
-                histText += " at " + sdf.format(new Date(h.timestamp));
-                items.add(new TimelineItem(h.timestamp, histText));
-            }
-
-            // Sort chronological ascending (oldest first)
-            Collections.sort(items, (a, b) -> Long.compare(a.ts, b.ts));
-
-            if (!items.isEmpty()) {
+            if (!recentNotes.isEmpty()) {
                 StringBuilder sb = new StringBuilder();
                 int idx = 1;
-                for (TimelineItem item : items) {
-                    if (sb.length() > 0) {
-                        sb.append("\n");
+                for (CallNote n : recentNotes) {
+                    if (n.note != null && !n.note.trim().isEmpty()) {
+                        if (sb.length() > 0) {
+                            sb.append("\n");
+                        }
+                        sb.append(idx).append(". ").append(n.note.trim());
+                        idx++;
                     }
-                    sb.append(idx).append(". ").append(item.text);
-                    idx++;
                 }
                 tvLatestNote.setText(sb.toString());
                 tvLatestNote.setVisibility(View.VISIBLE);
