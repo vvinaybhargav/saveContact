@@ -33,6 +33,10 @@
     <!-- Proximity wake lock: turn the screen off when the phone is at the ear -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
+    <!-- Best-effort call recording via the mic path (foreground service) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+
     <application
         android:allowBackup="true"
         android:icon="@drawable/ic_launcher"
@@ -98,6 +102,18 @@
         <!-- Analytics dashboard -->
         <activity
             android:name=".AnalyticsActivity"
+            android:exported="false"
+            android:parentActivityName=".MainActivity" />
+
+        <!-- Best-effort call recorder (foreground service, microphone type) -->
+        <service
+            android:name=".CallRecorderService"
+            android:exported="false"
+            android:foregroundServiceType="microphone" />
+
+        <!-- Recordings list/playback -->
+        <activity
+            android:name=".RecordingsActivity"
             android:exported="false"
             android:parentActivityName=".MainActivity" />
 

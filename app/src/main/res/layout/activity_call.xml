@@ -186,15 +186,34 @@
 
         </LinearLayout>
 
-        <LinearLayout style="@style/CallActionColumn" android:layout_marginTop="18dp">
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/btn_hangup"
-                style="@style/CallActionButtonRed">
-                <ImageView style="@style/CallActionIcon"
-                    android:src="@android:drawable/ic_menu_close_clear_cancel"
-                    app:tint="@color/white_constant" />
-            </com.google.android.material.card.MaterialCardView>
-            <TextView style="@style/CallActionLabel" android:text="End" />
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:layout_marginTop="18dp">
+
+            <LinearLayout style="@style/CallActionColumn">
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/btn_incall_record"
+                    style="@style/CallActionButtonNeutral">
+                    <ImageView android:id="@+id/iv_record_icon" style="@style/CallActionIcon"
+                        android:src="@drawable/ic_mic"
+                        app:tint="@color/white_constant" />
+                </com.google.android.material.card.MaterialCardView>
+                <TextView android:id="@+id/tv_record" style="@style/CallActionLabel" android:text="Record" />
+            </LinearLayout>
+
+            <LinearLayout style="@style/CallActionColumn">
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/btn_hangup"
+                    style="@style/CallActionButtonRed">
+                    <ImageView style="@style/CallActionIcon"
+                        android:src="@android:drawable/ic_menu_close_clear_cancel"
+                        app:tint="@color/white_constant" />
+                </com.google.android.material.card.MaterialCardView>
+                <TextView style="@style/CallActionLabel" android:text="End" />
+            </LinearLayout>
         </LinearLayout>
     </LinearLayout>
 

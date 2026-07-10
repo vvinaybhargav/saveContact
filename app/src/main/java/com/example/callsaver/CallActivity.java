@@ -54,7 +54,9 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
     private TextView tvName, tvNumber, tvStatus, tvDuration, tvTrackInfo, tvMute, tvSpeaker, tvAvatarLetter, tvLatestNote;
     private View layoutIncoming, layoutOngoing, layoutPostCall, layoutDialpad;
     private View btnAnswer, btnDecline, btnHangup, btnMute, btnSpeaker, btnNoteSave, btnNoteSkip, btnInCallNote;
-    private View btnKeypad, btnDialpadHide;
+    private View btnKeypad, btnDialpadHide, btnRecord;
+    private TextView tvRecord;
+    private ImageView ivRecordIcon;
     private ImageView ivAvatarIcon;
     private MaterialCardView cardAvatar;
     private EditText etNote, etCompany, etName;
@@ -121,6 +123,9 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
         btnMute = findViewById(R.id.btn_mute);
         btnSpeaker = findViewById(R.id.btn_speaker);
         btnInCallNote = findViewById(R.id.btn_incall_note);
+        btnRecord = findViewById(R.id.btn_incall_record);
+        ivRecordIcon = findViewById(R.id.iv_record_icon);
+        tvRecord = findViewById(R.id.tv_record);
         btnNoteSave = findViewById(R.id.btn_note_save);
         btnNoteSkip = findViewById(R.id.btn_note_skip);
 
@@ -145,9 +150,11 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
         btnNoteSave.setOnClickListener(v -> onPostCallSave());
         btnNoteSkip.setOnClickListener(v -> finish());
         btnInCallNote.setOnClickListener(v -> showInCallNoteDialog());
+        btnRecord.setOnClickListener(v -> toggleRecording());
         btnKeypad.setOnClickListener(v -> toggleDialpad(true));
         btnDialpadHide.setOnClickListener(v -> toggleDialpad(false));
         setupDtmfKeys();
+        updateRecordButton(CallRecorderService.isRecording());
 
         // Answer immediately if launched from the notification's Answer action.
         if ("answer".equals(getIntent().getStringExtra("action"))) {
@@ -334,6 +341,50 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
         handler.postDelayed(OngoingCall::stopDtmf, 160);
     }
 
+    private void toggleRecording() {
+        if (androidx.core.content.ContextCompat.checkSelfPermission(this,
+                android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            androidx.core.app.ActivityCompat.requestPermissions(this,
+                    new String[]{android.Manifest.permission.RECORD_AUDIO}, 900);
+            Toast.makeText(this, "Grant mic permission, then tap Record again", Toast.LENGTH_LONG).show();
+            return;
+        }
+        if (CallRecorderService.isRecording()) {
+            startService(new Intent(this, CallRecorderService.class).setAction(CallRecorderService.ACTION_STOP));
+            updateRecordButton(false);
+            Toast.makeText(this, "Recording saved", Toast.LENGTH_SHORT).show();
+        } else {
+            Intent i = new Intent(this, CallRecorderService.class).setAction(CallRecorderService.ACTION_START);
+            i.putExtra(CallRecorderService.EXTRA_NAME, tvName.getText().toString());
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(i);
+            } else {
+                startService(i);
+            }
+            updateRecordButton(true);
+            Toast.makeText(this, "Recording… (best effort)", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void updateRecordButton(boolean recording) {
+        if (tvRecord != null) {
+            tvRecord.setText(recording ? "Stop" : "Record");
+        }
+        if (ivRecordIcon != null) {
+            ivRecordIcon.setImageTintList(android.content.res.ColorStateList.valueOf(
+                    recording ? 0xFFF43F5E : 0xFFFFFFFF));
+        }
+    }
+
+    private void stopRecordingIfActive() {
+        if (CallRecorderService.isRecording()) {
+            try {
+                startService(new Intent(this, CallRecorderService.class).setAction(CallRecorderService.ACTION_STOP));
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
     private void showInCallNoteDialog() {
         if (trackedCall == null || trackedCall.getId() <= 0) {
             try {
@@ -514,6 +565,7 @@ public class CallActivity extends AppCompatActivity implements OngoingCall.Liste
             case Call.STATE_DISCONNECTED:
                 handler.removeCallbacksAndMessages(null);
                 releaseProximity();
+                stopRecordingIfActive();
                 // After a real conversation, offer the post-call panel for a tracked
                 // recruiter (note + stage) or an unknown caller (save + note). Ordinary
                 // saved contacts just close.

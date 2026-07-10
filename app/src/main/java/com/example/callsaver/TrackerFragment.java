@@ -142,6 +142,11 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         View tvAnalytics = view.findViewById(R.id.tv_view_analytics);
         if (cardStats != null) cardStats.setOnClickListener(openAnalytics);
         if (tvAnalytics != null) tvAnalytics.setOnClickListener(openAnalytics);
+        View tvRecordings = view.findViewById(R.id.tv_view_recordings);
+        if (tvRecordings != null) {
+            tvRecordings.setOnClickListener(v ->
+                    startActivity(new Intent(requireContext(), RecordingsActivity.class)));
+        }
 
         // Setup filter chips
         setupFilterChips(view);
