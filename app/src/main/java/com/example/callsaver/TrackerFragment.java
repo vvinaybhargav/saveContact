@@ -509,8 +509,9 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         EditText etAppliedRole = dialogView.findViewById(R.id.et_applied_role);
         EditText etTentativeSchedule = dialogView.findViewById(R.id.et_tentative_schedule);
         EditText etNoticePeriod = null; // Notice Period removed from the UI; preserved in DB if already set.
-        EditText etMainAgenda = dialogView.findViewById(R.id.et_main_agenda);
-        EditText etNextSteps = dialogView.findViewById(R.id.et_next_steps);
+        // Main Agenda / Next Steps removed from the UI; preserved in DB if already set.
+        EditText etMainAgenda = null;
+        EditText etNextSteps = null;
 
         activeEtCandidateName = etCandidateName;
         activeEtCompany = etCompany;
@@ -592,8 +593,6 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             if (etCandidateName != null) etCandidateName.setText(editCall.getCandidateName());
             etAppliedRole.setText(editCall.getAppliedRole());
             etTentativeSchedule.setText(editCall.getTentativeSchedule());
-            etMainAgenda.setText(editCall.getMainAgenda());
-            etNextSteps.setText(editCall.getNextSteps());
 
             // Calls + notes are shown as a merged timeline below; the field adds a new note.
             populateTimeline(llNotesTimeline, labelNotes, editCall.getId());
@@ -630,8 +629,6 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                     if (etCandidateName != null) etCandidateName.setText(existingCall.getCandidateName());
                     etAppliedRole.setText(existingCall.getAppliedRole());
                     etTentativeSchedule.setText(existingCall.getTentativeSchedule());
-                    etMainAgenda.setText(existingCall.getMainAgenda());
-                    etNextSteps.setText(existingCall.getNextSteps());
                 }
             }
         }
@@ -690,8 +687,6 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             String candidate = etCandidateName != null ? etCandidateName.getText().toString().trim() : "";
             String role = etAppliedRole.getText().toString().trim();
             String schedule = etTentativeSchedule.getText().toString().trim();
-            String agenda = etMainAgenda.getText().toString().trim();
-            String nextStepsVal = etNextSteps.getText().toString().trim();
 
             if (phone.isEmpty()) {
                 Toast.makeText(requireContext(), R.string.msg_phone_empty, Toast.LENGTH_SHORT).show();
@@ -709,8 +704,6 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                 editCall.setCandidateName(candidate);
                 editCall.setAppliedRole(role);
                 editCall.setTentativeSchedule(schedule);
-                editCall.setMainAgenda(agenda);
-                editCall.setNextSteps(nextStepsVal);
 
                 dbHelper.updateJobCall(editCall);
                 dbHelper.linkPhoneToJob(editCall.getId(), phone, recruiter);
@@ -738,8 +731,6 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                     existingCall.setCandidateName(candidate);
                     existingCall.setAppliedRole(role);
                     existingCall.setTentativeSchedule(schedule);
-                    existingCall.setMainAgenda(agenda);
-                    existingCall.setNextSteps(nextStepsVal);
                     existingCall.setRoundStatus(round);
                     if (!recruiter.isEmpty()) {
                         existingCall.setRecruiterName(recruiter);
@@ -754,9 +745,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                     newCall.setCandidateName(candidate);
                     newCall.setAppliedRole(role);
                     newCall.setTentativeSchedule(schedule);
-                    newCall.setMainAgenda(agenda);
                     newCall.setKeyDiscussionPoints(noteToAdd);
-                    newCall.setNextSteps(nextStepsVal);
 
                     long newId = dbHelper.insertJobCall(newCall);
                     if (newId != -1 && !noteToAdd.isEmpty()) {
@@ -783,67 +772,96 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         }
     }
 
-    private static class TimelineRow {
-        long ts;
-        String text;
-        boolean isNote;
-        long noteId;
-    }
-
     /**
-     * Fills the edit dialog's timeline with a merged, chronological list of calls
-     * (in/out/missed + duration) and dated notes. Notes are individually deletable.
+     * Fills the edit dialog's timeline with the same numbered "1st Call / 2nd Call…"
+     * layout used in the caller-ID banner: oldest call first, each with its bulleted
+     * notes and a delete option.
      */
     private void populateTimeline(LinearLayout container, View label, long jobId) {
         if (container == null) return;
         container.removeAllViews();
 
-        List<TimelineRow> rows = new ArrayList<>();
-        for (CallNote n : dbHelper.getNotesForJob(jobId)) {
-            TimelineRow r = new TimelineRow();
-            r.ts = n.timestamp;
-            r.text = n.note;
-            r.isNote = true;
-            r.noteId = n.id;
-            rows.add(r);
-        }
-
-        if (rows.isEmpty()) {
+        List<CallNote> notes = dbHelper.getNotesForJob(jobId);
+        if (notes.isEmpty()) {
             if (label != null) label.setVisibility(View.GONE);
             return;
         }
         if (label != null) label.setVisibility(View.VISIBLE);
 
-        Collections.sort(rows, (a, b) -> Long.compare(b.ts, a.ts));
+        // Oldest first so numbering reads 1st Call, 2nd Call, ... like the banner.
+        List<CallNote> chronological = new ArrayList<>(notes);
+        Collections.reverse(chronological);
 
         LayoutInflater inflater = getLayoutInflater();
-        SimpleDateFormat sdf = new SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault());
-        for (TimelineRow r : rows) {
-            View row = inflater.inflate(R.layout.item_note_row, container, false);
-            ((TextView) row.findViewById(R.id.tv_note_text)).setText(r.text);
-            ((TextView) row.findViewById(R.id.tv_note_time)).setText(sdf.format(new Date(r.ts)));
-            View delete = row.findViewById(R.id.btn_delete_note);
-            if (r.isNote) {
-                delete.setOnClickListener(v -> {
-                    dbHelper.deleteNote(r.noteId, jobId);
-                    container.removeView(row);
-                    if (container.getChildCount() == 0 && label != null) {
-                        label.setVisibility(View.GONE);
-                    }
-                });
-            } else {
-                delete.setVisibility(View.GONE);
+        SimpleDateFormat sdf = new SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault());
+        int callNumber = 1;
+        for (CallNote n : chronological) {
+            String clean = cleanNoteText(n.note);
+            if (clean.trim().isEmpty()) {
+                continue;
             }
+
+            View row = inflater.inflate(R.layout.item_call_note_row, container, false);
+            ((TextView) row.findViewById(R.id.tv_call_ordinal))
+                    .setText(callNumber + getOrdinalSuffix(callNumber) + " Call");
+            ((TextView) row.findViewById(R.id.tv_call_date)).setText(sdf.format(new Date(n.timestamp)));
+            ((TextView) row.findViewById(R.id.tv_call_points)).setText(bulletize(clean));
+
+            long noteId = n.id;
+            View delete = row.findViewById(R.id.btn_delete_call_note);
+            delete.setOnClickListener(v -> {
+                dbHelper.deleteNote(noteId, jobId);
+                populateTimeline(container, label, jobId);
+            });
+
             container.addView(row);
+            callNumber++;
+        }
+
+        if (container.getChildCount() == 0 && label != null) {
+            label.setVisibility(View.GONE);
         }
     }
 
-    private String describeCall(CallHistory h) {
-        String label = h.type + " call";
-        if (h.duration > 0) {
-            label += " · " + String.format(Locale.getDefault(), "%d:%02d", h.duration / 60, h.duration % 60);
+    /** Filters out generic candidate-interest chatter lines, same rule as the call banner. */
+    private String cleanNoteText(String rawText) {
+        if (rawText == null) return "";
+        String[] lines = rawText.split("\n");
+        StringBuilder sb = new StringBuilder();
+        for (String line : lines) {
+            String trimmed = line.trim().toLowerCase(Locale.getDefault());
+            if (trimmed.contains("interested in") || trimmed.contains("is interested")
+                    || trimmed.contains("of course") || trimmed.contains("ofcourse")) {
+                continue;
+            }
+            if (sb.length() > 0) sb.append("\n");
+            sb.append(line);
         }
-        return label;
+        return sb.toString();
+    }
+
+    private String bulletize(String text) {
+        StringBuilder sb = new StringBuilder();
+        for (String line : text.split("\n")) {
+            String trimmed = line.trim();
+            if (trimmed.isEmpty()) continue;
+            if (!trimmed.startsWith("•") && !trimmed.startsWith("-")) {
+                trimmed = "• " + trimmed;
+            }
+            if (sb.length() > 0) sb.append("\n");
+            sb.append(trimmed);
+        }
+        return sb.toString();
+    }
+
+    private String getOrdinalSuffix(int number) {
+        if (number >= 11 && number <= 13) return "th";
+        switch (number % 10) {
+            case 1: return "st";
+            case 2: return "nd";
+            case 3: return "rd";
+            default: return "th";
+        }
     }
 
     private boolean isContactExists(String number) {

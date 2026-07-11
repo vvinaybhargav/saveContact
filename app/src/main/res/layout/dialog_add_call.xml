@@ -221,16 +221,18 @@
             android:textColor="@color/text_primary"/>
     </com.google.android.material.textfield.TextInputLayout>
 
-    <!-- Merged Call Timeline (Only visible/populated for existing entries) -->
+    <!-- Numbered call history (1st Call, 2nd Call, ...) — same layout as the caller-ID
+         banner. Only visible/populated for existing entries. -->
     <TextView
         android:id="@+id/label_notes"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Notes"
+        android:text="Call History"
         android:textColor="@color/text_secondary"
         android:textSize="12sp"
         android:textStyle="bold"
-        android:layout_marginBottom="6dp"
+        android:letterSpacing="0.04"
+        android:layout_marginBottom="8dp"
         android:layout_marginStart="4dp"
         android:visibility="gone" />
 
@@ -241,7 +243,7 @@
         android:orientation="vertical"
         android:layout_marginBottom="8dp" />
 
-    <!-- SECTION 3: CALL NOTES & HISTORY -->
+    <!-- SECTION 3: NOTES (manual entry / recording upload) -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -264,28 +266,6 @@
             android:textStyle="bold"
             android:letterSpacing="0.08" />
     </LinearLayout>
-
-    <com.google.android.material.textfield.TextInputLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="12dp"
-        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-        app:boxCornerRadiusTopStart="12dp"
-        app:boxCornerRadiusTopEnd="12dp"
-        app:boxCornerRadiusBottomStart="12dp"
-        app:boxCornerRadiusBottomEnd="12dp"
-        app:boxStrokeColor="@color/accent_indigo"
-        app:hintTextColor="@color/accent_indigo"
-        app:startIconDrawable="@android:drawable/ic_menu_myplaces"
-        app:startIconTint="@color/text_muted">
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/et_main_agenda"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Main Agenda (1-Sentence Summary)"
-            android:inputType="textCapSentences"
-            android:textColor="@color/text_primary" />
-    </com.google.android.material.textfield.TextInputLayout>
 
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/til_notes"
@@ -355,32 +335,11 @@
             android:textStyle="bold" />
     </LinearLayout>
 
-    <com.google.android.material.textfield.TextInputLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="20dp"
-        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-        app:boxCornerRadiusTopStart="14dp"
-        app:boxCornerRadiusTopEnd="14dp"
-        app:boxCornerRadiusBottomStart="14dp"
-        app:boxCornerRadiusBottomEnd="14dp"
-        app:boxStrokeColor="@color/accent_indigo"
-        app:hintTextColor="@color/accent_indigo"
-        app:startIconDrawable="@android:drawable/ic_menu_send"
-        app:startIconTint="@color/text_muted">
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/et_next_steps"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Next Steps / Action Items"
-            android:inputType="textCapSentences"
-            android:textColor="@color/text_primary" />
-    </com.google.android.material.textfield.TextInputLayout>
-
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
         android:background="@color/divider"
+        android:layout_marginTop="8dp"
         android:layout_marginBottom="16dp" />
 
     <!-- Actions Row -->
