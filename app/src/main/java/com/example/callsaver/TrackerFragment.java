@@ -79,10 +79,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
     private FloatingActionButton fabAddCall;
     private EditText etSearch;
 
-    private RecyclerView rvUpcomingInterviews;
-    private View llUpcomingInterviewsContainer;
-    private UpcomingInterviewsAdapter upcomingAdapter;
-    private List<JobCall> upcomingList;
+
 
     private TextView tvStatLeads;
     private TextView tvStatScreenings;
@@ -155,20 +152,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         adapter = new JobCallAdapter(requireContext(), callList, this);
         rvJobCalls.setAdapter(adapter);
 
-        rvUpcomingInterviews = view.findViewById(R.id.rv_upcoming_interviews);
-        llUpcomingInterviewsContainer = view.findViewById(R.id.ll_upcoming_interviews_container);
 
-        if (rvUpcomingInterviews != null) {
-            rvUpcomingInterviews.setLayoutManager(new LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false));
-            upcomingList = new ArrayList<>();
-            upcomingAdapter = new UpcomingInterviewsAdapter(requireContext(), upcomingList, new UpcomingInterviewsAdapter.OnInterviewClickListener() {
-                @Override
-                public void onInterviewClick(JobCall call) {
-                    showAddEditCallDialog(call);
-                }
-            });
-            rvUpcomingInterviews.setAdapter(upcomingAdapter);
-        }
 
         // Permissions banner click
         cardPermissionsBanner.setOnClickListener(v -> handlePermissionsRequestFlow());
@@ -391,35 +375,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         if (tvStatInterviews != null) tvStatInterviews.setText(String.valueOf(interviews));
         if (tvStatOffers != null) tvStatOffers.setText(String.valueOf(offers));
 
-        // Filter and update Upcoming Interviews deck
-        if (upcomingList != null) {
-            List<JobCall> activeInterviews = new ArrayList<>();
-            for (JobCall c : allCallsList) {
-                String status = c.getRoundStatus();
-                if (status != null && (status.equals("Rejected") || status.equals("Offered"))) {
-                    continue;
-                }
-                
-                String schedule = c.getTentativeSchedule();
-                if (schedule != null && !schedule.trim().isEmpty()) {
-                    activeInterviews.add(c);
-                } else if (status != null && (status.equals("Screening") || status.equals("1st Round") || status.equals("2nd Round") || status.equals("Final Round") || status.equals("HR / Salary"))) {
-                    activeInterviews.add(c);
-                }
-            }
-            upcomingList.clear();
-            upcomingList.addAll(activeInterviews);
-            if (upcomingAdapter != null) {
-                upcomingAdapter.notifyDataSetChanged();
-            }
-            if (llUpcomingInterviewsContainer != null) {
-                if (upcomingList.isEmpty()) {
-                    llUpcomingInterviewsContainer.setVisibility(View.GONE);
-                } else {
-                    llUpcomingInterviewsContainer.setVisibility(View.VISIBLE);
-                }
-            }
-        }
+
 
         filterList(searchQuery, selectedStatus);
     }

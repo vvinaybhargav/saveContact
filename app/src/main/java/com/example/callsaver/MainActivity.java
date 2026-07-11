@@ -43,6 +43,7 @@ public class MainActivity extends AppCompatActivity {
     private BottomNavigationView bottomNavigation;
     private RecentsFragment recentsFragment;
     private TrackerFragment trackerFragment;
+    private UpcomingFragment upcomingFragment;
 
     private final String[] requiredPermissions = {
             Manifest.permission.READ_PHONE_STATE,
@@ -60,6 +61,7 @@ public class MainActivity extends AppCompatActivity {
         // Initialize Fragments
         recentsFragment = new RecentsFragment();
         trackerFragment = new TrackerFragment();
+        upcomingFragment = new UpcomingFragment();
 
         bottomNavigation = findViewById(R.id.bottom_navigation);
 
@@ -74,6 +76,8 @@ public class MainActivity extends AppCompatActivity {
                     selectedFragment = recentsFragment;
                 } else if (itemId == R.id.navigation_tracker) {
                     selectedFragment = trackerFragment;
+                } else if (itemId == R.id.navigation_upcoming) {
+                    selectedFragment = upcomingFragment;
                 }
 
                 if (selectedFragment != null) {
@@ -266,6 +270,9 @@ public class MainActivity extends AppCompatActivity {
             }
             if (trackerFragment != null && trackerFragment.isAdded()) {
                 trackerFragment.onResume();
+            }
+            if (upcomingFragment != null && upcomingFragment.isAdded()) {
+                upcomingFragment.onResume();
             }
         }
     }

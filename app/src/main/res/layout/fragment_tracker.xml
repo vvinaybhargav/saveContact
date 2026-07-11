@@ -48,6 +48,7 @@
             android:id="@+id/card_stats_dashboard"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            app:layout_scrollFlags="scroll"
             android:layout_marginHorizontal="16dp"
             android:layout_marginTop="16dp"
             app:cardCornerRadius="16dp"
@@ -187,6 +188,7 @@
             android:id="@+id/tv_view_analytics"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            app:layout_scrollFlags="scroll"
             android:layout_gravity="end"
             android:layout_marginHorizontal="16dp"
             android:layout_marginTop="8dp"
@@ -199,35 +201,7 @@
             android:focusable="true"
             android:background="?android:attr/selectableItemBackground" />
 
-        <!-- Upcoming Interviews Section -->
-        <LinearLayout
-            android:id="@+id/ll_upcoming_interviews_container"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:layout_marginTop="16dp"
-            android:visibility="gone">
-            
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="📅 UPCOMING INTERVIEWS"
-                android:textColor="@color/text_muted"
-                android:textSize="11sp"
-                android:textStyle="bold"
-                android:letterSpacing="0.05"
-                android:layout_marginHorizontal="16dp"
-                android:layout_marginBottom="8dp" />
-                
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/rv_upcoming_interviews"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:paddingHorizontal="12dp"
-                android:clipToPadding="false"
-                android:scrollbars="none" />
-        </LinearLayout>
+
 
 
 
@@ -237,6 +211,7 @@
             android:id="@+id/card_live_transcribe_status"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            app:layout_scrollFlags="scroll"
             android:layout_marginHorizontal="16dp"
             android:layout_marginTop="8dp"
             android:layout_marginBottom="4dp"
@@ -277,6 +252,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
+            app:layout_scrollFlags="scroll"
             android:paddingHorizontal="16dp"
             android:paddingTop="16dp"
             android:paddingBottom="8dp"
@@ -338,6 +314,7 @@
             android:id="@+id/card_permissions_banner"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            app:layout_scrollFlags="scroll"
             android:layout_marginHorizontal="16dp"
             android:layout_marginVertical="8dp"
             app:cardCornerRadius="16dp"
