@@ -81,20 +81,7 @@
                         android:ellipsize="end" />
                 </LinearLayout>
 
-                <!-- Dismiss Button -->
-                <!-- Edit Button -->
-                <ImageView
-                    android:id="@+id/btn_overlay_edit"
-                    android:layout_width="32dp"
-                    android:layout_height="32dp"
-                    android:padding="6dp"
-                    android:layout_marginEnd="8dp"
-                    android:src="@android:drawable/ic_menu_edit"
-                    app:tint="@color/text_muted"
-                    android:background="?android:attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="Edit"
-                    android:clickable="true"
-                    android:focusable="true" />
+
 
                 <!-- Dismiss Button -->
                 <ImageView
@@ -144,18 +131,40 @@
                     android:textSize="13sp"
                     android:lineSpacingMultiplier="1.2" />
 
-                <TextView
-                    android:id="@+id/tv_overlay_expand_button"
-                    android:layout_width="wrap_content"
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_gravity="end"
-                    android:layout_marginTop="4dp"
-                    android:text="Expand Notes ∨"
-                    android:textColor="@color/accent_indigo"
-                    android:textSize="12sp"
-                    android:textStyle="bold"
-                    android:clickable="true"
-                    android:focusable="true"/>
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="6dp">
+
+                    <TextView
+                        android:id="@+id/tv_overlay_edit_button"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="✎ Edit Lead"
+                        android:textColor="@color/accent_indigo"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:clickable="true"
+                        android:focusable="true" />
+
+                    <View
+                        android:layout_width="0dp"
+                        android:layout_height="1dp"
+                        android:layout_weight="1" />
+
+                    <TextView
+                        android:id="@+id/tv_overlay_expand_button"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Expand Notes ∨"
+                        android:textColor="@color/accent_indigo"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:clickable="true"
+                        android:focusable="true"/>
+                </LinearLayout>
             </LinearLayout>
 
             <!-- Expanded Notes Layout -->
@@ -173,18 +182,40 @@
                     android:layout_height="wrap_content"
                     android:orientation="vertical" />
 
-                <TextView
-                    android:id="@+id/tv_overlay_collapse_button"
-                    android:layout_width="wrap_content"
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_gravity="end"
-                    android:layout_marginTop="4dp"
-                    android:text="Collapse Notes ∧"
-                    android:textColor="@color/accent_indigo"
-                    android:textSize="12sp"
-                    android:textStyle="bold"
-                    android:clickable="true"
-                    android:focusable="true"/>
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="6dp">
+
+                    <TextView
+                        android:id="@+id/tv_overlay_edit_button_expanded"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="✎ Edit Lead"
+                        android:textColor="@color/accent_indigo"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:clickable="true"
+                        android:focusable="true" />
+
+                    <View
+                        android:layout_width="0dp"
+                        android:layout_height="1dp"
+                        android:layout_weight="1" />
+
+                    <TextView
+                        android:id="@+id/tv_overlay_collapse_button"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Collapse Notes ∧"
+                        android:textColor="@color/accent_indigo"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:clickable="true"
+                        android:focusable="true"/>
+                </LinearLayout>
             </LinearLayout>
 
             <!-- Talking Points (Highlights) Section -->

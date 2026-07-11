@@ -328,16 +328,23 @@ public class CallerIdService extends Service {
             }
         }
 
-        ImageView btnEdit = overlayView.findViewById(R.id.btn_overlay_edit);
-        if (btnEdit != null) {
-            btnEdit.setOnClickListener(v -> {
-                Intent editIntent = new Intent(this, SaveContactActivity.class);
-                editIntent.putExtra("phone_number", phoneNumber);
-                editIntent.putExtra("duration", 0);
-                editIntent.putExtra("timestamp", System.currentTimeMillis());
-                editIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                startActivity(editIntent);
-            });
+        TextView tvEditBtn = overlayView.findViewById(R.id.tv_overlay_edit_button);
+        TextView tvEditBtnExp = overlayView.findViewById(R.id.tv_overlay_edit_button_expanded);
+
+        View.OnClickListener editClickListener = v -> {
+            Intent editIntent = new Intent(this, SaveContactActivity.class);
+            editIntent.putExtra("phone_number", phoneNumber);
+            editIntent.putExtra("duration", 0);
+            editIntent.putExtra("timestamp", System.currentTimeMillis());
+            editIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            startActivity(editIntent);
+        };
+
+        if (tvEditBtn != null) {
+            tvEditBtn.setOnClickListener(editClickListener);
+        }
+        if (tvEditBtnExp != null) {
+            tvEditBtnExp.setOnClickListener(editClickListener);
         }
 
         if (btnOverlayCancelNote != null && llOverlayEditPanel != null) {
