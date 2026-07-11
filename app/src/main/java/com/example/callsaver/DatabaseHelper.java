@@ -319,6 +319,72 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     /**
+     * Merges "loser" into "keep": moves its notes, call history and linked phone
+     * numbers onto the kept entry, fills any blank fields on "keep" from "loser"
+     * (never overwrites a value that's already set), then deletes "loser".
+     * Used by the duplicate-company suggestion flow to consolidate two separate
+     * rows that turned out to be the same recruiter/company.
+     */
+    public void mergeJobCalls(long keepId, long loserId) {
+        if (keepId == loserId) return;
+        SQLiteDatabase db = this.getWritableDatabase();
+        try {
+            db.beginTransaction();
+
+            ContentValues moveNotes = new ContentValues();
+            moveNotes.put(COLUMN_NOTE_JOB_ID, keepId);
+            db.update(TABLE_NOTES, moveNotes, COLUMN_NOTE_JOB_ID + "=?", new String[]{String.valueOf(loserId)});
+
+            ContentValues moveHistory = new ContentValues();
+            moveHistory.put(COLUMN_HIST_JOB_ID, keepId);
+            db.update(TABLE_HISTORY, moveHistory, COLUMN_HIST_JOB_ID + "=?", new String[]{String.valueOf(loserId)});
+
+            ContentValues movePhones = new ContentValues();
+            movePhones.put(COLUMN_PHONE_JOB_ID, keepId);
+            db.update(TABLE_PHONES, movePhones, COLUMN_PHONE_JOB_ID + "=?", new String[]{String.valueOf(loserId)});
+
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+            db.close();
+        }
+
+        // Fill any blanks on the kept entry from the loser (outside the transaction,
+        // reusing the normal getter/setter + updateJobCall path for consistency).
+        JobCall keep = getJobCallById(keepId);
+        JobCall loser = getJobCallById(loserId);
+        if (keep != null && loser != null) {
+            // recruiterName lives per-phone in job_phones (already moved above), not on
+            // job_calls, so there's nothing to merge for it here.
+            if (isBlank(keep.getCompanyName())) keep.setCompanyName(loser.getCompanyName());
+            if (isBlank(keep.getCandidateName())) keep.setCandidateName(loser.getCandidateName());
+            if (isBlank(keep.getAppliedRole())) keep.setAppliedRole(loser.getAppliedRole());
+            if (isBlank(keep.getTags())) keep.setTags(loser.getTags());
+            if (isBlank(keep.getTentativeSchedule())) keep.setTentativeSchedule(loser.getTentativeSchedule());
+            if (isBlank(keep.getNoticePeriod())) keep.setNoticePeriod(loser.getNoticePeriod());
+            if (isBlank(keep.getMainAgenda())) keep.setMainAgenda(loser.getMainAgenda());
+            if (isBlank(keep.getNextSteps())) keep.setNextSteps(loser.getNextSteps());
+            updateJobCall(keep);
+        }
+
+        deleteJobCall((int) loserId);
+    }
+
+    private boolean isBlank(String s) {
+        return s == null || s.trim().isEmpty();
+    }
+
+    /**
+     * Fetches a single job call by id, or null if it doesn't exist.
+     */
+    public JobCall getJobCallById(long id) {
+        for (JobCall call : getAllJobCalls()) {
+            if (call.getId() == id) return call;
+        }
+        return null;
+    }
+
+    /**
      * Adds a timestamped note to a job call's timeline and refreshes the card preview.
      * Defaults to source "call" (auto-detected/background origin).
      */

@@ -55,9 +55,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.io.File;
 import java.util.Locale;
+import java.util.Set;
 
 public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemClickListener {
 
@@ -80,6 +82,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
     // True once the user manually uploads/transcribes a recording during this dialog
     // session; the note saved on this Save click is tagged "manual" (shown as "MCall").
     private boolean activeDialogManualUploadUsed;
+    private TextView tvCheckDuplicates;
     private MaterialCardView cardPermissionsBanner;
     private FloatingActionButton fabAddCall;
     private EditText etSearch;
@@ -172,6 +175,11 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         View tvAnalytics = view.findViewById(R.id.tv_view_analytics);
         if (cardStats != null) cardStats.setOnClickListener(openAnalytics);
         if (tvAnalytics != null) tvAnalytics.setOnClickListener(openAnalytics);
+
+        tvCheckDuplicates = view.findViewById(R.id.tv_check_duplicates);
+        if (tvCheckDuplicates != null) {
+            tvCheckDuplicates.setOnClickListener(v -> showDuplicateReviewDialog());
+        }
 
 
         // Setup filter chips
@@ -380,9 +388,114 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         if (tvStatInterviews != null) tvStatInterviews.setText(String.valueOf(interviews));
         if (tvStatOffers != null) tvStatOffers.setText(String.valueOf(offers));
 
-
+        refreshDuplicateSuggestionVisibility();
 
         filterList(searchQuery, selectedStatus);
+    }
+
+    /**
+     * Runs the local (free, offline) duplicate-company heuristic in the background and
+     * shows/hides the "Check for duplicate companies" link depending on whether any
+     * candidates survive after excluding pairs the user already dismissed.
+     */
+    private void refreshDuplicateSuggestionVisibility() {
+        if (tvCheckDuplicates == null || dbHelper == null) return;
+        List<JobCall> snapshot = new ArrayList<>(allCallsList);
+        new Thread(() -> {
+            Set<String> dismissed = getDismissedDuplicatePairs();
+            List<DuplicateDetector.Candidate> found = DuplicateDetector.findDuplicates(snapshot, dismissed);
+            if (getActivity() == null || !isAdded()) return;
+            requireActivity().runOnUiThread(() -> {
+                if (tvCheckDuplicates != null) {
+                    tvCheckDuplicates.setVisibility(found.isEmpty() ? View.GONE : View.VISIBLE);
+                }
+            });
+        }).start();
+    }
+
+    private Set<String> getDismissedDuplicatePairs() {
+        String raw = requireContext().getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE)
+                .getString("dismissed_duplicate_pairs", "");
+        Set<String> set = new HashSet<>();
+        if (!raw.trim().isEmpty()) {
+            for (String key : raw.split(",")) {
+                if (!key.trim().isEmpty()) set.add(key.trim());
+            }
+        }
+        return set;
+    }
+
+    private void addDismissedDuplicatePair(String pairKey) {
+        Set<String> set = getDismissedDuplicatePairs();
+        set.add(pairKey);
+        String joined = android.text.TextUtils.join(",", set);
+        requireContext().getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE)
+                .edit().putString("dismissed_duplicate_pairs", joined).apply();
+    }
+
+    /**
+     * Shows every suggested duplicate-company pair with Merge / Not a duplicate actions.
+     * Merge consolidates both entries (notes, call history, phone numbers) into one via
+     * DatabaseHelper.mergeJobCalls; "Not a duplicate" remembers the pair so it stops
+     * being suggested.
+     */
+    private void showDuplicateReviewDialog() {
+        List<DuplicateDetector.Candidate> candidates =
+                DuplicateDetector.findDuplicates(allCallsList, getDismissedDuplicatePairs());
+        if (candidates.isEmpty()) {
+            Toast.makeText(requireContext(), "No duplicate companies found.", Toast.LENGTH_SHORT).show();
+            if (tvCheckDuplicates != null) tvCheckDuplicates.setVisibility(View.GONE);
+            return;
+        }
+
+        LinearLayout container = new LinearLayout(requireContext());
+        container.setOrientation(LinearLayout.VERTICAL);
+        int pad = (int) (16 * getResources().getDisplayMetrics().density);
+        container.setPadding(pad, pad, pad, pad);
+        android.widget.ScrollView scroll = new android.widget.ScrollView(requireContext());
+        scroll.addView(container);
+
+        AlertDialog dialog = new AlertDialog.Builder(requireContext())
+                .setTitle("Possible duplicate companies")
+                .setView(scroll)
+                .setNegativeButton("Close", null)
+                .create();
+
+        LayoutInflater inflater = getLayoutInflater();
+        for (DuplicateDetector.Candidate cand : candidates) {
+            View row = inflater.inflate(R.layout.item_duplicate_pair, container, false);
+            ((TextView) row.findViewById(R.id.tv_dup_score)).setText(cand.scorePercent + "% similar");
+            ((TextView) row.findViewById(R.id.tv_dup_name_a)).setText(cand.a.getCompanyName());
+            ((TextView) row.findViewById(R.id.tv_dup_name_b)).setText(cand.b.getCompanyName());
+
+            row.findViewById(R.id.btn_dup_dismiss).setOnClickListener(v -> {
+                addDismissedDuplicatePair(DuplicateDetector.pairKey(cand.a.getId(), cand.b.getId()));
+                container.removeView(row);
+                if (container.getChildCount() == 0) {
+                    dialog.dismiss();
+                    refreshDuplicateSuggestionVisibility();
+                }
+            });
+
+            row.findViewById(R.id.btn_dup_merge).setOnClickListener(v -> {
+                // Keep the entry with more history (older/first-seen), fold the other into it.
+                JobCall keep = cand.a.getTimestamp() <= cand.b.getTimestamp() ? cand.a : cand.b;
+                JobCall loser = keep == cand.a ? cand.b : cand.a;
+                dbHelper.mergeJobCalls(keep.getId(), loser.getId());
+                Toast.makeText(requireContext(),
+                        "Merged \"" + loser.getCompanyName() + "\" into \"" + keep.getCompanyName() + "\"",
+                        Toast.LENGTH_SHORT).show();
+                container.removeView(row);
+                refreshDashboardList();
+                if (container.getChildCount() == 0) {
+                    dialog.dismiss();
+                }
+            });
+
+            container.addView(row);
+        }
+
+        dialog.show();
     }
 
     /**

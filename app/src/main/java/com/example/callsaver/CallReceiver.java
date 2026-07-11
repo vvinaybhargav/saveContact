@@ -492,7 +492,13 @@ public class CallReceiver extends BroadcastReceiver {
                                             if (existingCall.getRoundStatus() == null || existingCall.getRoundStatus().isEmpty()) {
                                                 existingCall.setRoundStatus(round);
                                             }
-                                            if (existingCall.getTentativeSchedule() == null || existingCall.getTentativeSchedule().isEmpty()) {
+                                            // Unlike the "only fill if blank" fields above, the next-call date
+                                            // must always reflect the MOST RECENT schedule mentioned, not the
+                                            // first one ever captured - otherwise a new "let's talk tomorrow at
+                                            // 2pm" from a later call could never overwrite an older date.
+                                            // Only skip the update when this call didn't mention a new date at
+                                            // all (schedule empty), so we don't wipe a known future call.
+                                            if (!schedule.isEmpty()) {
                                                 existingCall.setTentativeSchedule(schedule);
                                             }
                                             if (existingCall.getNoticePeriod() == null || existingCall.getNoticePeriod().isEmpty()) {

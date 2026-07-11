@@ -201,6 +201,24 @@
             android:focusable="true"
             android:background="?android:attr/selectableItemBackground" />
 
+        <!-- Proactive AI-assisted duplicate-company suggestions -->
+        <TextView
+            android:id="@+id/tv_check_duplicates"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:layout_scrollFlags="scroll"
+            android:layout_gravity="end"
+            android:layout_marginHorizontal="16dp"
+            android:paddingVertical="4dp"
+            android:text="Check for duplicate companies ›"
+            android:textColor="@color/accent_indigo"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?android:attr/selectableItemBackground"
+            android:visibility="gone" />
+
 
 
 
