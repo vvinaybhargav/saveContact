@@ -43,14 +43,12 @@ public class MainActivity extends AppCompatActivity {
     private BottomNavigationView bottomNavigation;
     private RecentsFragment recentsFragment;
     private TrackerFragment trackerFragment;
-    private CombinedFragment combinedFragment;
 
     private final String[] requiredPermissions = {
             Manifest.permission.READ_PHONE_STATE,
             Manifest.permission.READ_CALL_LOG,
             Manifest.permission.READ_CONTACTS,
             Manifest.permission.WRITE_CONTACTS,
-            Manifest.permission.CALL_PHONE,
             Manifest.permission.GET_ACCOUNTS
     };
 
@@ -62,7 +60,6 @@ public class MainActivity extends AppCompatActivity {
         // Initialize Fragments
         recentsFragment = new RecentsFragment();
         trackerFragment = new TrackerFragment();
-        combinedFragment = new CombinedFragment();
 
         bottomNavigation = findViewById(R.id.bottom_navigation);
 
@@ -77,8 +74,6 @@ public class MainActivity extends AppCompatActivity {
                     selectedFragment = recentsFragment;
                 } else if (itemId == R.id.navigation_tracker) {
                     selectedFragment = trackerFragment;
-                } else if (itemId == R.id.navigation_combined) {
-                    selectedFragment = combinedFragment;
                 }
 
                 if (selectedFragment != null) {
@@ -271,9 +266,6 @@ public class MainActivity extends AppCompatActivity {
             }
             if (trackerFragment != null && trackerFragment.isAdded()) {
                 trackerFragment.onResume();
-            }
-            if (combinedFragment != null && combinedFragment.isAdded()) {
-                combinedFragment.onResume();
             }
         }
     }

@@ -27,9 +27,7 @@
     <!-- Permission to post the "save this caller" notification (Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
-    <!-- Default phone/dialer app: place, answer and manage calls -->
-    <uses-permission android:name="android.permission.CALL_PHONE" />
-    <uses-permission android:name="android.permission.ANSWER_PHONE_CALLS" />
+
 
     <!-- Show the call screen over the lock screen via a full-screen intent -->
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
@@ -60,16 +58,7 @@
             </intent-filter>
         </activity>
 
-        <!-- Full-screen in-call / incoming-call UI -->
-        <activity
-            android:name=".CallActivity"
-            android:exported="false"
-            android:excludeFromRecents="true"
-            android:launchMode="singleInstance"
-            android:showWhenLocked="true"
-            android:turnScreenOn="true"
-            android:taskAffinity=""
-            android:theme="@style/Theme.CallSaver" />
+
 
 
 

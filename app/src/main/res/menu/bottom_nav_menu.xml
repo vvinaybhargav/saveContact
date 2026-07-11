@@ -8,8 +8,5 @@
         android:id="@+id/navigation_tracker"
         android:icon="@android:drawable/ic_menu_today"
         android:title="Tracker" />
-    <item
-        android:id="@+id/navigation_combined"
-        android:icon="@android:drawable/ic_menu_agenda"
-        android:title="Combined" />
+
 </menu>
