@@ -58,6 +58,12 @@ public class SaveContactActivity extends AppCompatActivity {
     private EditText etTags;
     private EditText etNotes;
     private EditText etRecruiterName;
+    private EditText etCandidateName;
+    private EditText etAppliedRole;
+    private EditText etTentativeSchedule;
+    private EditText etNoticePeriod;
+    private EditText etMainAgenda;
+    private EditText etNextSteps;
     private Spinner spinnerRound;
     private Spinner spinnerAccount;
     private DatabaseHelper dbHelper;
@@ -168,7 +174,8 @@ public class SaveContactActivity extends AppCompatActivity {
 
         // Setup API Key preferences and UI controls
         SharedPreferences apiPrefs = getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE);
-        etDeepgramApiKey.setText(apiPrefs.getString("deepgram_api_key", ""));
+        String savedKey = apiPrefs.getString("deepgram_api_key", "");
+        etDeepgramApiKey.setText(savedKey);
         etOpenAiApiKey.setText(apiPrefs.getString("openai_api_key", ""));
 
         tvToggleApiKey.setText("▼ Settings: API Keys");
