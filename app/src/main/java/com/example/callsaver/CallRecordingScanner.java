@@ -39,10 +39,10 @@ public class CallRecordingScanner {
         long closestDiff = Long.MAX_VALUE;
         long timeWindowMs = 5 * 60 * 1000L;
 
-        // Fallback: track the newest audio file created within 45 seconds of the call end
+        // Fallback: track the newest audio file created within 60 seconds (1 minute) of the call end
         File newestAudioFile = null;
         long newestAudioDiff = Long.MAX_VALUE;
-        long fallbackWindowMs = 45 * 1000L;
+        long fallbackWindowMs = 60 * 1000L;
 
         DebugLogger.log(context, "[Scanner] Checking for recordings matching number: " + cleanNumber + ", endTime timestamp=" + callEndTime);
 
