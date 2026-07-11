@@ -544,9 +544,17 @@ public class CallReceiver extends BroadcastReceiver {
                                          }
                                          
                                          String summaryNote = pointsNote.toString().trim();
-                                         if (!summaryNote.isEmpty()) {
-                                             db.insertNote(jobCallId, summaryNote + " (AI Auto-transcribed)", System.currentTimeMillis());
-                                         } else {
+                                         // Every successfully transcribed call must produce a saved note (so it
+                                         // shows up in the numbered "Call" timeline) even when the AI's
+                                         // discussion points were all filtered out as generic chatter (e.g. a
+                                         // short follow-up call that's just "still interested, will call back").
+                                         // Falling through to the raw transcript instead of silently skipping
+                                         // insertNote() matches the manual Quick-Save flow's fallback behavior.
+                                         String noteToSave = !summaryNote.isEmpty()
+                                                 ? summaryNote + " (AI Auto-transcribed)"
+                                                 : "• " + transcript.trim() + " (AI Auto-transcribed, raw)";
+                                         db.insertNote(jobCallId, noteToSave, System.currentTimeMillis());
+                                         if (summaryNote.isEmpty()) {
                                              summaryNote = "AI Call Auto-transcribed.";
                                          }
                                         
