@@ -17,12 +17,17 @@
         app:strokeWidth="0dp"
         app:cardBackgroundColor="@color/white">
 
-        <LinearLayout
+        <ScrollView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="24dp"
-            android:gravity="center_horizontal">
+            android:scrollbars="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="24dp"
+                android:gravity="center_horizontal">
 
             <!-- Rounded Circle header badge -->
             <com.google.android.material.card.MaterialCardView
@@ -408,5 +413,6 @@
                 android:textStyle="bold" />
 
         </LinearLayout>
+        </ScrollView>
     </com.google.android.material.card.MaterialCardView>
 </RelativeLayout>

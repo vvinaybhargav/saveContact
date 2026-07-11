@@ -171,6 +171,20 @@
             android:textColor="@color/text_primary" />
     </com.google.android.material.textfield.TextInputLayout>
 
+    <TextView
+        android:id="@+id/tv_dialog_manual_recording"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end"
+        android:layout_marginBottom="12dp"
+        android:text="📁 Manually Select/Transcribe Recording ›"
+        android:textColor="@color/accent_indigo"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:clickable="true"
+        android:focusable="true"
+        android:background="?android:attr/selectableItemBackground" />
+
     <!-- Dropdown Selection Label -->
     <TextView
         android:layout_width="wrap_content"

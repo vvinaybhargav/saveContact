@@ -42,6 +42,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.io.File;
 import java.util.Locale;
 
 public class CombinedFragment extends Fragment implements CombinedAdapter.OnCombinedActionListener {
@@ -302,6 +303,11 @@ public class CombinedFragment extends Fragment implements CombinedAdapter.OnComb
         // Hide Save Contacts button (disabled as per instructions)
         btnSaveContacts.setVisibility(View.GONE);
 
+        View tvDialogManualRecording = dialogView.findViewById(R.id.tv_dialog_manual_recording);
+        if (tvDialogManualRecording != null) {
+            tvDialogManualRecording.setOnClickListener(v -> showManualRecordingDialogForNotesField(etNotes));
+        }
+
         tilNotes.setEndIconOnClickListener(v -> {
             Intent intent = new Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
             intent.putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
@@ -522,5 +528,90 @@ public class CombinedFragment extends Fragment implements CombinedAdapter.OnComb
                 activeDialogNotesField.setSelection(activeDialogNotesField.getText().length());
             }
         }
+    }
+
+    private void showManualRecordingDialogForNotesField(final EditText etNotesField) {
+        if (getContext() == null || etNotesField == null) return;
+        
+        File[] candidateDirs = new File[] {
+                new File(android.os.Environment.getExternalStorageDirectory(), "Music/Recordings/Call Recordings"),
+                new File(android.os.Environment.getExternalStorageDirectory(), "Recordings/Call"),
+                new File(android.os.Environment.getExternalStorageDirectory(), "Recordings/Call Recordings"),
+                new File(android.os.Environment.getExternalStorageDirectory(), "Recordings"),
+                new File(android.os.Environment.getExternalStorageDirectory(), "Music/Recordings")
+        };
+
+        final List<File> audioFiles = new ArrayList<>();
+        for (File dir : candidateDirs) {
+            if (dir.exists() && dir.isDirectory()) {
+                File[] files = dir.listFiles();
+                if (files != null) {
+                    for (File f : files) {
+                        if (f.isFile()) {
+                            String name = f.getName().toLowerCase();
+                            boolean isAudio = name.endsWith(".mp3") || name.endsWith(".wav") || 
+                                              name.endsWith(".m4a") || name.endsWith(".amr") || 
+                                              name.endsWith(".aac") || name.endsWith(".ogg") ||
+                                              name.endsWith(".mp4");
+                            if (isAudio) {
+                                audioFiles.add(f);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Sort by date modified DESC (newest first)
+        Collections.sort(audioFiles, (f1, f2) -> Long.compare(f2.lastModified(), f1.lastModified()));
+
+        if (audioFiles.isEmpty()) {
+            Toast.makeText(requireContext(), "No call recording files found on device storage.", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        // Limit listing to top 50 recent files
+        int limit = Math.min(audioFiles.size(), 50);
+        String[] fileNames = new String[limit];
+        SimpleDateFormat sdf = new SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault());
+        for (int i = 0; i < limit; i++) {
+            File f = audioFiles.get(i);
+            String dateStr = sdf.format(new Date(f.lastModified()));
+            double sizeMb = f.length() / (1024.0 * 1024.0);
+            fileNames[i] = f.getName() + "\n(" + dateStr + " · " + String.format(Locale.getDefault(), "%.2f MB", sizeMb) + ")";
+        }
+
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Select Call Recording File")
+                .setItems(fileNames, (dialog, which) -> {
+                    File selectedFile = audioFiles.get(which);
+                    
+                    // Show feedback
+                    Toast.makeText(requireContext(), "⌛ Transcribing selected file: " + selectedFile.getName(), Toast.LENGTH_LONG).show();
+                    
+                    Transcriber.transcribeCallRecording(requireContext(), selectedFile, new Transcriber.TranscriptionCallback() {
+                        @Override
+                        public void onSuccess(String text) {
+                            if (isAdded() && text != null && !text.isEmpty()) {
+                                String currentNotes = etNotesField.getText().toString().trim();
+                                if (!currentNotes.isEmpty()) {
+                                    etNotesField.setText(currentNotes + "\n" + text);
+                                } else {
+                                    etNotesField.setText(text);
+                                }
+                                Toast.makeText(requireContext(), "Transcription appended!", Toast.LENGTH_SHORT).show();
+                            }
+                        }
+
+                        @Override
+                        public void onError(String error) {
+                            if (isAdded()) {
+                                Toast.makeText(requireContext(), "Error transcribing: " + error, Toast.LENGTH_LONG).show();
+                            }
+                        }
+                    });
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 }
