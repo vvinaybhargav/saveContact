@@ -54,13 +54,13 @@ public class Transcriber {
         else if (name.endsWith(".aac")) mimeType = "audio/aac";
         else if (name.endsWith(".ogg")) mimeType = "audio/ogg";
 
-        RequestBody requestBody = RequestBody.create(audioFile, MediaType.parse(mimeType));
+        RequestBody requestBody = RequestBody.create(audioFile, MediaType.parse("application/octet-stream"));
 
         // Use Deepgram Nova-2 model with auto language detection and formatting
         Request request = new Request.Builder()
                 .url("https://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&detect_language=true")
                 .header("Authorization", "Token " + apiKey)
-                .header("Content-Type", mimeType)
+                .header("Content-Type", "application/octet-stream")
                 .post(requestBody)
                 .build();
 
