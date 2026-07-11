@@ -157,7 +157,24 @@ public class CallReceiver extends BroadcastReceiver {
                         // Make sure the call log was written in the last 15 seconds
                         if (diff < 15000L) {
                             Log.d(TAG, "Matched call log entry: " + entry.number + ", duration: " + entry.duration);
-                            
+
+                            // Android can deliver the IDLE PHONE_STATE broadcast more than
+                            // once for the same call end (common quirk, OEM-dependent). Without
+                            // this guard each duplicate broadcast re-runs the whole
+                            // transcribe -> AI -> insertNote pipeline, producing duplicate notes.
+                            String callSignature = entry.number + "|" + entry.date + "|" + entry.duration;
+                            String lastSignature = prefs.getString("last_processed_call_signature", "");
+                            long lastProcessedAt = prefs.getLong("last_processed_call_at", 0);
+                            if (callSignature.equals(lastSignature)
+                                    && (System.currentTimeMillis() - lastProcessedAt) < 60000L) {
+                                DebugLogger.log(context, "[Receiver] Duplicate IDLE broadcast for the same call (" + callSignature + "), skipping re-processing.");
+                                return;
+                            }
+                            prefs.edit()
+                                    .putString("last_processed_call_signature", callSignature)
+                                    .putLong("last_processed_call_at", System.currentTimeMillis())
+                                    .apply();
+
                             DatabaseHelper db = new DatabaseHelper(context);
                             JobCall call = db.getJobCallByNumber(context, entry.number);
                             
