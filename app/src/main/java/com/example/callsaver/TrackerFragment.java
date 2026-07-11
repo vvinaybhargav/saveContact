@@ -508,7 +508,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         EditText etCandidateName = null;
         EditText etAppliedRole = dialogView.findViewById(R.id.et_applied_role);
         EditText etTentativeSchedule = dialogView.findViewById(R.id.et_tentative_schedule);
-        EditText etNoticePeriod = dialogView.findViewById(R.id.et_notice_period);
+        EditText etNoticePeriod = null; // Notice Period removed from the UI; preserved in DB if already set.
         EditText etMainAgenda = dialogView.findViewById(R.id.et_main_agenda);
         EditText etNextSteps = dialogView.findViewById(R.id.et_next_steps);
 
@@ -524,18 +524,10 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         activeLlTranscriptionProgress = dialogView.findViewById(R.id.ll_dialog_transcription_progress);
         activeTvTranscriptionStatus = dialogView.findViewById(R.id.tv_dialog_transcription_status);
 
+        // The AI already resolves relative phrases like "tomorrow at 2pm" heard in the
+        // call into an absolute date/time (see OpenAiClient); manual entry uses a picker.
         if (etTentativeSchedule != null) {
             etTentativeSchedule.setOnClickListener(v -> showDateTimePicker(etTentativeSchedule));
-        }
-
-        View btnTomorrow = dialogView.findViewById(R.id.btn_schedule_tomorrow);
-        if (btnTomorrow != null && etTentativeSchedule != null) {
-            btnTomorrow.setOnClickListener(v -> {
-                java.util.Calendar cal = java.util.Calendar.getInstance();
-                cal.add(java.util.Calendar.DAY_OF_YEAR, 1);
-                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd 'at' hh:mm a", java.util.Locale.getDefault());
-                etTentativeSchedule.setText(sdf.format(cal.getTime()));
-            });
         }
 
         Button btnCancel = dialogView.findViewById(R.id.btn_dialog_cancel);
@@ -600,7 +592,6 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             if (etCandidateName != null) etCandidateName.setText(editCall.getCandidateName());
             etAppliedRole.setText(editCall.getAppliedRole());
             etTentativeSchedule.setText(editCall.getTentativeSchedule());
-            etNoticePeriod.setText(editCall.getNoticePeriod());
             etMainAgenda.setText(editCall.getMainAgenda());
             etNextSteps.setText(editCall.getNextSteps());
 
@@ -639,7 +630,6 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                     if (etCandidateName != null) etCandidateName.setText(existingCall.getCandidateName());
                     etAppliedRole.setText(existingCall.getAppliedRole());
                     etTentativeSchedule.setText(existingCall.getTentativeSchedule());
-                    etNoticePeriod.setText(existingCall.getNoticePeriod());
                     etMainAgenda.setText(existingCall.getMainAgenda());
                     etNextSteps.setText(existingCall.getNextSteps());
                 }
@@ -700,7 +690,6 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             String candidate = etCandidateName != null ? etCandidateName.getText().toString().trim() : "";
             String role = etAppliedRole.getText().toString().trim();
             String schedule = etTentativeSchedule.getText().toString().trim();
-            String notice = etNoticePeriod.getText().toString().trim();
             String agenda = etMainAgenda.getText().toString().trim();
             String nextStepsVal = etNextSteps.getText().toString().trim();
 
@@ -720,7 +709,6 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                 editCall.setCandidateName(candidate);
                 editCall.setAppliedRole(role);
                 editCall.setTentativeSchedule(schedule);
-                editCall.setNoticePeriod(notice);
                 editCall.setMainAgenda(agenda);
                 editCall.setNextSteps(nextStepsVal);
 
@@ -750,7 +738,6 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                     existingCall.setCandidateName(candidate);
                     existingCall.setAppliedRole(role);
                     existingCall.setTentativeSchedule(schedule);
-                    existingCall.setNoticePeriod(notice);
                     existingCall.setMainAgenda(agenda);
                     existingCall.setNextSteps(nextStepsVal);
                     existingCall.setRoundStatus(round);
@@ -767,7 +754,6 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                     newCall.setCandidateName(candidate);
                     newCall.setAppliedRole(role);
                     newCall.setTentativeSchedule(schedule);
-                    newCall.setNoticePeriod(notice);
                     newCall.setMainAgenda(agenda);
                     newCall.setKeyDiscussionPoints(noteToAdd);
                     newCall.setNextSteps(nextStepsVal);

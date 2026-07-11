@@ -3,14 +3,17 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:maxHeight="560dp"
-    android:fillViewport="true">
+    android:maxHeight="620dp"
+    android:fillViewport="true"
+    android:background="@color/bg_light">
 
 <LinearLayout
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="24dp">
+    android:paddingHorizontal="20dp"
+    android:paddingTop="24dp"
+    android:paddingBottom="20dp">
 
     <!-- Form Title -->
     <TextView
@@ -19,25 +22,35 @@
         android:layout_height="wrap_content"
         android:text="@string/title_add_job_call"
         android:textColor="@color/text_primary"
-        android:textSize="20sp"
+        android:textSize="21sp"
         android:textStyle="bold"
-        android:layout_marginBottom="16dp" />
+        android:letterSpacing="0.01"
+        android:layout_marginBottom="4dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Every detail syncs to the call screen and timeline"
+        android:textColor="@color/text_muted"
+        android:textSize="12sp"
+        android:layout_marginBottom="20dp" />
 
     <!-- Phone Number Input -->
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/til_phone"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="12dp"
+        android:layout_marginBottom="18dp"
         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-        app:boxCornerRadiusTopStart="12dp"
-        app:boxCornerRadiusTopEnd="12dp"
-        app:boxCornerRadiusBottomStart="12dp"
-        app:boxCornerRadiusBottomEnd="12dp"
+        app:boxCornerRadiusTopStart="14dp"
+        app:boxCornerRadiusTopEnd="14dp"
+        app:boxCornerRadiusBottomStart="14dp"
+        app:boxCornerRadiusBottomEnd="14dp"
         app:boxStrokeColor="@color/accent_indigo"
+        app:boxStrokeWidth="1.5dp"
         app:hintTextColor="@color/accent_indigo"
         app:startIconDrawable="@android:drawable/ic_menu_call"
-        app:startIconTint="@color/text_muted">
+        app:startIconTint="@color/accent_indigo">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/et_phone"
@@ -45,76 +58,95 @@
             android:layout_height="wrap_content"
             android:hint="@string/hint_phone_number"
             android:inputType="phone"
-            android:textColor="@color/text_primary" />
+            android:textColor="@color/text_primary"
+            android:textStyle="bold" />
     </com.google.android.material.textfield.TextInputLayout>
 
     <!-- SECTION 1: CANDIDATE PROFILE -->
-    <TextView
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="👤 Candidate Profile"
-        android:textColor="@color/accent_indigo"
-        android:textSize="14sp"
-        android:textStyle="bold"
-        android:layout_marginTop="8dp"
-        android:layout_marginBottom="8dp"
-        android:gravity="start" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="10dp">
 
-    <com.google.android.material.textfield.TextInputLayout
-        android:id="@+id/til_recruiter_name"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="12dp"
-        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-        app:boxCornerRadiusTopStart="12dp"
-        app:boxCornerRadiusTopEnd="12dp"
-        app:boxCornerRadiusBottomStart="12dp"
-        app:boxCornerRadiusBottomEnd="12dp"
-        app:boxStrokeColor="@color/accent_indigo"
-        app:hintTextColor="@color/accent_indigo"
-        app:startIconDrawable="@android:drawable/ic_menu_my_calendar"
-        app:startIconTint="@color/text_muted">
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/et_recruiter_name"
-            android:layout_width="match_parent"
+        <View
+            android:layout_width="3dp"
+            android:layout_height="14dp"
+            android:background="@color/accent_indigo"
+            android:layout_marginEnd="8dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:hint="Recruiter Name"
-            android:inputType="textPersonName"
-            android:textColor="@color/text_primary" />
-    </com.google.android.material.textfield.TextInputLayout>
+            android:text="CANDIDATE PROFILE"
+            android:textColor="@color/accent_indigo"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.08" />
+    </LinearLayout>
 
-    <com.google.android.material.textfield.TextInputLayout
-        android:id="@+id/til_company"
+    <!-- Recruiter Name + Company side by side -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="12dp"
-        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-        app:boxCornerRadiusTopStart="12dp"
-        app:boxCornerRadiusTopEnd="12dp"
-        app:boxCornerRadiusBottomStart="12dp"
-        app:boxCornerRadiusBottomEnd="12dp"
-        app:boxStrokeColor="@color/accent_indigo"
-        app:hintTextColor="@color/accent_indigo"
-        app:startIconDrawable="@android:drawable/ic_menu_myplaces"
-        app:startIconTint="@color/text_muted">
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/et_company"
-            android:layout_width="match_parent"
+        android:orientation="horizontal"
+        android:layout_marginBottom="12dp">
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/til_recruiter_name"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:hint="@string/hint_company_name"
-            android:inputType="textCapWords"
-            android:textColor="@color/text_primary" />
-    </com.google.android.material.textfield.TextInputLayout>
+            android:layout_weight="1"
+            android:layout_marginEnd="6dp"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            app:boxCornerRadiusTopStart="14dp"
+            app:boxCornerRadiusTopEnd="14dp"
+            app:boxCornerRadiusBottomStart="14dp"
+            app:boxCornerRadiusBottomEnd="14dp"
+            app:boxStrokeColor="@color/accent_indigo"
+            app:hintTextColor="@color/accent_indigo">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/et_recruiter_name"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Recruiter"
+                android:inputType="textPersonName"
+                android:textColor="@color/text_primary" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/til_company"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="6dp"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            app:boxCornerRadiusTopStart="14dp"
+            app:boxCornerRadiusTopEnd="14dp"
+            app:boxCornerRadiusBottomStart="14dp"
+            app:boxCornerRadiusBottomEnd="14dp"
+            app:boxStrokeColor="@color/accent_indigo"
+            app:hintTextColor="@color/accent_indigo">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/et_company"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/hint_company_name"
+                android:inputType="textCapWords"
+                android:textColor="@color/text_primary" />
+        </com.google.android.material.textfield.TextInputLayout>
+    </LinearLayout>
 
     <com.google.android.material.textfield.TextInputLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
+        android:layout_marginBottom="22dp"
         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-        app:boxCornerRadiusTopStart="12dp"
-        app:boxCornerRadiusTopEnd="12dp"
-        app:boxCornerRadiusBottomStart="12dp"
-        app:boxCornerRadiusBottomEnd="12dp"
+        app:boxCornerRadiusTopStart="14dp"
+        app:boxCornerRadiusTopEnd="14dp"
+        app:boxCornerRadiusBottomStart="14dp"
+        app:boxCornerRadiusBottomEnd="14dp"
         app:boxStrokeColor="@color/accent_indigo"
         app:hintTextColor="@color/accent_indigo"
         app:startIconDrawable="@android:drawable/ic_menu_myplaces"
@@ -129,29 +161,32 @@
     </com.google.android.material.textfield.TextInputLayout>
 
     <!-- SECTION 2: INTERVIEW STATUS -->
-    <TextView
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="📅 Current Interview Status"
-        android:textColor="@color/accent_indigo"
-        android:textSize="14sp"
-        android:textStyle="bold"
-        android:layout_marginBottom="8dp"
-        android:gravity="start" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="10dp">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/label_select_round"
-        android:textColor="@color/text_secondary"
-        android:textSize="11sp"
-        android:textStyle="bold"
-        android:layout_marginBottom="4dp"
-        android:layout_marginStart="4dp" />
+        <View
+            android:layout_width="3dp"
+            android:layout_height="14dp"
+            android:background="@color/accent_indigo"
+            android:layout_marginEnd="8dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="INTERVIEW STATUS"
+            android:textColor="@color/accent_indigo"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.08" />
+    </LinearLayout>
 
     <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="48dp"
+        android:layout_height="50dp"
         android:layout_marginBottom="12dp"
         android:background="@drawable/spinner_border">
         <Spinner
@@ -162,69 +197,28 @@
             android:spinnerMode="dropdown" />
     </FrameLayout>
 
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:layout_marginBottom="12dp">
-
-        <com.google.android.material.textfield.TextInputLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-            app:boxCornerRadiusTopStart="12dp"
-            app:boxCornerRadiusTopEnd="12dp"
-            app:boxCornerRadiusBottomStart="12dp"
-            app:boxCornerRadiusBottomEnd="12dp"
-            app:boxStrokeColor="@color/accent_indigo"
-            app:hintTextColor="@color/accent_indigo"
-            app:startIconDrawable="@android:drawable/ic_menu_myplaces"
-            app:startIconTint="@color/text_muted">
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/et_tentative_schedule"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="Tentative Schedule (Next Call)"
-                android:inputType="none"
-                android:focusable="false"
-                android:clickable="true"
-                android:textColor="@color/text_primary"/>
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_schedule_tomorrow"
-            style="@style/Widget.MaterialComponents.Button.TextButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Tmrw"
-            android:textSize="12sp"
-            android:textAllCaps="false"
-            android:textColor="@color/accent_indigo"
-            android:layout_marginStart="8dp" />
-    </LinearLayout>
-
     <com.google.android.material.textfield.TextInputLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
+        android:layout_marginBottom="22dp"
         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-        app:boxCornerRadiusTopStart="12dp"
-        app:boxCornerRadiusTopEnd="12dp"
-        app:boxCornerRadiusBottomStart="12dp"
-        app:boxCornerRadiusBottomEnd="12dp"
+        app:boxCornerRadiusTopStart="14dp"
+        app:boxCornerRadiusTopEnd="14dp"
+        app:boxCornerRadiusBottomStart="14dp"
+        app:boxCornerRadiusBottomEnd="14dp"
         app:boxStrokeColor="@color/accent_indigo"
         app:hintTextColor="@color/accent_indigo"
-        app:startIconDrawable="@android:drawable/ic_menu_myplaces"
+        app:startIconDrawable="@android:drawable/ic_menu_my_calendar"
         app:startIconTint="@color/text_muted">
         <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/et_notice_period"
+            android:id="@+id/et_tentative_schedule"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Notice Period / Availability"
-            android:inputType="textCapWords"
-            android:textColor="@color/text_primary" />
+            android:hint="Next Call (tap to pick date &amp; time)"
+            android:inputType="none"
+            android:focusable="false"
+            android:clickable="true"
+            android:textColor="@color/text_primary"/>
     </com.google.android.material.textfield.TextInputLayout>
 
     <!-- Merged Call Timeline (Only visible/populated for existing entries) -->
@@ -248,15 +242,28 @@
         android:layout_marginBottom="8dp" />
 
     <!-- SECTION 3: CALL NOTES & HISTORY -->
-    <TextView
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="📝 Notes"
-        android:textColor="@color/accent_indigo"
-        android:textSize="14sp"
-        android:textStyle="bold"
-        android:layout_marginBottom="8dp"
-        android:gravity="start" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="10dp">
+
+        <View
+            android:layout_width="3dp"
+            android:layout_height="14dp"
+            android:background="@color/accent_indigo"
+            android:layout_marginEnd="8dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="NOTES"
+            android:textColor="@color/accent_indigo"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.08" />
+    </LinearLayout>
 
     <com.google.android.material.textfield.TextInputLayout
         android:layout_width="match_parent"
@@ -284,12 +291,12 @@
         android:id="@+id/til_notes"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="6dp"
+        android:layout_marginBottom="8dp"
         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-        app:boxCornerRadiusTopStart="12dp"
-        app:boxCornerRadiusTopEnd="12dp"
-        app:boxCornerRadiusBottomStart="12dp"
-        app:boxCornerRadiusBottomEnd="12dp"
+        app:boxCornerRadiusTopStart="14dp"
+        app:boxCornerRadiusTopEnd="14dp"
+        app:boxCornerRadiusBottomStart="14dp"
+        app:boxCornerRadiusBottomEnd="14dp"
         app:boxStrokeColor="@color/accent_indigo"
         app:hintTextColor="@color/accent_indigo"
         app:startIconDrawable="@android:drawable/ic_menu_edit"
@@ -301,7 +308,7 @@
             android:id="@+id/et_notes"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Key Discussion Points"
+            android:hint="Add a note manually…"
             android:inputType="textMultiLine|textCapSentences"
             android:maxLines="6"
             android:textColor="@color/text_primary" />
@@ -312,8 +319,9 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="end"
-        android:layout_marginBottom="12dp"
-        android:text="📁 Manually Select/Transcribe Recording ›"
+        android:layout_marginBottom="14dp"
+        android:paddingVertical="4dp"
+        android:text="📁 Upload a recording to transcribe ›"
         android:textColor="@color/accent_indigo"
         android:textSize="12sp"
         android:textStyle="bold"
@@ -350,15 +358,15 @@
     <com.google.android.material.textfield.TextInputLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="24dp"
+        android:layout_marginBottom="20dp"
         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-        app:boxCornerRadiusTopStart="12dp"
-        app:boxCornerRadiusTopEnd="12dp"
-        app:boxCornerRadiusBottomStart="12dp"
-        app:boxCornerRadiusBottomEnd="12dp"
+        app:boxCornerRadiusTopStart="14dp"
+        app:boxCornerRadiusTopEnd="14dp"
+        app:boxCornerRadiusBottomStart="14dp"
+        app:boxCornerRadiusBottomEnd="14dp"
         app:boxStrokeColor="@color/accent_indigo"
         app:hintTextColor="@color/accent_indigo"
-        app:startIconDrawable="@android:drawable/ic_menu_myplaces"
+        app:startIconDrawable="@android:drawable/ic_menu_send"
         app:startIconTint="@color/text_muted">
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/et_next_steps"
@@ -369,12 +377,18 @@
             android:textColor="@color/text_primary" />
     </com.google.android.material.textfield.TextInputLayout>
 
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/divider"
+        android:layout_marginBottom="16dp" />
+
     <!-- Actions Row -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="end">
+        android:gravity="center_vertical|end">
 
         <!-- Delete (Only for edits) -->
         <com.google.android.material.button.MaterialButton
