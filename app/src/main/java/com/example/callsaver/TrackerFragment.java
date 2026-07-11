@@ -42,6 +42,12 @@ import com.google.android.material.switchmaterial.SwitchMaterial;
 
 import com.google.android.material.textfield.TextInputLayout;
 import com.google.android.material.chip.Chip;
+import android.app.DatePickerDialog;
+import android.app.TimePickerDialog;
+import android.widget.SpinnerAdapter;
+import java.util.Calendar;
+import org.json.JSONObject;
+import org.json.JSONArray;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -58,6 +64,16 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
 
     private RecyclerView rvJobCalls;
     private View emptyStateLayout;
+
+    private EditText activeEtCandidateName;
+    private EditText activeEtCompany;
+    private EditText activeEtAppliedRole;
+    private EditText activeEtTentativeSchedule;
+    private EditText activeEtNoticePeriod;
+    private EditText activeEtMainAgenda;
+    private EditText activeEtNotes;
+    private EditText activeEtNextSteps;
+    private Spinner activeSpinnerRound;
     private MaterialCardView cardPermissionsBanner;
     private FloatingActionButton fabAddCall;
     private EditText etSearch;
@@ -180,33 +196,39 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             tvViewDebugLogs.setOnClickListener(v -> showDebugLogsDialog());
         }
 
-        // Deepgram API Key Settings Logic
+        // API Key Settings Logic (Deepgram + OpenAI)
         TextView tvToggleDashboardKey = view.findViewById(R.id.tv_toggle_dashboard_key);
         View llDashboardKeyContainer = view.findViewById(R.id.ll_dashboard_key_container);
         EditText etDashboardDeepgramKey = view.findViewById(R.id.et_dashboard_deepgram_key);
+        EditText etDashboardOpenAiKey = view.findViewById(R.id.et_dashboard_openai_key);
         View btnSaveDashboardKey = view.findViewById(R.id.btn_save_dashboard_key);
 
-        if (tvToggleDashboardKey != null && llDashboardKeyContainer != null && etDashboardDeepgramKey != null && btnSaveDashboardKey != null) {
+        if (tvToggleDashboardKey != null && llDashboardKeyContainer != null && etDashboardDeepgramKey != null && etDashboardOpenAiKey != null && btnSaveDashboardKey != null) {
             android.content.SharedPreferences prefs = requireContext().getSharedPreferences("CallSaverPrefs", android.content.Context.MODE_PRIVATE);
-            String savedKey = prefs.getString("deepgram_api_key", "");
-            etDashboardDeepgramKey.setText(savedKey);
+            etDashboardDeepgramKey.setText(prefs.getString("deepgram_api_key", ""));
+            etDashboardOpenAiKey.setText(prefs.getString("openai_api_key", ""));
 
+            tvToggleDashboardKey.setText("▼ Settings: API Keys");
             tvToggleDashboardKey.setOnClickListener(v -> {
                 if (llDashboardKeyContainer.getVisibility() == View.VISIBLE) {
                     llDashboardKeyContainer.setVisibility(View.GONE);
-                    tvToggleDashboardKey.setText("▼ Settings: Deepgram API Key");
+                    tvToggleDashboardKey.setText("▼ Settings: API Keys");
                 } else {
                     llDashboardKeyContainer.setVisibility(View.VISIBLE);
-                    tvToggleDashboardKey.setText("▲ Settings: Deepgram API Key");
+                    tvToggleDashboardKey.setText("▲ Settings: API Keys");
                 }
             });
 
             btnSaveDashboardKey.setOnClickListener(v -> {
-                String key = etDashboardDeepgramKey.getText().toString().trim();
-                prefs.edit().putString("deepgram_api_key", key).apply();
-                Toast.makeText(requireContext(), "Deepgram API Key saved successfully!", Toast.LENGTH_SHORT).show();
+                String dgKey = etDashboardDeepgramKey.getText().toString().trim();
+                String oaKey = etDashboardOpenAiKey.getText().toString().trim();
+                prefs.edit()
+                        .putString("deepgram_api_key", dgKey)
+                        .putString("openai_api_key", oaKey)
+                        .apply();
+                Toast.makeText(requireContext(), "API Keys saved successfully!", Toast.LENGTH_SHORT).show();
                 llDashboardKeyContainer.setVisibility(View.GONE);
-                tvToggleDashboardKey.setText("▼ Settings: Deepgram API Key");
+                tvToggleDashboardKey.setText("▼ Settings: API Keys");
             });
         }
 
@@ -525,6 +547,27 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         View labelNotes = dialogView.findViewById(R.id.label_notes);
         Spinner spinnerRound = dialogView.findViewById(R.id.spinner_round);
 
+        EditText etCandidateName = dialogView.findViewById(R.id.et_candidate_name);
+        EditText etAppliedRole = dialogView.findViewById(R.id.et_applied_role);
+        EditText etTentativeSchedule = dialogView.findViewById(R.id.et_tentative_schedule);
+        EditText etNoticePeriod = dialogView.findViewById(R.id.et_notice_period);
+        EditText etMainAgenda = dialogView.findViewById(R.id.et_main_agenda);
+        EditText etNextSteps = dialogView.findViewById(R.id.et_next_steps);
+
+        activeEtCandidateName = etCandidateName;
+        activeEtCompany = etCompany;
+        activeEtAppliedRole = etAppliedRole;
+        activeEtTentativeSchedule = etTentativeSchedule;
+        activeEtNoticePeriod = etNoticePeriod;
+        activeEtMainAgenda = etMainAgenda;
+        activeEtNotes = etNotes;
+        activeEtNextSteps = etNextSteps;
+        activeSpinnerRound = spinnerRound;
+
+        if (etTentativeSchedule != null) {
+            etTentativeSchedule.setOnClickListener(v -> showDateTimePicker(etTentativeSchedule));
+        }
+
         Button btnCancel = dialogView.findViewById(R.id.btn_dialog_cancel);
         Button btnSave = dialogView.findViewById(R.id.btn_dialog_save);
         Button btnDelete = dialogView.findViewById(R.id.btn_dialog_delete);
@@ -563,6 +606,15 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         alertDialog.setOnDismissListener(dialog -> {
             activeDialogNotesField = null;
             activeDialogTilNotes = null;
+            activeEtCandidateName = null;
+            activeEtCompany = null;
+            activeEtAppliedRole = null;
+            activeEtTentativeSchedule = null;
+            activeEtNoticePeriod = null;
+            activeEtMainAgenda = null;
+            activeEtNotes = null;
+            activeEtNextSteps = null;
+            activeSpinnerRound = null;
         });
 
         // Configure Dialog Mode (Edit vs. Add)
@@ -572,6 +624,14 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             etCompany.setText(editCall.getCompanyName());
             etRecruiter.setText(editCall.getRecruiterName());
             etTags.setText(editCall.getTags());
+            
+            etCandidateName.setText(editCall.getCandidateName());
+            etAppliedRole.setText(editCall.getAppliedRole());
+            etTentativeSchedule.setText(editCall.getTentativeSchedule());
+            etNoticePeriod.setText(editCall.getNoticePeriod());
+            etMainAgenda.setText(editCall.getMainAgenda());
+            etNextSteps.setText(editCall.getNextSteps());
+
             // Calls + notes are shown as a merged timeline below; the field adds a new note.
             populateTimeline(llNotesTimeline, labelNotes, editCall.getId());
             btnSave.setText(R.string.btn_update);
@@ -604,6 +664,12 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                         int position = spinnerAdapter.getPosition(existingCall.getRoundStatus());
                         spinnerRound.setSelection(position >= 0 ? position : 0);
                     }
+                    etCandidateName.setText(existingCall.getCandidateName());
+                    etAppliedRole.setText(existingCall.getAppliedRole());
+                    etTentativeSchedule.setText(existingCall.getTentativeSchedule());
+                    etNoticePeriod.setText(existingCall.getNoticePeriod());
+                    etMainAgenda.setText(existingCall.getMainAgenda());
+                    etNextSteps.setText(existingCall.getNextSteps());
                 }
             }
         }
@@ -659,6 +725,13 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             String noteToAdd = etNotes != null ? etNotes.getText().toString().trim() : "";
             String round = spinnerRound.getSelectedItem().toString();
 
+            String candidate = etCandidateName.getText().toString().trim();
+            String role = etAppliedRole.getText().toString().trim();
+            String schedule = etTentativeSchedule.getText().toString().trim();
+            String notice = etNoticePeriod.getText().toString().trim();
+            String agenda = etMainAgenda.getText().toString().trim();
+            String nextStepsVal = etNextSteps.getText().toString().trim();
+
             if (phone.isEmpty()) {
                 Toast.makeText(requireContext(), R.string.msg_phone_empty, Toast.LENGTH_SHORT).show();
                 return;
@@ -671,6 +744,13 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                 editCall.setRecruiterName(recruiter);
                 editCall.setTags(tags);
                 editCall.setRoundStatus(round);
+                
+                editCall.setCandidateName(candidate);
+                editCall.setAppliedRole(role);
+                editCall.setTentativeSchedule(schedule);
+                editCall.setNoticePeriod(notice);
+                editCall.setMainAgenda(agenda);
+                editCall.setNextSteps(nextStepsVal);
 
                 dbHelper.updateJobCall(editCall);
                 dbHelper.linkPhoneToJob(editCall.getId(), phone, recruiter);
@@ -693,11 +773,33 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                     if (!noteToAdd.isEmpty()) {
                         dbHelper.insertNote(existingCall.getId(), noteToAdd, System.currentTimeMillis());
                     }
+                    
+                    // Update existing company fields with edits
+                    existingCall.setCandidateName(candidate);
+                    existingCall.setAppliedRole(role);
+                    existingCall.setTentativeSchedule(schedule);
+                    existingCall.setNoticePeriod(notice);
+                    existingCall.setMainAgenda(agenda);
+                    existingCall.setNextSteps(nextStepsVal);
+                    existingCall.setRoundStatus(round);
+                    if (!recruiter.isEmpty()) {
+                        existingCall.setRecruiterName(recruiter);
+                    }
+                    dbHelper.updateJobCall(existingCall);
+                    
                     Toast.makeText(requireContext(), "Linked to existing company " + existingCall.getCompanyName(), Toast.LENGTH_LONG).show();
                 } else {
                     // Create new entry
                     JobCall newCall = new JobCall(phone, company, round, tags, "", 0, System.currentTimeMillis());
                     newCall.setRecruiterName(recruiter);
+                    newCall.setCandidateName(candidate);
+                    newCall.setAppliedRole(role);
+                    newCall.setTentativeSchedule(schedule);
+                    newCall.setNoticePeriod(notice);
+                    newCall.setMainAgenda(agenda);
+                    newCall.setKeyDiscussionPoints(noteToAdd);
+                    newCall.setNextSteps(nextStepsVal);
+
                     long newId = dbHelper.insertJobCall(newCall);
                     if (newId != -1 && !noteToAdd.isEmpty()) {
                         dbHelper.insertNote(newId, noteToAdd, System.currentTimeMillis());
@@ -977,15 +1079,73 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                     Transcriber.transcribeCallRecording(requireContext(), selectedFile, new Transcriber.TranscriptionCallback() {
                         @Override
                         public void onSuccess(String text) {
-                            if (isAdded() && text != null && !text.isEmpty()) {
+                            if (!isAdded() || text == null || text.trim().isEmpty()) return;
+                            
+                            // Check OpenAI API Key
+                            String openAiKey = requireContext().getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE).getString("openai_api_key", "").trim();
+                            if (openAiKey.isEmpty()) {
+                                // Fallback: No OpenAI key -> Save transcription raw
                                 String currentNotes = etNotesField.getText().toString().trim();
-                                if (!currentNotes.isEmpty()) {
-                                    etNotesField.setText(currentNotes + "\n" + text);
-                                } else {
-                                    etNotesField.setText(text);
-                                }
-                                Toast.makeText(requireContext(), "Transcription appended!", Toast.LENGTH_SHORT).show();
+                                etNotesField.setText(currentNotes.isEmpty() ? text : currentNotes + "\n" + text);
+                                Toast.makeText(requireContext(), "Transcription success! Saved raw.", Toast.LENGTH_SHORT).show();
+                                return;
                             }
+
+                            // Query OpenAI
+                            Toast.makeText(requireContext(), "✨ Running AI analysis...", Toast.LENGTH_SHORT).show();
+                            OpenAiClient.extractFields(requireContext(), text, new OpenAiClient.OpenAiCallback() {
+                                @Override
+                                public void onSuccess(JSONObject result) {
+                                    if (!isAdded()) return;
+                                    try {
+                                        if (result.has("candidate_name") && !result.isNull("candidate_name") && activeEtCandidateName != null) {
+                                            activeEtCandidateName.setText(result.getString("candidate_name"));
+                                        }
+                                        if (result.has("company_name") && !result.isNull("company_name") && activeEtCompany != null) {
+                                            activeEtCompany.setText(result.getString("company_name"));
+                                        }
+                                        if (result.has("applied_role") && !result.isNull("applied_role") && activeEtAppliedRole != null) {
+                                            activeEtAppliedRole.setText(result.getString("applied_role"));
+                                        }
+                                        if (result.has("present_round") && !result.isNull("present_round") && activeSpinnerRound != null) {
+                                            setSpinnerSelection(activeSpinnerRound, result.getString("present_round"));
+                                        }
+                                        if (result.has("tentative_schedule") && !result.isNull("tentative_schedule") && activeEtTentativeSchedule != null) {
+                                            activeEtTentativeSchedule.setText(result.getString("tentative_schedule"));
+                                        }
+                                        if (result.has("notice_period") && !result.isNull("notice_period") && activeEtNoticePeriod != null) {
+                                            activeEtNoticePeriod.setText(result.getString("notice_period"));
+                                        }
+                                        if (result.has("main_agenda") && !result.isNull("main_agenda") && activeEtMainAgenda != null) {
+                                            activeEtMainAgenda.setText(result.getString("main_agenda"));
+                                        }
+                                        if (result.has("next_steps") && !result.isNull("next_steps") && activeEtNextSteps != null) {
+                                            activeEtNextSteps.setText(result.getString("next_steps"));
+                                        }
+                                        
+                                        if (result.has("key_discussion_points") && activeEtNotes != null) {
+                                            JSONArray arr = result.getJSONArray("key_discussion_points");
+                                            StringBuilder sb = new StringBuilder();
+                                            for (int i = 0; i < arr.length(); i++) {
+                                                sb.append("• ").append(arr.getString(i)).append("\n");
+                                            }
+                                            activeEtNotes.setText(sb.toString().trim());
+                                        }
+                                        Toast.makeText(requireContext(), "AI fields updated successfully!", Toast.LENGTH_SHORT).show();
+                                    } catch (Exception e) {
+                                        DebugLogger.log(requireContext(), "Failed to parse OpenAI fields in dialog: " + e.getMessage());
+                                        etNotesField.setText(text);
+                                        Toast.makeText(requireContext(), "AI analysis failed. Pre-filled raw transcription.", Toast.LENGTH_LONG).show();
+                                    }
+                                }
+
+                                @Override
+                                public void onError(String error) {
+                                    if (!isAdded()) return;
+                                    etNotesField.setText(text);
+                                    Toast.makeText(requireContext(), "AI analysis failed: " + error + ". Pre-filled raw.", Toast.LENGTH_LONG).show();
+                                }
+                            });
                         }
 
                         @Override
@@ -1000,4 +1160,35 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                 .show();
     }
 
+    private void showDateTimePicker(EditText et) {
+        Calendar calendar = Calendar.getInstance();
+        new DatePickerDialog(requireContext(), (view, year, month, dayOfMonth) -> {
+            calendar.set(Calendar.YEAR, year);
+            calendar.set(Calendar.MONTH, month);
+            calendar.set(Calendar.DAY_OF_MONTH, dayOfMonth);
+
+            new TimePickerDialog(requireContext(), (timeView, hourOfDay, minute) -> {
+                calendar.set(Calendar.HOUR_OF_DAY, hourOfDay);
+                calendar.set(Calendar.MINUTE, minute);
+
+                SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd 'at' hh:mm a", Locale.getDefault());
+                et.setText(format.format(calendar.getTime()));
+            }, calendar.get(Calendar.HOUR_OF_DAY), calendar.get(Calendar.MINUTE), false).show();
+
+        }, calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH)).show();
+    }
+
+    private void setSpinnerSelection(Spinner spinner, String value) {
+        if (value == null || value.trim().isEmpty()) return;
+        SpinnerAdapter adapter = spinner.getAdapter();
+        if (adapter == null) return;
+        String lowerVal = value.toLowerCase().trim();
+        for (int i = 0; i < adapter.getCount(); i++) {
+            String item = adapter.getItem(i).toString().toLowerCase();
+            if (item.contains(lowerVal) || lowerVal.contains(item)) {
+                spinner.setSelection(i);
+                return;
+            }
+        }
+    }
 }

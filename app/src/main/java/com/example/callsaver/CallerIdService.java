@@ -88,12 +88,32 @@ public class CallerIdService extends Service {
         ImageView btnClose = overlayView.findViewById(R.id.btn_overlay_close);
         androidx.cardview.widget.CardView cardAvatar = overlayView.findViewById(R.id.card_overlay_avatar);
 
-        // Set title (Recruiter @ Company)
+        // Resolve structured properties from database
+        String candidateName = "";
+        String mainAgenda = "";
+        if (jobCallId != -1) {
+            DatabaseHelper db = new DatabaseHelper(this);
+            JobCall matchedCall = db.getJobCallByNumber(this, phoneNumber);
+            if (matchedCall != null) {
+                candidateName = matchedCall.getCandidateName();
+                mainAgenda = matchedCall.getMainAgenda();
+                roundStatus = matchedCall.getRoundStatus();
+                tags = matchedCall.getTags();
+                company = matchedCall.getCompanyName();
+                recruiter = matchedCall.getRecruiterName();
+            }
+        }
+
+        // Set title ([Candidate Name] @ [Company Name])
         String title;
-        if (company != null && !company.trim().isEmpty() && recruiter != null && !recruiter.trim().isEmpty()) {
+        if (candidateName != null && !candidateName.trim().isEmpty() && company != null && !company.trim().isEmpty()) {
+            title = candidateName.trim() + " @ " + company.trim();
+        } else if (company != null && !company.trim().isEmpty() && recruiter != null && !recruiter.trim().isEmpty()) {
             title = recruiter.trim() + " @ " + company.trim();
         } else if (company != null && !company.trim().isEmpty()) {
             title = company.trim();
+        } else if (candidateName != null && !candidateName.trim().isEmpty()) {
+            title = candidateName.trim();
         } else if (recruiter != null && !recruiter.trim().isEmpty()) {
             title = recruiter.trim();
         } else {
@@ -102,7 +122,7 @@ public class CallerIdService extends Service {
         tvCallerName.setText(title);
 
         // Set Status
-        String statusText = "Stage: " + (roundStatus != null ? roundStatus : "Screening");
+        String statusText = "Round: " + (roundStatus != null && !roundStatus.isEmpty() ? roundStatus : "-");
         if (tags != null && !tags.trim().isEmpty()) {
             statusText += " · " + tags;
         }
@@ -117,19 +137,21 @@ public class CallerIdService extends Service {
             cardAvatar.setCardBackgroundColor(avatarColors[colorIndex]);
         }
 
-        // Fetch and format pointwise timeline notes (limit to last 5)
+        // Fetch and format pointwise timeline notes (limit to last 3 if agenda is shown)
         if (jobCallId == -1) {
             tvNotesTimeline.setText("Not saved in Tracker yet. Tap the notification after the call to save and transcribe.");
         } else {
+            StringBuilder sb = new StringBuilder();
+            if (mainAgenda != null && !mainAgenda.trim().isEmpty()) {
+                sb.append("Agenda: ").append(mainAgenda.trim()).append("\n\n");
+            }
             DatabaseHelper db = new DatabaseHelper(this);
             List<CallNote> notes = db.getNotesForJob(jobCallId);
-            if (notes == null || notes.isEmpty()) {
-                tvNotesTimeline.setText("No notes logged for this lead yet.");
-            } else {
-                StringBuilder sb = new StringBuilder();
+            if (notes != null && !notes.isEmpty()) {
+                sb.append("Key Notes:\n");
                 int count = 0;
                 for (CallNote note : notes) {
-                    if (count >= 5) break;
+                    if (count >= 3) break;
                     count++;
                     sb.append(count).append(". ").append(note.note).append("\n");
                 }
@@ -137,8 +159,10 @@ public class CallerIdService extends Service {
                 if (sb.length() > 0) {
                     sb.setLength(sb.length() - 1);
                 }
-                tvNotesTimeline.setText(sb.toString());
+            } else if (sb.length() == 0) {
+                sb.append("No notes logged for this lead yet.");
             }
+            tvNotesTimeline.setText(sb.toString().trim());
         }
 
         // Configure Window Layout parameters (Middle of screen, draw over other apps)

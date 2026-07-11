@@ -38,6 +38,12 @@ import com.google.android.material.chip.Chip;
 import android.media.MediaPlayer;
 import android.widget.SeekBar;
 import android.widget.ProgressBar;
+import android.widget.SpinnerAdapter;
+import android.app.DatePickerDialog;
+import android.app.TimePickerDialog;
+import java.util.Calendar;
+import org.json.JSONObject;
+import org.json.JSONArray;
 import android.widget.ImageView;
 import java.io.File;
 import android.os.Handler;
@@ -72,6 +78,7 @@ public class SaveContactActivity extends AppCompatActivity {
     
     private TextView tvToggleApiKey;
     private View llApiKeyContainer;
+    private EditText etDeepgramApiKey;
     private EditText etOpenAiApiKey;
     private Button btnSaveApiKey;
     private Button btnAutoTranscribe;
@@ -105,6 +112,17 @@ public class SaveContactActivity extends AppCompatActivity {
         etNotes = findViewById(R.id.et_notes);
         spinnerRound = findViewById(R.id.spinner_round);
         spinnerAccount = findViewById(R.id.spinner_account);
+
+        etCandidateName = findViewById(R.id.et_candidate_name);
+        etAppliedRole = findViewById(R.id.et_applied_role);
+        etTentativeSchedule = findViewById(R.id.et_tentative_schedule);
+        etNoticePeriod = findViewById(R.id.et_notice_period);
+        etMainAgenda = findViewById(R.id.et_main_agenda);
+        etNextSteps = findViewById(R.id.et_next_steps);
+
+        if (etTentativeSchedule != null) {
+            etTentativeSchedule.setOnClickListener(v -> showDateTimePicker(etTentativeSchedule));
+        }
         
         TextInputLayout tilNotes = findViewById(R.id.til_notes);
 
@@ -142,6 +160,7 @@ public class SaveContactActivity extends AppCompatActivity {
 
         tvToggleApiKey = findViewById(R.id.tv_toggle_api_key);
         llApiKeyContainer = findViewById(R.id.ll_api_key_container);
+        etDeepgramApiKey = findViewById(R.id.et_deepgram_api_key);
         etOpenAiApiKey = findViewById(R.id.et_openai_api_key);
         btnSaveApiKey = findViewById(R.id.btn_save_api_key);
 
@@ -149,25 +168,30 @@ public class SaveContactActivity extends AppCompatActivity {
 
         // Setup API Key preferences and UI controls
         SharedPreferences apiPrefs = getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE);
-        String savedKey = apiPrefs.getString("deepgram_api_key", "");
-        etOpenAiApiKey.setText(savedKey);
+        etDeepgramApiKey.setText(apiPrefs.getString("deepgram_api_key", ""));
+        etOpenAiApiKey.setText(apiPrefs.getString("openai_api_key", ""));
 
+        tvToggleApiKey.setText("▼ Settings: API Keys");
         tvToggleApiKey.setOnClickListener(v -> {
             if (llApiKeyContainer.getVisibility() == View.VISIBLE) {
                 llApiKeyContainer.setVisibility(View.GONE);
-                tvToggleApiKey.setText("▼ Settings: Deepgram API Key");
+                tvToggleApiKey.setText("▼ Settings: API Keys");
             } else {
                 llApiKeyContainer.setVisibility(View.VISIBLE);
-                tvToggleApiKey.setText("▲ Settings: Deepgram API Key");
+                tvToggleApiKey.setText("▲ Settings: API Keys");
             }
         });
 
         btnSaveApiKey.setOnClickListener(v -> {
-            String key = etOpenAiApiKey.getText().toString().trim();
-            apiPrefs.edit().putString("deepgram_api_key", key).apply();
-            Toast.makeText(this, "API Key saved successfully!", Toast.LENGTH_SHORT).show();
+            String dgKey = etDeepgramApiKey.getText().toString().trim();
+            String oaKey = etOpenAiApiKey.getText().toString().trim();
+            apiPrefs.edit()
+                    .putString("deepgram_api_key", dgKey)
+                    .putString("openai_api_key", oaKey)
+                    .apply();
+            Toast.makeText(this, "API Keys saved successfully!", Toast.LENGTH_SHORT).show();
             llApiKeyContainer.setVisibility(View.GONE);
-            tvToggleApiKey.setText("▼ Settings: Deepgram API Key");
+            tvToggleApiKey.setText("▼ Settings: API Keys");
         });
 
         // Set up auto-transcribe action
@@ -191,26 +215,98 @@ public class SaveContactActivity extends AppCompatActivity {
             Transcriber.transcribeCallRecording(this, recordingFile, new Transcriber.TranscriptionCallback() {
                 @Override
                 public void onSuccess(String text) {
-                    prefs.edit()
-                            .putBoolean("is_transcribing", false)
-                            .remove("transcribing_number")
-                            .apply();
+                    if (text == null || text.trim().isEmpty()) {
+                        prefs.edit().putBoolean("is_transcribing", false).remove("transcribing_number").apply();
+                        pbTranscribe.setVisibility(View.GONE);
+                        btnAutoTranscribe.setEnabled(true);
+                        return;
+                    }
 
-                    pbTranscribe.setVisibility(View.GONE);
-                    if (tvTranscriptionStatus != null) {
-                        tvTranscriptionStatus.setText("✅ Transcribed successfully!");
-                    }
-                    btnAutoTranscribe.setEnabled(true);
-                    DebugLogger.log(SaveContactActivity.this, "[Activity] Transcription success! length=" + (text != null ? text.length() : 0));
-                    if (text != null && !text.isEmpty()) {
-                        String currentNotes = etNotes.getText().toString().trim();
-                        if (!currentNotes.isEmpty()) {
-                            etNotes.setText(currentNotes + "\n" + text);
-                        } else {
-                            etNotes.setText(text);
+                    // Check OpenAI API Key
+                    String openAiKey = getSharedPreferences("CallSaverPrefs", MODE_PRIVATE).getString("openai_api_key", "").trim();
+                    if (openAiKey.isEmpty()) {
+                        // Fallback: No OpenAI key -> Save transcription raw
+                        prefs.edit().putBoolean("is_transcribing", false).remove("transcribing_number").apply();
+                        pbTranscribe.setVisibility(View.GONE);
+                        if (tvTranscriptionStatus != null) {
+                            tvTranscriptionStatus.setText("✅ Transcribed successfully!");
                         }
-                        Toast.makeText(SaveContactActivity.this, "Call transcribed successfully!", Toast.LENGTH_SHORT).show();
+                        btnAutoTranscribe.setEnabled(true);
+                        
+                        String currentNotes = etNotes.getText().toString().trim();
+                        etNotes.setText(currentNotes.isEmpty() ? text : currentNotes + "\n" + text);
+                        Toast.makeText(SaveContactActivity.this, "Transcription success! Saved raw.", Toast.LENGTH_SHORT).show();
+                        return;
                     }
+
+                    // Query OpenAI
+                    if (tvTranscriptionStatus != null) {
+                        tvTranscriptionStatus.setText("✨ Extracting fields using OpenAI...");
+                    }
+                    OpenAiClient.extractFields(SaveContactActivity.this, text, new OpenAiClient.OpenAiCallback() {
+                        @Override
+                        public void onSuccess(JSONObject result) {
+                            prefs.edit().putBoolean("is_transcribing", false).remove("transcribing_number").apply();
+                            pbTranscribe.setVisibility(View.GONE);
+                            if (tvTranscriptionStatus != null) {
+                                tvTranscriptionStatus.setText("✅ Processed successfully!");
+                            }
+                            btnAutoTranscribe.setEnabled(true);
+                            
+                            try {
+                                if (result.has("candidate_name") && !result.isNull("candidate_name")) {
+                                    etCandidateName.setText(result.getString("candidate_name"));
+                                }
+                                if (result.has("company_name") && !result.isNull("company_name")) {
+                                    etCompanyName.setText(result.getString("company_name"));
+                                }
+                                if (result.has("applied_role") && !result.isNull("applied_role")) {
+                                    etAppliedRole.setText(result.getString("applied_role"));
+                                }
+                                if (result.has("present_round") && !result.isNull("present_round")) {
+                                    setSpinnerSelection(spinnerRound, result.getString("present_round"));
+                                }
+                                if (result.has("tentative_schedule") && !result.isNull("tentative_schedule")) {
+                                    etTentativeSchedule.setText(result.getString("tentative_schedule"));
+                                }
+                                if (result.has("notice_period") && !result.isNull("notice_period")) {
+                                    etNoticePeriod.setText(result.getString("notice_period"));
+                                }
+                                if (result.has("main_agenda") && !result.isNull("main_agenda")) {
+                                    etMainAgenda.setText(result.getString("main_agenda"));
+                                }
+                                if (result.has("next_steps") && !result.isNull("next_steps")) {
+                                    etNextSteps.setText(result.getString("next_steps"));
+                                }
+                                
+                                if (result.has("key_discussion_points")) {
+                                    JSONArray arr = result.getJSONArray("key_discussion_points");
+                                    StringBuilder sb = new StringBuilder();
+                                    for (int i = 0; i < arr.length(); i++) {
+                                        sb.append("• ").append(arr.getString(i)).append("\n");
+                                    }
+                                    etNotes.setText(sb.toString().trim());
+                                }
+                                Toast.makeText(SaveContactActivity.this, "AI fields updated successfully!", Toast.LENGTH_SHORT).show();
+                            } catch (Exception e) {
+                                DebugLogger.log(SaveContactActivity.this, "Failed to parse OpenAI fields: " + e.getMessage());
+                                etNotes.setText(text);
+                                Toast.makeText(SaveContactActivity.this, "AI parsing failed, pre-filled raw transcription.", Toast.LENGTH_LONG).show();
+                            }
+                        }
+
+                        @Override
+                        public void onError(String error) {
+                            prefs.edit().putBoolean("is_transcribing", false).remove("transcribing_number").apply();
+                            pbTranscribe.setVisibility(View.GONE);
+                            if (tvTranscriptionStatus != null) {
+                                tvTranscriptionStatus.setText("⚠️ OpenAI error: " + error);
+                            }
+                            btnAutoTranscribe.setEnabled(true);
+                            etNotes.setText(text);
+                            Toast.makeText(SaveContactActivity.this, "OpenAI failed: " + error + ". Saved raw.", Toast.LENGTH_LONG).show();
+                        }
+                    });
                 }
 
                 @Override
@@ -360,6 +456,12 @@ public class SaveContactActivity extends AppCompatActivity {
                 int pos = adapter.getPosition(existingCall.getRoundStatus());
                 spinnerRound.setSelection(pos >= 0 ? pos : 0);
             }
+            etCandidateName.setText(existingCall.getCandidateName());
+            etAppliedRole.setText(existingCall.getAppliedRole());
+            etTentativeSchedule.setText(existingCall.getTentativeSchedule());
+            etNoticePeriod.setText(existingCall.getNoticePeriod());
+            etMainAgenda.setText(existingCall.getMainAgenda());
+            etNextSteps.setText(existingCall.getNextSteps());
         }
 
         // Dismiss when clicking outside the dialog card
@@ -374,6 +476,13 @@ public class SaveContactActivity extends AppCompatActivity {
             String notes = etNotes.getText().toString().trim();
             String round = spinnerRound.getSelectedItem().toString();
 
+            String candidate = etCandidateName.getText().toString().trim();
+            String role = etAppliedRole.getText().toString().trim();
+            String schedule = etTentativeSchedule.getText().toString().trim();
+            String notice = etNoticePeriod.getText().toString().trim();
+            String agenda = etMainAgenda.getText().toString().trim();
+            String nextStepsVal = etNextSteps.getText().toString().trim();
+
             // Deduplicate check
             JobCall existing = null;
             if (!company.isEmpty()) {
@@ -386,12 +495,35 @@ public class SaveContactActivity extends AppCompatActivity {
                 if (!notes.isEmpty()) {
                     dbHelper.insertNote(existing.getId(), notes, System.currentTimeMillis());
                 }
+                
+                // Update candidate fields on the existing entry
+                existing.setCandidateName(candidate);
+                existing.setAppliedRole(role);
+                existing.setTentativeSchedule(schedule);
+                existing.setNoticePeriod(notice);
+                existing.setMainAgenda(agenda);
+                existing.setKeyDiscussionPoints(notes);
+                existing.setNextSteps(nextStepsVal);
+                existing.setRoundStatus(round);
+                if (!recruiter.isEmpty()) {
+                    existing.setRecruiterName(recruiter);
+                }
+                dbHelper.updateJobCall(existing);
+
                 Toast.makeText(SaveContactActivity.this, "Linked to existing company " + existing.getCompanyName(), Toast.LENGTH_LONG).show();
                 finish();
             } else {
                 // Save new local job calls database
                 JobCall call = new JobCall(phoneNumber, company, round, tags, notes, callDuration, callTimestamp);
                 call.setRecruiterName(recruiter);
+                call.setCandidateName(candidate);
+                call.setAppliedRole(role);
+                call.setTentativeSchedule(schedule);
+                call.setNoticePeriod(notice);
+                call.setMainAgenda(agenda);
+                call.setKeyDiscussionPoints(notes);
+                call.setNextSteps(nextStepsVal);
+
                 long id = dbHelper.insertJobCall(call);
 
                 if (id != -1) {
@@ -659,6 +791,38 @@ public class SaveContactActivity extends AppCompatActivity {
                 mediaPlayer.release();
             } catch (Exception e) {
                 e.printStackTrace();
+            }
+        }
+    }
+
+    private void showDateTimePicker(EditText et) {
+        Calendar calendar = Calendar.getInstance();
+        new DatePickerDialog(this, (view, year, month, dayOfMonth) -> {
+            calendar.set(Calendar.YEAR, year);
+            calendar.set(Calendar.MONTH, month);
+            calendar.set(Calendar.DAY_OF_MONTH, dayOfMonth);
+
+            new TimePickerDialog(this, (timeView, hourOfDay, minute) -> {
+                calendar.set(Calendar.HOUR_OF_DAY, hourOfDay);
+                calendar.set(Calendar.MINUTE, minute);
+
+                SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd 'at' hh:mm a", Locale.getDefault());
+                et.setText(format.format(calendar.getTime()));
+            }, calendar.get(Calendar.HOUR_OF_DAY), calendar.get(Calendar.MINUTE), false).show();
+
+        }, calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH)).show();
+    }
+
+    private void setSpinnerSelection(Spinner spinner, String value) {
+        if (value == null || value.trim().isEmpty()) return;
+        SpinnerAdapter adapter = spinner.getAdapter();
+        if (adapter == null) return;
+        String lowerVal = value.toLowerCase().trim();
+        for (int i = 0; i < adapter.getCount(); i++) {
+            String item = adapter.getItem(i).toString().toLowerCase();
+            if (item.contains(lowerVal) || lowerVal.contains(item)) {
+                spinner.setSelection(i);
+                return;
             }
         }
     }

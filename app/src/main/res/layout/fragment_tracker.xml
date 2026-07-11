@@ -274,16 +274,15 @@
                 android:id="@+id/ll_dashboard_key_container"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
+                android:orientation="vertical"
                 android:visibility="gone"
-                android:gravity="center_vertical"
                 android:layout_marginTop="4dp">
                 
                 <com.google.android.material.textfield.TextInputLayout
-                    android:layout_width="0dp"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
                     android:hint="Deepgram API Key"
+                    android:layout_marginBottom="8dp"
                     style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                     app:boxCornerRadiusTopStart="8dp"
                     app:boxCornerRadiusTopEnd="8dp"
@@ -300,15 +299,36 @@
                         android:maxLines="1"
                         android:singleLine="true"/>
                 </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="OpenAI API Key"
+                    android:layout_marginBottom="8dp"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    app:boxCornerRadiusTopStart="8dp"
+                    app:boxCornerRadiusTopEnd="8dp"
+                    app:boxCornerRadiusBottomStart="8dp"
+                    app:boxCornerRadiusBottomEnd="8dp"
+                    app:boxStrokeColor="@color/accent_indigo"
+                    app:hintTextColor="@color/accent_indigo">
+                    
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/et_dashboard_openai_key"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="textPassword"
+                        android:maxLines="1"
+                        android:singleLine="true"/>
+                </com.google.android.material.textfield.TextInputLayout>
                 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_save_dashboard_key"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Save"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:text="Save API Keys"
                     android:textAllCaps="false"
                     android:textColor="@color/white"
-                    android:layout_marginStart="8dp"
                     app:cornerRadius="8dp"
                     android:backgroundTint="@color/accent_indigo"/>
             </LinearLayout>

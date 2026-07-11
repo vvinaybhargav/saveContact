@@ -13,7 +13,7 @@ import java.util.List;
 public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "JobTracker.db";
-    private static final int DATABASE_VERSION = 6; // V6: multiple phones per job entry
+    private static final int DATABASE_VERSION = 7; // V7: AI Structured Summary fields
 
     public static final String TABLE_NAME = "job_calls";
     public static final String COLUMN_ID = "id";
@@ -24,6 +24,15 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public static final String COLUMN_NOTES = "notes";
     public static final String COLUMN_DURATION = "duration"; // Added in V3
     public static final String COLUMN_TIMESTAMP = "timestamp";
+
+    // V7 columns
+    public static final String COLUMN_CANDIDATE_NAME = "candidate_name";
+    public static final String COLUMN_APPLIED_ROLE = "applied_role";
+    public static final String COLUMN_TENTATIVE_SCHEDULE = "tentative_schedule";
+    public static final String COLUMN_NOTICE_PERIOD = "notice_period";
+    public static final String COLUMN_MAIN_AGENDA = "main_agenda";
+    public static final String COLUMN_KEY_DISCUSSION_POINTS = "key_discussion_points";
+    public static final String COLUMN_NEXT_STEPS = "next_steps";
 
     // V4: individual timestamped notes, one row per note, linked to a job call.
     public static final String TABLE_NOTES = "call_notes";
@@ -60,7 +69,14 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 + COLUMN_TAGS + " TEXT,"
                 + COLUMN_NOTES + " TEXT,"
                 + COLUMN_DURATION + " INTEGER DEFAULT 0," // Duration column
-                + COLUMN_TIMESTAMP + " INTEGER"
+                + COLUMN_TIMESTAMP + " INTEGER,"
+                + COLUMN_CANDIDATE_NAME + " TEXT,"
+                + COLUMN_APPLIED_ROLE + " TEXT,"
+                + COLUMN_TENTATIVE_SCHEDULE + " TEXT,"
+                + COLUMN_NOTICE_PERIOD + " TEXT,"
+                + COLUMN_MAIN_AGENDA + " TEXT,"
+                + COLUMN_KEY_DISCUSSION_POINTS + " TEXT,"
+                + COLUMN_NEXT_STEPS + " TEXT"
                 + ")";
         db.execSQL(CREATE_TABLE);
         db.execSQL(createNotesTableSql());
@@ -88,6 +104,15 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         if (oldVersion < 6) {
             db.execSQL(createPhonesTableSql());
             migratePhonesData(db);
+        }
+        if (oldVersion < 7) {
+            db.execSQL("ALTER TABLE " + TABLE_NAME + " ADD COLUMN " + COLUMN_CANDIDATE_NAME + " TEXT");
+            db.execSQL("ALTER TABLE " + TABLE_NAME + " ADD COLUMN " + COLUMN_APPLIED_ROLE + " TEXT");
+            db.execSQL("ALTER TABLE " + TABLE_NAME + " ADD COLUMN " + COLUMN_TENTATIVE_SCHEDULE + " TEXT");
+            db.execSQL("ALTER TABLE " + TABLE_NAME + " ADD COLUMN " + COLUMN_NOTICE_PERIOD + " TEXT");
+            db.execSQL("ALTER TABLE " + TABLE_NAME + " ADD COLUMN " + COLUMN_MAIN_AGENDA + " TEXT");
+            db.execSQL("ALTER TABLE " + TABLE_NAME + " ADD COLUMN " + COLUMN_KEY_DISCUSSION_POINTS + " TEXT");
+            db.execSQL("ALTER TABLE " + TABLE_NAME + " ADD COLUMN " + COLUMN_NEXT_STEPS + " TEXT");
         }
     }
 
@@ -177,6 +202,14 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         values.put(COLUMN_NOTES, jobCall.getNotes());
         values.put(COLUMN_DURATION, jobCall.getDuration());
         values.put(COLUMN_TIMESTAMP, jobCall.getTimestamp());
+        
+        values.put(COLUMN_CANDIDATE_NAME, jobCall.getCandidateName());
+        values.put(COLUMN_APPLIED_ROLE, jobCall.getAppliedRole());
+        values.put(COLUMN_TENTATIVE_SCHEDULE, jobCall.getTentativeSchedule());
+        values.put(COLUMN_NOTICE_PERIOD, jobCall.getNoticePeriod());
+        values.put(COLUMN_MAIN_AGENDA, jobCall.getMainAgenda());
+        values.put(COLUMN_KEY_DISCUSSION_POINTS, jobCall.getKeyDiscussionPoints());
+        values.put(COLUMN_NEXT_STEPS, jobCall.getNextSteps());
 
         long id = db.insert(TABLE_NAME, null, values);
         if (id != -1) {
@@ -212,6 +245,13 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                         cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_DURATION)),
                         cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_TIMESTAMP))
                 );
+                call.setCandidateName(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_CANDIDATE_NAME)));
+                call.setAppliedRole(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_APPLIED_ROLE)));
+                call.setTentativeSchedule(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_TENTATIVE_SCHEDULE)));
+                call.setNoticePeriod(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_NOTICE_PERIOD)));
+                call.setMainAgenda(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_MAIN_AGENDA)));
+                call.setKeyDiscussionPoints(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_KEY_DISCUSSION_POINTS)));
+                call.setNextSteps(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_NEXT_STEPS)));
                 callsList.add(call);
             } while (cursor.moveToNext());
         }
@@ -234,6 +274,14 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         values.put(COLUMN_NOTES, jobCall.getNotes());
         values.put(COLUMN_DURATION, jobCall.getDuration());
         values.put(COLUMN_TIMESTAMP, jobCall.getTimestamp());
+        
+        values.put(COLUMN_CANDIDATE_NAME, jobCall.getCandidateName());
+        values.put(COLUMN_APPLIED_ROLE, jobCall.getAppliedRole());
+        values.put(COLUMN_TENTATIVE_SCHEDULE, jobCall.getTentativeSchedule());
+        values.put(COLUMN_NOTICE_PERIOD, jobCall.getNoticePeriod());
+        values.put(COLUMN_MAIN_AGENDA, jobCall.getMainAgenda());
+        values.put(COLUMN_KEY_DISCUSSION_POINTS, jobCall.getKeyDiscussionPoints());
+        values.put(COLUMN_NEXT_STEPS, jobCall.getNextSteps());
 
         int count = db.update(TABLE_NAME, values, COLUMN_ID + " = ?",
                 new String[]{String.valueOf(jobCall.getId())});
@@ -401,6 +449,13 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                             cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_TIMESTAMP))
                     );
                     call.setRecruiterName(recruiterName);
+                    call.setCandidateName(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_CANDIDATE_NAME)));
+                    call.setAppliedRole(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_APPLIED_ROLE)));
+                    call.setTentativeSchedule(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_TENTATIVE_SCHEDULE)));
+                    call.setNoticePeriod(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_NOTICE_PERIOD)));
+                    call.setMainAgenda(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_MAIN_AGENDA)));
+                    call.setKeyDiscussionPoints(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_KEY_DISCUSSION_POINTS)));
+                    call.setNextSteps(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_NEXT_STEPS)));
                     cursor.close();
                     db.close();
                     return call;
@@ -442,6 +497,13 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                         cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_DURATION)),
                         cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_TIMESTAMP))
                 );
+                call.setCandidateName(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_CANDIDATE_NAME)));
+                call.setAppliedRole(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_APPLIED_ROLE)));
+                call.setTentativeSchedule(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_TENTATIVE_SCHEDULE)));
+                call.setNoticePeriod(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_NOTICE_PERIOD)));
+                call.setMainAgenda(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_MAIN_AGENDA)));
+                call.setKeyDiscussionPoints(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_KEY_DISCUSSION_POINTS)));
+                call.setNextSteps(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_NEXT_STEPS)));
             }
             cursor.close();
         }
