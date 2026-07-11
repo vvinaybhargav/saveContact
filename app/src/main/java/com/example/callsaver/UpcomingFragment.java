@@ -533,33 +533,41 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
                                         EditText etAgenda = root.findViewById(R.id.et_main_agenda);
                                         EditText etNext = root.findViewById(R.id.et_next_steps);
 
-                                        if (result.has("candidate_name") && etCandidate != null && etCandidate.getText().toString().trim().isEmpty()) {
-                                            etCandidate.setText(result.getString("candidate_name"));
+                                        String candidate = optClean(result, "candidate_name", "");
+                                        if (!candidate.isEmpty() && etCandidate != null) {
+                                            etCandidate.setText(candidate);
                                         }
-                                        if (result.has("company_name") && etComp != null && etComp.getText().toString().trim().isEmpty()) {
-                                            etComp.setText(result.getString("company_name"));
+                                        String company = optClean(result, "company_name", "");
+                                        if (!company.isEmpty() && etComp != null) {
+                                            etComp.setText(company);
                                         }
-                                        if (result.has("applied_role") && etRole != null && etRole.getText().toString().trim().isEmpty()) {
-                                            etRole.setText(result.getString("applied_role"));
+                                        String role = optClean(result, "applied_role", "");
+                                        if (!role.isEmpty() && etRole != null) {
+                                            etRole.setText(role);
                                         }
-                                        if (result.has("present_round") && spinRound != null) {
+                                        String round = optClean(result, "present_round", "");
+                                        if (!round.isEmpty() && spinRound != null) {
                                             ArrayAdapter<CharSequence> adapter = (ArrayAdapter<CharSequence>) spinRound.getAdapter();
                                             if (adapter != null) {
-                                                int pos = adapter.getPosition(result.getString("present_round"));
+                                                int pos = adapter.getPosition(round);
                                                 spinRound.setSelection(pos >= 0 ? pos : 0);
                                             }
                                         }
-                                        if (result.has("tentative_schedule") && etSched != null) {
-                                            etSched.setText(result.getString("tentative_schedule"));
+                                        String schedule = optClean(result, "tentative_schedule", "");
+                                        if (!schedule.isEmpty() && etSched != null) {
+                                            etSched.setText(schedule);
                                         }
-                                        if (result.has("notice_period") && etNotice != null) {
-                                            etNotice.setText(result.getString("notice_period"));
+                                        String notice = optClean(result, "notice_period", "");
+                                        if (!notice.isEmpty() && etNotice != null) {
+                                            etNotice.setText(notice);
                                         }
-                                        if (result.has("main_agenda") && etAgenda != null) {
-                                            etAgenda.setText(result.getString("main_agenda"));
+                                        String agenda = optClean(result, "main_agenda", "");
+                                        if (!agenda.isEmpty() && etAgenda != null) {
+                                            etAgenda.setText(agenda);
                                         }
-                                        if (result.has("next_steps") && etNext != null) {
-                                            etNext.setText(result.getString("next_steps"));
+                                        String nextStepsVal = optClean(result, "next_steps", "");
+                                        if (!nextStepsVal.isEmpty() && etNext != null) {
+                                            etNext.setText(nextStepsVal);
                                         }
 
                                         if (result.has("key_discussion_points")) {
@@ -662,5 +670,11 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
         String text;
         boolean isNote;
         long noteId;
+    }
+    private String optClean(org.json.JSONObject json, String key, String fallback) {
+        if (json == null || json.isNull(key)) return fallback;
+        String val = json.optString(key, fallback).trim();
+        if (val.equalsIgnoreCase("null")) return fallback;
+        return val;
     }
 }

@@ -61,7 +61,8 @@ public class OpenAiClient {
             systemMsg.put("role", "system");
             systemMsg.put("content", "You are an expert recruitment assistant tool built into a call logging app. Your job is to parse messy, multi-speaker conversational call transcripts (which mix the recruiter and candidate's voices) and extract clean, professional hiring data.\n" +
                     "\n" +
-                    "Filter out all filler words, irrelevant small talk, or technical chatter about call recording/app testing. Focus purely on job details.\n" +
+                    "Filter out all filler words, irrelevant small talk, or technical chatter. Focus purely on job details.\n" +
+                    "CRITICAL: Do NOT generate generic points like 'Candidate is interested in the position' or 'Candidate is interested in the role' in key_discussion_points. Only extract actual requirements, action items, or skills discussed.\n" +
                     "\n" +
                     "Return a strict JSON object with the following keys:\n" +
                     "{\n" +

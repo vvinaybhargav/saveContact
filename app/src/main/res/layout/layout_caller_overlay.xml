@@ -128,17 +128,64 @@
                 android:letterSpacing="0.05"
                 android:layout_marginBottom="6dp" />
 
-            <!-- Pointwise Notes Timeline -->
-            <TextView
-                android:id="@+id/tv_overlay_notes"
+            <!-- Default Notes Layout (collapsed view) -->
+            <LinearLayout
+                android:id="@+id/ll_overlay_collapsed_notes"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text=""
-                android:textColor="@color/text_secondary"
-                android:textSize="13sp"
-                android:lineSpacingMultiplier="1.2"
-                android:maxLines="3"
-                android:ellipsize="end" />
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tv_overlay_notes"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text=""
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13sp"
+                    android:lineSpacingMultiplier="1.2" />
+
+                <TextView
+                    android:id="@+id/tv_overlay_expand_button"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="end"
+                    android:layout_marginTop="4dp"
+                    android:text="Expand Notes ∨"
+                    android:textColor="@color/accent_indigo"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:clickable="true"
+                    android:focusable="true"/>
+            </LinearLayout>
+
+            <!-- Expanded Notes Layout -->
+            <LinearLayout
+                android:id="@+id/ll_overlay_expanded_notes"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <!-- Dynamic container for grouped call notes -->
+                <LinearLayout
+                    android:id="@+id/ll_overlay_expanded_list"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+
+                <TextView
+                    android:id="@+id/tv_overlay_collapse_button"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="end"
+                    android:layout_marginTop="4dp"
+                    android:text="Collapse Notes ∧"
+                    android:textColor="@color/accent_indigo"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:clickable="true"
+                    android:focusable="true"/>
+            </LinearLayout>
 
             <!-- Talking Points (Highlights) Section -->
             <LinearLayout

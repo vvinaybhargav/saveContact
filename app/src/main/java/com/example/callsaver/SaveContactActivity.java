@@ -271,39 +271,47 @@ public class SaveContactActivity extends AppCompatActivity {
                             btnAutoTranscribe.setEnabled(true);
                             
                             try {
-                                if (result.has("candidate_name") && !result.isNull("candidate_name") && etCandidateName != null) {
-                                    String current = etCandidateName.getText().toString().trim();
-                                    if (current.isEmpty()) {
-                                        etCandidateName.setText(result.getString("candidate_name"));
-                                    }
-                                }
-                                if (result.has("company_name") && !result.isNull("company_name")) {
-                                    String current = etCompanyName.getText().toString().trim();
-                                    if (current.isEmpty()) {
-                                        etCompanyName.setText(result.getString("company_name"));
-                                    }
-                                }
-                                if (result.has("applied_role") && !result.isNull("applied_role")) {
-                                    String current = etAppliedRole.getText().toString().trim();
-                                    if (current.isEmpty()) {
-                                        etAppliedRole.setText(result.getString("applied_role"));
-                                    }
-                                }
-                                if (result.has("present_round") && !result.isNull("present_round")) {
-                                    setSpinnerSelection(spinnerRound, result.getString("present_round"));
-                                }
-                                if (result.has("tentative_schedule") && !result.isNull("tentative_schedule")) {
-                                    etTentativeSchedule.setText(result.getString("tentative_schedule"));
-                                }
-                                if (result.has("notice_period") && !result.isNull("notice_period")) {
-                                    etNoticePeriod.setText(result.getString("notice_period"));
-                                }
-                                if (result.has("main_agenda") && !result.isNull("main_agenda")) {
-                                    etMainAgenda.setText(result.getString("main_agenda"));
-                                }
-                                if (result.has("next_steps") && !result.isNull("next_steps")) {
-                                    etNextSteps.setText(result.getString("next_steps"));
-                                }
+                                 String candidate = optClean(result, "candidate_name", "");
+                                 if (!candidate.isEmpty() && etCandidateName != null) {
+                                     String current = etCandidateName.getText().toString().trim();
+                                     if (current.isEmpty()) {
+                                         etCandidateName.setText(candidate);
+                                     }
+                                 }
+                                 String company = optClean(result, "company_name", "");
+                                 if (!company.isEmpty()) {
+                                     String current = etCompanyName.getText().toString().trim();
+                                     if (current.isEmpty()) {
+                                         etCompanyName.setText(company);
+                                     }
+                                 }
+                                 String role = optClean(result, "applied_role", "");
+                                 if (!role.isEmpty()) {
+                                     String current = etAppliedRole.getText().toString().trim();
+                                     if (current.isEmpty()) {
+                                         etAppliedRole.setText(role);
+                                     }
+                                 }
+                                 String round = optClean(result, "present_round", "");
+                                 if (!round.isEmpty()) {
+                                     setSpinnerSelection(spinnerRound, round);
+                                 }
+                                 String schedule = optClean(result, "tentative_schedule", "");
+                                 if (!schedule.isEmpty()) {
+                                     etTentativeSchedule.setText(schedule);
+                                 }
+                                 String notice = optClean(result, "notice_period", "");
+                                 if (!notice.isEmpty()) {
+                                     etNoticePeriod.setText(notice);
+                                 }
+                                 String agenda = optClean(result, "main_agenda", "");
+                                 if (!agenda.isEmpty()) {
+                                     etMainAgenda.setText(agenda);
+                                 }
+                                 String nextStepsVal = optClean(result, "next_steps", "");
+                                 if (!nextStepsVal.isEmpty()) {
+                                     etNextSteps.setText(nextStepsVal);
+                                 }
                                 
                                 if (result.has("key_discussion_points")) {
                                     JSONArray arr = result.getJSONArray("key_discussion_points");
@@ -851,5 +859,12 @@ public class SaveContactActivity extends AppCompatActivity {
                 return;
             }
         }
+    }
+
+    private String optClean(org.json.JSONObject json, String key, String fallback) {
+        if (json == null || json.isNull(key)) return fallback;
+        String val = json.optString(key, fallback).trim();
+        if (val.equalsIgnoreCase("null")) return fallback;
+        return val;
     }
 }

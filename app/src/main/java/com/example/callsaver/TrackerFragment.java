@@ -1075,39 +1075,47 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                                 public void onSuccess(JSONObject result) {
                                     if (!isAdded()) return;
                                     try {
-                                        if (result.has("candidate_name") && !result.isNull("candidate_name") && activeEtCandidateName != null) {
-                                            String current = activeEtCandidateName.getText().toString().trim();
-                                            if (current.isEmpty()) {
-                                                activeEtCandidateName.setText(result.getString("candidate_name"));
-                                            }
-                                        }
-                                        if (result.has("company_name") && !result.isNull("company_name") && activeEtCompany != null) {
-                                            String current = activeEtCompany.getText().toString().trim();
-                                            if (current.isEmpty()) {
-                                                activeEtCompany.setText(result.getString("company_name"));
-                                            }
-                                        }
-                                        if (result.has("applied_role") && !result.isNull("applied_role") && activeEtAppliedRole != null) {
-                                            String current = activeEtAppliedRole.getText().toString().trim();
-                                            if (current.isEmpty()) {
-                                                activeEtAppliedRole.setText(result.getString("applied_role"));
-                                            }
-                                        }
-                                        if (result.has("present_round") && !result.isNull("present_round") && activeSpinnerRound != null) {
-                                            setSpinnerSelection(activeSpinnerRound, result.getString("present_round"));
-                                        }
-                                        if (result.has("tentative_schedule") && !result.isNull("tentative_schedule") && activeEtTentativeSchedule != null) {
-                                            activeEtTentativeSchedule.setText(result.getString("tentative_schedule"));
-                                        }
-                                        if (result.has("notice_period") && !result.isNull("notice_period") && activeEtNoticePeriod != null) {
-                                            activeEtNoticePeriod.setText(result.getString("notice_period"));
-                                        }
-                                        if (result.has("main_agenda") && !result.isNull("main_agenda") && activeEtMainAgenda != null) {
-                                            activeEtMainAgenda.setText(result.getString("main_agenda"));
-                                        }
-                                        if (result.has("next_steps") && !result.isNull("next_steps") && activeEtNextSteps != null) {
-                                            activeEtNextSteps.setText(result.getString("next_steps"));
-                                        }
+                                         String candidate = optClean(result, "candidate_name", "");
+                                         if (!candidate.isEmpty() && activeEtCandidateName != null) {
+                                             String current = activeEtCandidateName.getText().toString().trim();
+                                             if (current.isEmpty()) {
+                                                 activeEtCandidateName.setText(candidate);
+                                             }
+                                         }
+                                         String company = optClean(result, "company_name", "");
+                                         if (!company.isEmpty() && activeEtCompany != null) {
+                                             String current = activeEtCompany.getText().toString().trim();
+                                             if (current.isEmpty()) {
+                                                 activeEtCompany.setText(company);
+                                             }
+                                         }
+                                         String role = optClean(result, "applied_role", "");
+                                         if (!role.isEmpty() && activeEtAppliedRole != null) {
+                                             String current = activeEtAppliedRole.getText().toString().trim();
+                                             if (current.isEmpty()) {
+                                                 activeEtAppliedRole.setText(role);
+                                             }
+                                         }
+                                         String round = optClean(result, "present_round", "");
+                                         if (!round.isEmpty() && activeSpinnerRound != null) {
+                                             setSpinnerSelection(activeSpinnerRound, round);
+                                         }
+                                         String schedule = optClean(result, "tentative_schedule", "");
+                                         if (!schedule.isEmpty() && activeEtTentativeSchedule != null) {
+                                             activeEtTentativeSchedule.setText(schedule);
+                                         }
+                                         String notice = optClean(result, "notice_period", "");
+                                         if (!notice.isEmpty() && activeEtNoticePeriod != null) {
+                                             activeEtNoticePeriod.setText(notice);
+                                         }
+                                         String agenda = optClean(result, "main_agenda", "");
+                                         if (!agenda.isEmpty() && activeEtMainAgenda != null) {
+                                             activeEtMainAgenda.setText(agenda);
+                                         }
+                                         String nextStepsVal = optClean(result, "next_steps", "");
+                                         if (!nextStepsVal.isEmpty() && activeEtNextSteps != null) {
+                                             activeEtNextSteps.setText(nextStepsVal);
+                                         }
                                         
                                         if (result.has("key_discussion_points") && activeEtNotes != null) {
                                             JSONArray arr = result.getJSONArray("key_discussion_points");
@@ -1186,5 +1194,13 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                 return;
             }
         }
+    }
+    }
+
+    private String optClean(org.json.JSONObject json, String key, String fallback) {
+        if (json == null || json.isNull(key)) return fallback;
+        String val = json.optString(key, fallback).trim();
+        if (val.equalsIgnoreCase("null")) return fallback;
+        return val;
     }
 }

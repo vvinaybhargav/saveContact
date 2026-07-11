@@ -430,15 +430,15 @@ public class CallReceiver extends BroadcastReceiver {
                                     try {
                                         DebugLogger.log(context, "[BgTranscribe] OpenAI success! Parsing fields...");
                                         
-                                        String company = result.optString("company_name", "").trim();
-                                        String recruiter = result.optString("recruiter_name", "").trim();
-                                        String role = result.optString("applied_role", "").trim();
-                                        String round = result.optString("present_round", "Screening").trim();
-                                        String schedule = result.optString("tentative_schedule", "").trim();
-                                        String notice = result.optString("notice_period", "").trim();
-                                        String agenda = result.optString("main_agenda", "").trim();
-                                        String nextSteps = result.optString("next_steps", "").trim();
-                                        String candidate = result.optString("candidate_name", "").trim();
+                                        String company = optClean(result, "company_name", "");
+                                        String recruiter = optClean(result, "recruiter_name", "");
+                                        String role = optClean(result, "applied_role", "");
+                                        String round = optClean(result, "present_round", "Screening");
+                                        String schedule = optClean(result, "tentative_schedule", "");
+                                        String notice = optClean(result, "notice_period", "");
+                                        String agenda = optClean(result, "main_agenda", "");
+                                        String nextSteps = optClean(result, "next_steps", "");
+                                        String candidate = optClean(result, "candidate_name", "");
                                         
                                         // Save/update SQLite database
                                         DatabaseHelper db = new DatabaseHelper(context);
@@ -607,5 +607,12 @@ public class CallReceiver extends BroadcastReceiver {
         } catch (SecurityException e) {
             Log.e(TAG, "Cannot post notification: " + e.getMessage());
         }
+    }
+
+    private static String optClean(org.json.JSONObject json, String key, String fallback) {
+        if (json == null || json.isNull(key)) return fallback;
+        String val = json.optString(key, fallback).trim();
+        if (val.equalsIgnoreCase("null")) return fallback;
+        return val;
     }
 }

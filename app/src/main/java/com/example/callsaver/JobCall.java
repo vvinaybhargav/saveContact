@@ -20,25 +20,32 @@ public class JobCall {
     private String keyDiscussionPoints = "";
     private String nextSteps = "";
 
+    private static String clean(String val) {
+        if (val == null || val.trim().equalsIgnoreCase("null")) {
+            return "";
+        }
+        return val.trim();
+    }
+
     // Constructor for retrieving from DB (with ID and Duration)
     public JobCall(int id, String phoneNumber, String companyName, String roundStatus, String tags, String notes, int duration, long timestamp) {
         this.id = id;
-        this.phoneNumber = phoneNumber;
-        this.companyName = companyName;
-        this.roundStatus = roundStatus;
-        this.tags = tags;
-        this.notes = notes;
+        this.phoneNumber = clean(phoneNumber);
+        this.companyName = clean(companyName);
+        this.roundStatus = clean(roundStatus);
+        this.tags = clean(tags);
+        this.notes = clean(notes);
         this.duration = duration;
         this.timestamp = timestamp;
     }
 
     // Constructor for creating new records (without ID, but with Duration)
     public JobCall(String phoneNumber, String companyName, String roundStatus, String tags, String notes, int duration, long timestamp) {
-        this.phoneNumber = phoneNumber;
-        this.companyName = companyName;
-        this.roundStatus = roundStatus;
-        this.tags = tags;
-        this.notes = notes;
+        this.phoneNumber = clean(phoneNumber);
+        this.companyName = clean(companyName);
+        this.roundStatus = clean(roundStatus);
+        this.tags = clean(tags);
+        this.notes = clean(notes);
         this.duration = duration;
         this.timestamp = timestamp;
     }
@@ -48,7 +55,7 @@ public class JobCall {
     }
 
     public void setRecruiterName(String recruiterName) {
-        this.recruiterName = recruiterName == null ? "" : recruiterName;
+        this.recruiterName = clean(recruiterName);
     }
 
     public int getId() {
@@ -64,7 +71,7 @@ public class JobCall {
     }
 
     public void setPhoneNumber(String phoneNumber) {
-        this.phoneNumber = phoneNumber;
+        this.phoneNumber = clean(phoneNumber);
     }
 
     public String getCompanyName() {
@@ -72,7 +79,7 @@ public class JobCall {
     }
 
     public void setCompanyName(String companyName) {
-        this.companyName = companyName;
+        this.companyName = clean(companyName);
     }
 
     public String getRoundStatus() {
@@ -80,7 +87,7 @@ public class JobCall {
     }
 
     public void setRoundStatus(String roundStatus) {
-        this.roundStatus = roundStatus;
+        this.roundStatus = clean(roundStatus);
     }
 
     public String getTags() {
@@ -88,7 +95,7 @@ public class JobCall {
     }
 
     public void setTags(String tags) {
-        this.tags = tags;
+        this.tags = clean(tags);
     }
 
     public String getNotes() {
@@ -96,7 +103,7 @@ public class JobCall {
     }
 
     public void setNotes(String notes) {
-        this.notes = notes;
+        this.notes = clean(notes);
     }
 
     public int getDuration() {
@@ -120,7 +127,7 @@ public class JobCall {
     }
 
     public void setCandidateName(String candidateName) {
-        this.candidateName = candidateName == null ? "" : candidateName;
+        this.candidateName = clean(candidateName);
     }
 
     public String getAppliedRole() {
@@ -128,7 +135,7 @@ public class JobCall {
     }
 
     public void setAppliedRole(String appliedRole) {
-        this.appliedRole = appliedRole == null ? "" : appliedRole;
+        this.appliedRole = clean(appliedRole);
     }
 
     public String getTentativeSchedule() {
@@ -136,7 +143,7 @@ public class JobCall {
     }
 
     public void setTentativeSchedule(String tentativeSchedule) {
-        this.tentativeSchedule = tentativeSchedule == null ? "" : tentativeSchedule;
+        this.tentativeSchedule = clean(tentativeSchedule);
     }
 
     public String getNoticePeriod() {
@@ -144,7 +151,7 @@ public class JobCall {
     }
 
     public void setNoticePeriod(String noticePeriod) {
-        this.noticePeriod = noticePeriod == null ? "" : noticePeriod;
+        this.noticePeriod = clean(noticePeriod);
     }
 
     public String getMainAgenda() {
@@ -152,7 +159,7 @@ public class JobCall {
     }
 
     public void setMainAgenda(String mainAgenda) {
-        this.mainAgenda = mainAgenda == null ? "" : mainAgenda;
+        this.mainAgenda = clean(mainAgenda);
     }
 
     public String getKeyDiscussionPoints() {
@@ -160,7 +167,7 @@ public class JobCall {
     }
 
     public void setKeyDiscussionPoints(String keyDiscussionPoints) {
-        this.keyDiscussionPoints = keyDiscussionPoints == null ? "" : keyDiscussionPoints;
+        this.keyDiscussionPoints = clean(keyDiscussionPoints);
     }
 
     public String getNextSteps() {
@@ -168,6 +175,6 @@ public class JobCall {
     }
 
     public void setNextSteps(String nextSteps) {
-        this.nextSteps = nextSteps == null ? "" : nextSteps;
+        this.nextSteps = clean(nextSteps);
     }
 }

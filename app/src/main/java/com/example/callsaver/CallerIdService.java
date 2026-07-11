@@ -24,6 +24,8 @@ import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
 import java.util.List;
+import java.util.ArrayList;
+import android.widget.LinearLayout;
 
 public class CallerIdService extends Service {
 
@@ -140,29 +142,123 @@ public class CallerIdService extends Service {
             cardAvatar.setCardBackgroundColor(avatarColors[colorIndex]);
         }
 
-        // Fetch and format pointwise timeline notes (combined text block, max 3 lines)
-        if (jobCallId == -1) {
-            tvNotesTimeline.setText("Not saved in Tracker yet.");
-        } else {
+        // Clean notes and filter candidate interest
+        List<String> allCleanedPoints = new ArrayList<>();
+        List<CallNote> notesList = new ArrayList<>();
+        if (jobCallId != -1) {
             DatabaseHelper db = new DatabaseHelper(this);
-            List<CallNote> notesList = db.getNotesForJob(jobCallId);
-            StringBuilder sb = new StringBuilder();
-            if (notesList != null && !notesList.isEmpty()) {
-                for (int i = 0; i < notesList.size(); i++) {
-                    String noteText = notesList.get(i).note.trim();
-                    if (!noteText.isEmpty()) {
-                        if (sb.length() > 0) {
-                            sb.append("; ");
+            notesList = db.getNotesForJob(jobCallId);
+            for (CallNote note : notesList) {
+                String cleaned = cleanNoteText(note.note);
+                String[] lines = cleaned.split("\n");
+                for (String line : lines) {
+                    String lineTrimmed = line.trim();
+                    if (!lineTrimmed.isEmpty()) {
+                        if (!lineTrimmed.startsWith("•") && !lineTrimmed.startsWith("-")) {
+                            lineTrimmed = "• " + lineTrimmed;
                         }
-                        sb.append(noteText);
+                        allCleanedPoints.add(lineTrimmed);
                     }
                 }
             }
-            String notesStr = sb.toString().trim();
-            if (notesStr.isEmpty()) {
-                notesStr = "No previous notes.";
+        }
+
+        if (jobCallId == -1) {
+            tvNotesTimeline.setText("• Not saved in Tracker yet.");
+        } else {
+            StringBuilder collapsedSb = new StringBuilder();
+            int pointsToShow = Math.min(allCleanedPoints.size(), 4);
+            for (int i = 0; i < pointsToShow; i++) {
+                if (collapsedSb.length() > 0) {
+                    collapsedSb.append("\n");
+                }
+                collapsedSb.append(allCleanedPoints.get(i));
             }
-            tvNotesTimeline.setText(notesStr);
+            String collapsedStr = collapsedSb.toString();
+            if (collapsedStr.isEmpty()) {
+                collapsedStr = "• No previous notes.";
+            }
+            tvNotesTimeline.setText(collapsedStr);
+        }
+
+        LinearLayout llCollapsedNotes = overlayView.findViewById(R.id.ll_overlay_collapsed_notes);
+        LinearLayout llExpandedNotes = overlayView.findViewById(R.id.ll_overlay_expanded_notes);
+        LinearLayout llExpandedList = overlayView.findViewById(R.id.ll_overlay_expanded_list);
+        TextView btnExpand = overlayView.findViewById(R.id.tv_overlay_expand_button);
+        TextView btnCollapse = overlayView.findViewById(R.id.tv_overlay_collapse_button);
+
+        // Populate Expanded List chronologically
+        if (llExpandedList != null && notesList != null && !notesList.isEmpty()) {
+            llExpandedList.removeAllViews();
+            
+            // Reverse copy of notesList to display oldest call first (1st call, 2nd call, etc.)
+            List<CallNote> chronologicalNotes = new ArrayList<>(notesList);
+            java.util.Collections.reverse(chronologicalNotes);
+            
+            int callCounter = 1;
+            for (int i = 0; i < chronologicalNotes.size(); i++) {
+                CallNote note = chronologicalNotes.get(i);
+                String noteClean = cleanNoteText(note.note);
+                if (noteClean.isEmpty()) {
+                    continue;
+                }
+                
+                TextView titleTv = new TextView(this);
+                titleTv.setText(callCounter + getOrdinalSuffix(callCounter) + " Call");
+                titleTv.setTextColor(0xFF6366F1); // Indigo accent color
+                titleTv.setTextSize(12);
+                titleTv.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+                titleTv.setPadding(0, callCounter == 1 ? 0 : 12, 0, 4);
+                
+                TextView pointsTv = new TextView(this);
+                StringBuilder pointsSb = new StringBuilder();
+                String[] lines = noteClean.split("\n");
+                for (String line : lines) {
+                    String trimmedLine = line.trim();
+                    if (!trimmedLine.isEmpty()) {
+                        if (!trimmedLine.startsWith("•") && !trimmedLine.startsWith("-")) {
+                            trimmedLine = "• " + trimmedLine;
+                        }
+                        if (pointsSb.length() > 0) {
+                            pointsSb.append("\n");
+                        }
+                        pointsSb.append(trimmedLine);
+                    }
+                }
+                pointsTv.setText(pointsSb.toString());
+                pointsTv.setTextColor(0xFFD1D5DB); // Neutral light color matching dark mode
+                pointsTv.setTextSize(13);
+                pointsTv.setLineSpacing(0f, 1.2f);
+                
+                llExpandedList.addView(titleTv);
+                llExpandedList.addView(pointsTv);
+                callCounter++;
+            }
+        }
+
+        // Hook click listeners
+        if (btnExpand != null && btnCollapse != null && llCollapsedNotes != null && llExpandedNotes != null) {
+            btnExpand.setOnClickListener(v -> {
+                llCollapsedNotes.setVisibility(View.GONE);
+                llExpandedNotes.setVisibility(View.VISIBLE);
+                // Also expand window layout height to fit
+                params.height = WindowManager.LayoutParams.WRAP_CONTENT;
+                try {
+                    windowManager.updateViewLayout(overlayView, params);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            });
+            btnCollapse.setOnClickListener(v -> {
+                llCollapsedNotes.setVisibility(View.VISIBLE);
+                llExpandedNotes.setVisibility(View.GONE);
+                params.height = WindowManager.LayoutParams.WRAP_CONTENT;
+                try {
+                    windowManager.updateViewLayout(overlayView, params);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            });
         }
 
         // Bind and populate Talking Points highlights
@@ -231,30 +327,14 @@ public class CallerIdService extends Service {
         }
 
         ImageView btnEdit = overlayView.findViewById(R.id.btn_overlay_edit);
-        if (btnEdit != null && llOverlayEditPanel != null) {
+        if (btnEdit != null) {
             btnEdit.setOnClickListener(v -> {
-                if (llOverlayEditPanel.getVisibility() == View.VISIBLE) {
-                    // Collapse edit panel & clear focus
-                    llOverlayEditPanel.setVisibility(View.GONE);
-                    params.flags |= WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
-                    try {
-                        windowManager.updateViewLayout(overlayView, params);
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                } else {
-                    // Expand edit panel & request input focus
-                    llOverlayEditPanel.setVisibility(View.VISIBLE);
-                    params.flags &= ~WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
-                    try {
-                        windowManager.updateViewLayout(overlayView, params);
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                    if (etOverlayNoteInput != null) {
-                        etOverlayNoteInput.requestFocus();
-                    }
-                }
+                Intent editIntent = new Intent(this, SaveContactActivity.class);
+                editIntent.putExtra("phone_number", phoneNumber);
+                editIntent.putExtra("duration", 0);
+                editIntent.putExtra("timestamp", System.currentTimeMillis());
+                editIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                startActivity(editIntent);
             });
         }
 
@@ -571,5 +651,38 @@ public class CallerIdService extends Service {
                 .build();
 
         nm.notify((int) System.currentTimeMillis(), notification);
+    }
+    private String cleanNoteText(String rawText) {
+        if (rawText == null) return "";
+        String[] lines = rawText.split("\n");
+        StringBuilder sb = new StringBuilder();
+        for (String line : lines) {
+            String trimmed = line.trim().toLowerCase();
+            // Filter out candidate interest chatter
+            if (trimmed.contains("interested in") || 
+                trimmed.contains("is interested") || 
+                trimmed.contains("of course") ||
+                trimmed.contains("candidate is interested") ||
+                trimmed.contains("ofcourse")) {
+                continue;
+            }
+            if (sb.length() > 0) {
+                sb.append("\n");
+            }
+            sb.append(line);
+        }
+        return sb.toString();
+    }
+
+    private String getOrdinalSuffix(int number) {
+        if (number >= 11 && number <= 13) {
+            return "th";
+        }
+        switch (number % 10) {
+            case 1:  return "st";
+            case 2:  return "nd";
+            case 3:  return "rd";
+            default: return "th";
+        }
     }
 }
