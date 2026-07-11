@@ -491,7 +491,7 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
                                     try {
                                         // Wait, define local dialog fields variables to fill in
                                         View root = etNotesField.getRootView();
-                                        EditText etCandidate = root.findViewById(R.id.et_candidate_name);
+                                        EditText etCandidate = null;
                                         EditText etComp = root.findViewById(R.id.et_company);
                                         EditText etRole = root.findViewById(R.id.et_applied_role);
                                         Spinner spinRound = root.findViewById(R.id.spinner_round);
