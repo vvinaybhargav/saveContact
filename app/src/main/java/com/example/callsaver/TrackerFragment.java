@@ -1195,7 +1195,6 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             }
         }
     }
-    }
 
     private String optClean(org.json.JSONObject json, String key, String fallback) {
         if (json == null || json.isNull(key)) return fallback;
