@@ -127,7 +127,7 @@
                 android:textColor="@color/text_muted"
                 android:textSize="12sp"
                 android:ellipsize="end"
-                android:maxLines="1"
+                android:maxLines="6"
                 android:visibility="gone" />
 
             <!-- Tracked State Indicator / Hint -->
