@@ -40,6 +40,7 @@ public class CallerIdService extends Service {
     private String tags;
     private long jobCallId;
     private String recruiter;
+    private WindowManager.LayoutParams params;
 
     @Nullable
     @Override
@@ -82,6 +83,26 @@ public class CallerIdService extends Service {
         // Wrap layout inflater context with Theme.CallSaver context so Material Components inflate without crashing
         android.view.ContextThemeWrapper themeWrapper = new android.view.ContextThemeWrapper(this, R.style.Theme_CallSaver);
         overlayView = LayoutInflater.from(themeWrapper).inflate(R.layout.layout_caller_overlay, null);
+
+        // Configure Window Layout parameters (Middle of screen, draw over other apps)
+        int layoutType;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            layoutType = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
+        } else {
+            layoutType = WindowManager.LayoutParams.TYPE_PHONE;
+        }
+
+        params = new WindowManager.LayoutParams(
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                layoutType,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE |
+                        WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED |
+                        WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON |
+                        WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON,
+                PixelFormat.TRANSLUCENT
+        );
+        params.gravity = Gravity.CENTER; // Center overlay in the middle of the screen like Truecaller
 
         // Bind views
         TextView tvCallerName = overlayView.findViewById(R.id.tv_overlay_caller_name);
@@ -274,26 +295,7 @@ public class CallerIdService extends Service {
             }
         }
 
-        // Configure Window Layout parameters (Middle of screen, draw over other apps)
-        int layoutType;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            layoutType = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
-        } else {
-            layoutType = WindowManager.LayoutParams.TYPE_PHONE;
-        }
-
-        final WindowManager.LayoutParams params = new WindowManager.LayoutParams(
-                WindowManager.LayoutParams.MATCH_PARENT,
-                WindowManager.LayoutParams.WRAP_CONTENT,
-                layoutType,
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE |
-                        WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED |
-                        WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON |
-                        WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON,
-                PixelFormat.TRANSLUCENT
-        );
-
-        params.gravity = Gravity.CENTER; // Center overlay in the middle of the screen like Truecaller
+        // Layout parameters initialized early in onStartCommand
 
         // Close action
         if (btnClose != null) {
@@ -375,11 +377,11 @@ public class CallerIdService extends Service {
                     }
 
                     // Refresh notes timeline on the banner dynamically
-                    List<CallNote> notesList = db.getNotesForJob(targetJobId);
-                    if (notesList != null && !notesList.isEmpty()) {
+                    List<CallNote> freshNotesList = db.getNotesForJob(targetJobId);
+                    if (freshNotesList != null && !freshNotesList.isEmpty()) {
                         StringBuilder sb = new StringBuilder();
                         int count = 0;
-                        for (CallNote note : notesList) {
+                        for (CallNote note : freshNotesList) {
                             if (count >= 5) break;
                             count++;
                             sb.append(count).append(". ").append(note.note).append("\n");
