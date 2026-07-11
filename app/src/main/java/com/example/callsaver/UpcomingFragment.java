@@ -47,6 +47,8 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
 
     private String selectedStatus = "All";
     private View layoutFilterChips;
+    private final String[] statuses = {"All", "Screening", "1st Round", "2nd Round", "Final Round", "HR / Salary"};
+    private TextView[] chips;
 
     private EditText activeDialogNotesField;
     private TextInputLayout activeDialogTilNotes;
@@ -106,49 +108,48 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
     }
 
     private void setupFilterChips(View view) {
-        if (layoutFilterChips == null) return;
-
         int[] chipIds = {
                 R.id.chip_upcoming_all, R.id.chip_upcoming_screening, R.id.chip_upcoming_1st,
                 R.id.chip_upcoming_2nd, R.id.chip_upcoming_final, R.id.chip_upcoming_hr
         };
 
-        View.OnClickListener clickListener = v -> {
-            for (int id : chipIds) {
-                View chip = layoutFilterChips.findViewById(id);
-                if (chip != null) {
-                    chip.setBackgroundResource(R.drawable.chip_background_normal);
-                    ((TextView) chip).setTextColor(getResources().getColor(R.color.text_secondary));
-                    chip.setTag(null);
-                }
+        chips = new TextView[chipIds.length];
+        for (int i = 0; i < chipIds.length; i++) {
+            final int index = i;
+            chips[i] = view.findViewById(chipIds[i]);
+            if (chips[i] != null) {
+                chips[i].setOnClickListener(v -> {
+                    selectedStatus = statuses[index];
+                    updateChipsUI();
+                    filterList(selectedStatus);
+                });
             }
+        }
+        updateChipsUI();
+    }
 
-            v.setBackgroundResource(R.drawable.chip_background_selected);
-            ((TextView) v).setTextColor(getResources().getColor(R.color.white));
-            v.setTag("selected");
+    private void updateChipsUI() {
+        if (chips == null || getContext() == null) return;
+        float density = getResources().getDisplayMetrics().density;
+        int selectedColor = androidx.core.content.ContextCompat.getColor(requireContext(), R.color.accent_indigo);
+        int unselectedBg = androidx.core.content.ContextCompat.getColor(requireContext(), R.color.divider);
+        int unselectedText = androidx.core.content.ContextCompat.getColor(requireContext(), R.color.text_secondary);
 
-            int id = v.getId();
-            if (id == R.id.chip_upcoming_all) {
-                selectedStatus = "All";
-            } else if (id == R.id.chip_upcoming_screening) {
-                selectedStatus = "Screening";
-            } else if (id == R.id.chip_upcoming_1st) {
-                selectedStatus = "1st Round";
-            } else if (id == R.id.chip_upcoming_2nd) {
-                selectedStatus = "2nd Round";
-            } else if (id == R.id.chip_upcoming_final) {
-                selectedStatus = "Final Round";
-            } else if (id == R.id.chip_upcoming_hr) {
-                selectedStatus = "HR / Salary";
-            }
+        for (int i = 0; i < chips.length; i++) {
+            if (chips[i] == null) continue;
 
-            filterList(selectedStatus);
-        };
+            android.graphics.drawable.GradientDrawable drawable = new android.graphics.drawable.GradientDrawable();
+            drawable.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
+            drawable.setCornerRadius(18 * density); // Pill shape
 
-        for (int id : chipIds) {
-            View chip = layoutFilterChips.findViewById(id);
-            if (chip != null) {
-                chip.setOnClickListener(clickListener);
+            if (statuses[i].equals(selectedStatus)) {
+                drawable.setColor(selectedColor);
+                chips[i].setBackground(drawable);
+                chips[i].setTextColor(android.graphics.Color.WHITE);
+            } else {
+                drawable.setColor(unselectedBg);
+                chips[i].setBackground(drawable);
+                chips[i].setTextColor(unselectedText);
             }
         }
     }
@@ -505,19 +506,6 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
                                 public void onSuccess(JSONObject result) {
                                     if (!isAdded()) return;
                                     try {
-                                        if (result.has("candidate_name") && !result.isNull("candidate_name") && activeEtCandidateName != null) {
-                                            String current = activeEtCandidateName.getText().toString().trim();
-                                            if (current.isEmpty()) activeEtCandidateName.setText(result.getString("candidate_name"));
-                                        }
-                                        if (result.has("company_name") && !result.isNull("company_name") && activeEtCompany != null) {
-                                            String current = activeEtCompany.getText().toString().trim();
-                                            if (current.isEmpty()) activeEtCompany.setText(result.getString("company_name"));
-                                        }
-                                        if (result.has("applied_role") && !result.isNull("applied_role") && activeEtAppliedRole != null) {
-                                            String current = activeEtAppliedRole.getText().toString().trim();
-                                            if (current.isEmpty()) activeEtAppliedRole.setText(result.getString("applied_role"));
-                                        }
-                                        
                                         // Wait, define local dialog fields variables to fill in
                                         View root = etNotesField.getRootView();
                                         EditText etCandidate = root.findViewById(R.id.et_candidate_name);
