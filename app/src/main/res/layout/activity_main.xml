@@ -5,11 +5,43 @@
     android:layout_height="match_parent"
     android:background="@color/bg_light">
 
+    <!-- Custom Toolbar -->
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/main_toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="@color/primary_dark"
+        android:elevation="4dp">
+        
+        <TextView
+            android:id="@+id/tv_toolbar_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="CallSaver"
+            android:textColor="@color/white_constant"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+            
+        <ImageView
+            android:id="@+id/btn_main_settings"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="end"
+            android:layout_marginEnd="16dp"
+            android:padding="12dp"
+            android:src="@android:drawable/ic_menu_preferences"
+            app:tint="@color/white_constant"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:focusable="true"/>
+    </androidx.appcompat.widget.Toolbar>
+
     <!-- Container for active Fragment screens (Recents / Tracker) -->
     <FrameLayout
         android:id="@+id/fragment_container"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:layout_below="@id/main_toolbar"
         android:layout_above="@id/bottom_navigation" />
 
     <!-- Bottom Navigation Bar -->

@@ -12,6 +12,12 @@ import android.provider.Settings;
 import android.telecom.TelecomManager;
 import android.view.MenuItem;
 import android.widget.Toast;
+import android.widget.ImageView;
+import android.widget.EditText;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.content.SharedPreferences;
+import androidx.appcompat.app.AlertDialog;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -94,6 +100,11 @@ public class MainActivity extends AppCompatActivity {
 
         // Check overlay window permission for caller ID banner
         checkOverlayPermission();
+
+        ImageView btnSettings = findViewById(R.id.btn_main_settings);
+        if (btnSettings != null) {
+            btnSettings.setOnClickListener(v -> showSettingsDialog());
+        }
     }
 
     /**
@@ -263,6 +274,48 @@ public class MainActivity extends AppCompatActivity {
             if (combinedFragment != null && combinedFragment.isAdded()) {
                 combinedFragment.onResume();
             }
+        }
+    }
+
+    private void showSettingsDialog() {
+        LayoutInflater inflater = getLayoutInflater();
+        View dialogView = inflater.inflate(R.layout.dialog_settings, null);
+
+        EditText etDeepgram = dialogView.findViewById(R.id.et_settings_deepgram_key);
+        EditText etOpenAi = dialogView.findViewById(R.id.et_settings_openai_key);
+        View btnCancel = dialogView.findViewById(R.id.btn_settings_cancel);
+        View btnSave = dialogView.findViewById(R.id.btn_settings_save);
+
+        SharedPreferences prefs = getSharedPreferences("CallSaverPrefs", MODE_PRIVATE);
+        etDeepgram.setText(prefs.getString("deepgram_api_key", ""));
+        etOpenAi.setText(prefs.getString("openai_api_key", ""));
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setView(dialogView);
+
+        AlertDialog dialog = builder.create();
+
+        btnCancel.setOnClickListener(v -> dialog.dismiss());
+
+        btnSave.setOnClickListener(v -> {
+            String dg = etDeepgram.getText().toString().trim();
+            String oa = etOpenAi.getText().toString().trim();
+            prefs.edit()
+                    .putString("deepgram_api_key", dg)
+                    .putString("openai_api_key", oa)
+                    .apply();
+            Toast.makeText(this, "API Keys saved successfully!", Toast.LENGTH_SHORT).show();
+            dialog.dismiss();
+        });
+
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        }
+        dialog.show();
+
+        View parent = (View) dialogView.getParent();
+        if (parent != null) {
+            parent.setBackgroundResource(R.drawable.spinner_border);
         }
     }
 }

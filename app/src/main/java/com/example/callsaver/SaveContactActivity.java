@@ -262,13 +262,22 @@ public class SaveContactActivity extends AppCompatActivity {
                             
                             try {
                                 if (result.has("candidate_name") && !result.isNull("candidate_name")) {
-                                    etCandidateName.setText(result.getString("candidate_name"));
+                                    String current = etCandidateName.getText().toString().trim();
+                                    if (current.isEmpty()) {
+                                        etCandidateName.setText(result.getString("candidate_name"));
+                                    }
                                 }
                                 if (result.has("company_name") && !result.isNull("company_name")) {
-                                    etCompanyName.setText(result.getString("company_name"));
+                                    String current = etCompanyName.getText().toString().trim();
+                                    if (current.isEmpty()) {
+                                        etCompanyName.setText(result.getString("company_name"));
+                                    }
                                 }
                                 if (result.has("applied_role") && !result.isNull("applied_role")) {
-                                    etAppliedRole.setText(result.getString("applied_role"));
+                                    String current = etAppliedRole.getText().toString().trim();
+                                    if (current.isEmpty()) {
+                                        etAppliedRole.setText(result.getString("applied_role"));
+                                    }
                                 }
                                 if (result.has("present_round") && !result.isNull("present_round")) {
                                     setSpinnerSelection(spinnerRound, result.getString("present_round"));

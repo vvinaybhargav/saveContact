@@ -197,42 +197,6 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             tvViewDebugLogs.setOnClickListener(v -> showDebugLogsDialog());
         }
 
-        // API Key Settings Logic (Deepgram + OpenAI)
-        TextView tvToggleDashboardKey = view.findViewById(R.id.tv_toggle_dashboard_key);
-        View llDashboardKeyContainer = view.findViewById(R.id.ll_dashboard_key_container);
-        EditText etDashboardDeepgramKey = view.findViewById(R.id.et_dashboard_deepgram_key);
-        EditText etDashboardOpenAiKey = view.findViewById(R.id.et_dashboard_openai_key);
-        View btnSaveDashboardKey = view.findViewById(R.id.btn_save_dashboard_key);
-
-        if (tvToggleDashboardKey != null && llDashboardKeyContainer != null && etDashboardDeepgramKey != null && etDashboardOpenAiKey != null && btnSaveDashboardKey != null) {
-            android.content.SharedPreferences prefs = requireContext().getSharedPreferences("CallSaverPrefs", android.content.Context.MODE_PRIVATE);
-            etDashboardDeepgramKey.setText(prefs.getString("deepgram_api_key", ""));
-            etDashboardOpenAiKey.setText(prefs.getString("openai_api_key", ""));
-
-            tvToggleDashboardKey.setText("▼ Settings: API Keys");
-            tvToggleDashboardKey.setOnClickListener(v -> {
-                if (llDashboardKeyContainer.getVisibility() == View.VISIBLE) {
-                    llDashboardKeyContainer.setVisibility(View.GONE);
-                    tvToggleDashboardKey.setText("▼ Settings: API Keys");
-                } else {
-                    llDashboardKeyContainer.setVisibility(View.VISIBLE);
-                    tvToggleDashboardKey.setText("▲ Settings: API Keys");
-                }
-            });
-
-            btnSaveDashboardKey.setOnClickListener(v -> {
-                String dgKey = etDashboardDeepgramKey.getText().toString().trim();
-                String oaKey = etDashboardOpenAiKey.getText().toString().trim();
-                prefs.edit()
-                        .putString("deepgram_api_key", dgKey)
-                        .putString("openai_api_key", oaKey)
-                        .apply();
-                Toast.makeText(requireContext(), "API Keys saved successfully!", Toast.LENGTH_SHORT).show();
-                llDashboardKeyContainer.setVisibility(View.GONE);
-                tvToggleDashboardKey.setText("▼ Settings: API Keys");
-            });
-        }
-
         // Setup filter chips
         setupFilterChips(view);
 
@@ -1100,13 +1064,22 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                                     if (!isAdded()) return;
                                     try {
                                         if (result.has("candidate_name") && !result.isNull("candidate_name") && activeEtCandidateName != null) {
-                                            activeEtCandidateName.setText(result.getString("candidate_name"));
+                                            String current = activeEtCandidateName.getText().toString().trim();
+                                            if (current.isEmpty()) {
+                                                activeEtCandidateName.setText(result.getString("candidate_name"));
+                                            }
                                         }
                                         if (result.has("company_name") && !result.isNull("company_name") && activeEtCompany != null) {
-                                            activeEtCompany.setText(result.getString("company_name"));
+                                            String current = activeEtCompany.getText().toString().trim();
+                                            if (current.isEmpty()) {
+                                                activeEtCompany.setText(result.getString("company_name"));
+                                            }
                                         }
                                         if (result.has("applied_role") && !result.isNull("applied_role") && activeEtAppliedRole != null) {
-                                            activeEtAppliedRole.setText(result.getString("applied_role"));
+                                            String current = activeEtAppliedRole.getText().toString().trim();
+                                            if (current.isEmpty()) {
+                                                activeEtAppliedRole.setText(result.getString("applied_role"));
+                                            }
                                         }
                                         if (result.has("present_round") && !result.isNull("present_round") && activeSpinnerRound != null) {
                                             setSpinnerSelection(activeSpinnerRound, result.getString("present_round"));

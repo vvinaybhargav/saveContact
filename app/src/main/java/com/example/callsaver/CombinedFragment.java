@@ -702,13 +702,22 @@ public class CombinedFragment extends Fragment implements CombinedAdapter.OnComb
                                     if (!isAdded()) return;
                                     try {
                                         if (result.has("candidate_name") && !result.isNull("candidate_name") && activeEtCandidateName != null) {
-                                            activeEtCandidateName.setText(result.getString("candidate_name"));
+                                            String current = activeEtCandidateName.getText().toString().trim();
+                                            if (current.isEmpty()) {
+                                                activeEtCandidateName.setText(result.getString("candidate_name"));
+                                            }
                                         }
                                         if (result.has("company_name") && !result.isNull("company_name") && activeEtCompany != null) {
-                                            activeEtCompany.setText(result.getString("company_name"));
+                                            String current = activeEtCompany.getText().toString().trim();
+                                            if (current.isEmpty()) {
+                                                activeEtCompany.setText(result.getString("company_name"));
+                                            }
                                         }
                                         if (result.has("applied_role") && !result.isNull("applied_role") && activeEtAppliedRole != null) {
-                                            activeEtAppliedRole.setText(result.getString("applied_role"));
+                                            String current = activeEtAppliedRole.getText().toString().trim();
+                                            if (current.isEmpty()) {
+                                                activeEtAppliedRole.setText(result.getString("applied_role"));
+                                            }
                                         }
                                         if (result.has("present_round") && !result.isNull("present_round") && activeSpinnerRound != null) {
                                             setSpinnerSelection(activeSpinnerRound, result.getString("present_round"));

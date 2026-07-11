@@ -62,7 +62,8 @@ public class CallerIdService extends Service {
         jobCallId = intent.getLongExtra("job_call_id", -1);
         recruiter = intent.getStringExtra("recruiter_name");
 
-        if (phoneNumber == null || phoneNumber.isEmpty()) {
+        if (phoneNumber == null || phoneNumber.isEmpty() || jobCallId == -1) {
+            removeOverlay();
             stopSelf();
             return START_NOT_STICKY;
         }
@@ -137,32 +138,49 @@ public class CallerIdService extends Service {
             cardAvatar.setCardBackgroundColor(avatarColors[colorIndex]);
         }
 
-        // Fetch and format pointwise timeline notes (limit to last 3 if agenda is shown)
+        // Fetch and format pointwise timeline notes (exactly 3 lines: Agenda, Latest, and Next Action)
         if (jobCallId == -1) {
-            tvNotesTimeline.setText("Not saved in Tracker yet. Tap the notification after the call to save and transcribe.");
+            tvNotesTimeline.setText("Not saved in Tracker yet.");
         } else {
             StringBuilder sb = new StringBuilder();
-            if (mainAgenda != null && !mainAgenda.trim().isEmpty()) {
-                sb.append("Agenda: ").append(mainAgenda.trim()).append("\n\n");
+            
+            // Line 1: Agenda
+            String agendaLine = (mainAgenda != null && !mainAgenda.trim().isEmpty()) ? mainAgenda.trim() : "No active agenda.";
+            if (agendaLine.length() > 60) {
+                agendaLine = agendaLine.substring(0, 57) + "...";
             }
+            sb.append("• Agenda: ").append(agendaLine).append("\n");
+            
+            // Line 2: Latest Note
             DatabaseHelper db = new DatabaseHelper(this);
             List<CallNote> notes = db.getNotesForJob(jobCallId);
+            String notesLine = "No previous notes.";
             if (notes != null && !notes.isEmpty()) {
-                sb.append("Key Notes:\n");
-                int count = 0;
-                for (CallNote note : notes) {
-                    if (count >= 3) break;
-                    count++;
-                    sb.append(count).append(". ").append(note.note).append("\n");
+                notesLine = notes.get(0).note.trim();
+                if (notesLine.length() > 60) {
+                    notesLine = notesLine.substring(0, 57) + "...";
                 }
-                // Trim final newline
-                if (sb.length() > 0) {
-                    sb.setLength(sb.length() - 1);
-                }
-            } else if (sb.length() == 0) {
-                sb.append("No notes logged for this lead yet.");
             }
-            tvNotesTimeline.setText(sb.toString().trim());
+            sb.append("• Latest: ").append(notesLine).append("\n");
+            
+            // Line 3: Next Steps
+            String nextLine = "No next steps.";
+            JobCall matchedCall = db.getJobCallByNumber(this, phoneNumber);
+            if (matchedCall != null) {
+                String ns = matchedCall.getNextSteps();
+                String ts = matchedCall.getTentativeSchedule();
+                if (ns != null && !ns.trim().isEmpty()) {
+                    nextLine = ns.trim();
+                } else if (ts != null && !ts.trim().isEmpty()) {
+                    nextLine = "Next call: " + ts.trim();
+                }
+            }
+            if (nextLine.length() > 60) {
+                nextLine = nextLine.substring(0, 57) + "...";
+            }
+            sb.append("• Next: ").append(nextLine);
+            
+            tvNotesTimeline.setText(sb.toString());
         }
 
         // Configure Window Layout parameters (Middle of screen, draw over other apps)
