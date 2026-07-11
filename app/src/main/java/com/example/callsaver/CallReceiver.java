@@ -412,12 +412,11 @@ public class CallReceiver extends BroadcastReceiver {
                     File audioFile = CallRecordingScanner.findLatestCallRecording(context, phoneNumber, callEndTime);
                     if (audioFile == null) {
                         DebugLogger.log(context, "[BgTranscribe] No call recording file found for number: " + phoneNumber);
-                        showNotification(context, "No recording found", "Could not locate call recording audio file for " + phoneNumber);
+                        showSaveNotification(context, phoneNumber, duration);
                         return;
                     }
                     
                     DebugLogger.log(context, "[BgTranscribe] Found recording file: " + audioFile.getName() + " (" + audioFile.length() + " bytes). Starting Deepgram transcription...");
-                    showNotification(context, "Processing call recording", "AI is transcribing and parsing your call with " + phoneNumber + "...");
                     
                     Transcriber.transcribeCallRecording(context, audioFile, new Transcriber.TranscriptionCallback() {
                         @Override
@@ -493,16 +492,32 @@ public class CallReceiver extends BroadcastReceiver {
                                             jobCallId = db.insertJobCall(call);
                                         }
                                         
-                                        // Save notes
-                                        String summaryNote = agenda;
-                                        if (!nextSteps.isEmpty()) {
-                                            if (!summaryNote.isEmpty()) summaryNote += "; ";
-                                            summaryNote += "Next steps: " + nextSteps;
-                                        }
-                                        if (summaryNote.trim().isEmpty()) {
-                                            summaryNote = "AI call summary logged.";
-                                        }
-                                        db.insertNote(jobCallId, summaryNote + " (AI Auto-transcribed)", System.currentTimeMillis());
+                                         // Save notes from key_discussion_points
+                                         org.json.JSONArray discussionPoints = result.optJSONArray("key_discussion_points");
+                                         StringBuilder pointsNote = new StringBuilder();
+                                         if (discussionPoints != null) {
+                                             for (int k = 0; k < discussionPoints.length(); k++) {
+                                                 String pt = discussionPoints.optString(k, "").trim();
+                                                 pt = cleanNoteText(pt); // Clean interest points
+                                                 if (!pt.isEmpty() && !pt.equalsIgnoreCase("null") && !pt.toLowerCase().contains("not specified")) {
+                                                     if (pointsNote.length() > 0) {
+                                                         pointsNote.append("\n");
+                                                     }
+                                                     if (!pt.startsWith("•") && !pt.startsWith("-")) {
+                                                         pointsNote.append("• ").append(pt);
+                                                     } else {
+                                                         pointsNote.append(pt);
+                                                     }
+                                                 }
+                                             }
+                                         }
+                                         
+                                         String summaryNote = pointsNote.toString().trim();
+                                         if (!summaryNote.isEmpty()) {
+                                             db.insertNote(jobCallId, summaryNote + " (AI Auto-transcribed)", System.currentTimeMillis());
+                                         } else {
+                                             summaryNote = "AI Call Auto-transcribed.";
+                                         }
                                         
                                         // Link phone to job
                                         String finalRecruiter = recruiter.isEmpty() ? "Recruiter" : recruiter;
@@ -523,25 +538,24 @@ public class CallReceiver extends BroadcastReceiver {
                                         showCalendarNotification(context, title, content, companyDisplay, role, schedule, summaryNote);
                                         
                                         DebugLogger.log(context, "[BgTranscribe] Call fully processed and saved to database!");
-                                        
-                                    } catch (Exception e) {
-                                        DebugLogger.log(context, "[BgTranscribe] Error updating database: " + e.getMessage());
-                                        showNotification(context, "Database Save Error", "Could not save parsed recruiter data: " + e.getMessage());
-                                    }
-                                }
-                                
-                                @Override
-                                public void onError(String error) {
-                                    DebugLogger.log(context, "[BgTranscribe] OpenAI API error: " + error);
-                                    showNotification(context, "AI Analysis Failed", "OpenAI failed: " + error);
-                                }
-                            });
+                                                                            } catch (Exception e) {
+                                         DebugLogger.log(context, "[BgTranscribe] Error updating database: " + e.getMessage());
+                                         showSaveNotification(context, phoneNumber, duration);
+                                     }
+                                 }
+                                 
+                                 @Override
+                                 public void onError(String error) {
+                                     DebugLogger.log(context, "[BgTranscribe] OpenAI API error: " + error);
+                                     showSaveNotification(context, phoneNumber, duration);
+                                 }
+                             });
                         }
                         
                         @Override
                         public void onError(String error) {
                             DebugLogger.log(context, "[BgTranscribe] Deepgram Transcription error: " + error);
-                            showNotification(context, "Transcription Failed", "Deepgram failed: " + error);
+                            showSaveNotification(context, phoneNumber, duration);
                         }
                     });
                     
@@ -614,5 +628,26 @@ public class CallReceiver extends BroadcastReceiver {
         String val = json.optString(key, fallback).trim();
         if (val.equalsIgnoreCase("null")) return fallback;
         return val;
+    }
+
+    private static String cleanNoteText(String rawText) {
+        if (rawText == null) return "";
+        String[] lines = rawText.split("\n");
+        StringBuilder sb = new StringBuilder();
+        for (String line : lines) {
+            String trimmed = line.trim().toLowerCase();
+            if (trimmed.contains("interested in") || 
+                trimmed.contains("is interested") || 
+                trimmed.contains("of course") ||
+                trimmed.contains("candidate is interested") ||
+                trimmed.contains("ofcourse")) {
+                continue;
+            }
+            if (sb.length() > 0) {
+                sb.append("\n");
+            }
+            sb.append(line);
+        }
+        return sb.toString();
     }
 }
