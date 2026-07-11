@@ -77,6 +77,9 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
     private Spinner activeSpinnerRound;
     private View activeLlTranscriptionProgress;
     private TextView activeTvTranscriptionStatus;
+    // True once the user manually uploads/transcribes a recording during this dialog
+    // session; the note saved on this Save click is tagged "manual" (shown as "MCall").
+    private boolean activeDialogManualUploadUsed;
     private MaterialCardView cardPermissionsBanner;
     private FloatingActionButton fabAddCall;
     private EditText etSearch;
@@ -490,6 +493,8 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
     public void showAddEditCallDialog(final JobCall editCall) {
         if (getContext() == null) return;
 
+        activeDialogManualUploadUsed = false;
+
         AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
         LayoutInflater inflater = getLayoutInflater();
         View dialogView = inflater.inflate(R.layout.dialog_add_call, null);
@@ -687,6 +692,8 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             String candidate = etCandidateName != null ? etCandidateName.getText().toString().trim() : "";
             String role = etAppliedRole.getText().toString().trim();
             String schedule = etTentativeSchedule.getText().toString().trim();
+            String noteSource = activeDialogManualUploadUsed
+                    ? DatabaseHelper.NOTE_SOURCE_MANUAL : DatabaseHelper.NOTE_SOURCE_CALL;
 
             if (phone.isEmpty()) {
                 Toast.makeText(requireContext(), R.string.msg_phone_empty, Toast.LENGTH_SHORT).show();
@@ -708,7 +715,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                 dbHelper.updateJobCall(editCall);
                 dbHelper.linkPhoneToJob(editCall.getId(), phone, recruiter);
                 if (!noteToAdd.isEmpty()) {
-                    dbHelper.insertNote(editCall.getId(), noteToAdd, System.currentTimeMillis());
+                    dbHelper.insertNote(editCall.getId(), noteToAdd, System.currentTimeMillis(), noteSource);
                 }
 
                 Toast.makeText(requireContext(), "Log updated!", Toast.LENGTH_SHORT).show();
@@ -724,7 +731,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                     // Link to existing company
                     dbHelper.linkPhoneToJob(existingCall.getId(), phone, recruiter);
                     if (!noteToAdd.isEmpty()) {
-                        dbHelper.insertNote(existingCall.getId(), noteToAdd, System.currentTimeMillis());
+                        dbHelper.insertNote(existingCall.getId(), noteToAdd, System.currentTimeMillis(), noteSource);
                     }
                     
                     // Update existing company fields with edits
@@ -749,7 +756,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
 
                     long newId = dbHelper.insertJobCall(newCall);
                     if (newId != -1 && !noteToAdd.isEmpty()) {
-                        dbHelper.insertNote(newId, noteToAdd, System.currentTimeMillis());
+                        dbHelper.insertNote(newId, noteToAdd, System.currentTimeMillis(), noteSource);
                     }
                     Toast.makeText(requireContext(), "Call logged to tracker!", Toast.LENGTH_SHORT).show();
                 }
@@ -794,16 +801,22 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
 
         LayoutInflater inflater = getLayoutInflater();
         SimpleDateFormat sdf = new SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault());
+        // Real calls and manually-uploaded recordings are numbered in their own
+        // separate sequences: "1st Call, 2nd Call..." vs "1st MCall, 2nd MCall...".
         int callNumber = 1;
+        int manualNumber = 1;
         for (CallNote n : chronological) {
             String clean = cleanNoteText(n.note);
             if (clean.trim().isEmpty()) {
                 continue;
             }
 
+            boolean manual = n.isManual();
+            int ordinal = manual ? manualNumber : callNumber;
+            String label2 = ordinal + getOrdinalSuffix(ordinal) + (manual ? " MCall" : " Call");
+
             View row = inflater.inflate(R.layout.item_call_note_row, container, false);
-            ((TextView) row.findViewById(R.id.tv_call_ordinal))
-                    .setText(callNumber + getOrdinalSuffix(callNumber) + " Call");
+            ((TextView) row.findViewById(R.id.tv_call_ordinal)).setText(label2);
             ((TextView) row.findViewById(R.id.tv_call_date)).setText(sdf.format(new Date(n.timestamp)));
             ((TextView) row.findViewById(R.id.tv_call_points)).setText(bulletize(clean));
 
@@ -815,7 +828,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             });
 
             container.addView(row);
-            callNumber++;
+            if (manual) manualNumber++; else callNumber++;
         }
 
         if (container.getChildCount() == 0 && label != null) {
@@ -1055,7 +1068,11 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                         @Override
                         public void onSuccess(String text) {
                             if (!isAdded() || text == null || text.trim().isEmpty()) return;
-                            
+
+                            // This dialog session now has a manual-upload transcription in
+                            // the Notes field, so whatever gets saved is tagged "manual".
+                            activeDialogManualUploadUsed = true;
+
                             // Check OpenAI API Key
                             String openAiKey = requireContext().getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE).getString("openai_api_key", "").trim();
                             if (openAiKey.isEmpty()) {

@@ -13,7 +13,7 @@ import java.util.List;
 public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "JobTracker.db";
-    private static final int DATABASE_VERSION = 7; // V7: AI Structured Summary fields
+    private static final int DATABASE_VERSION = 8; // V8: note source (call vs. manual upload)
 
     public static final String TABLE_NAME = "job_calls";
     public static final String COLUMN_ID = "id";
@@ -40,6 +40,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public static final String COLUMN_NOTE_JOB_ID = "job_call_id";
     public static final String COLUMN_NOTE_TEXT = "note_text";
     public static final String COLUMN_NOTE_TIME = "note_time";
+    // V8: where the note came from — "call" (auto-detected/background) or "manual"
+    // (user manually uploaded & transcribed a recording from the edit-log screen).
+    public static final String COLUMN_NOTE_SOURCE = "note_source";
+    public static final String NOTE_SOURCE_CALL = "call";
+    public static final String NOTE_SOURCE_MANUAL = "manual";
 
     // V5: per-entry call history (each in/out/missed call logged against a job call).
     public static final String TABLE_HISTORY = "call_history";
@@ -114,6 +119,12 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             db.execSQL("ALTER TABLE " + TABLE_NAME + " ADD COLUMN " + COLUMN_KEY_DISCUSSION_POINTS + " TEXT");
             db.execSQL("ALTER TABLE " + TABLE_NAME + " ADD COLUMN " + COLUMN_NEXT_STEPS + " TEXT");
         }
+        if (oldVersion >= 4 && oldVersion < 8) {
+            // Only needed if call_notes already existed without this column; a device
+            // jumping straight from <4 to 8 gets it for free via createNotesTableSql().
+            db.execSQL("ALTER TABLE " + TABLE_NOTES + " ADD COLUMN " + COLUMN_NOTE_SOURCE
+                    + " TEXT DEFAULT '" + NOTE_SOURCE_CALL + "'");
+        }
     }
 
     private static String createNotesTableSql() {
@@ -121,7 +132,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 + COLUMN_NOTE_ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
                 + COLUMN_NOTE_JOB_ID + " INTEGER,"
                 + COLUMN_NOTE_TEXT + " TEXT,"
-                + COLUMN_NOTE_TIME + " INTEGER"
+                + COLUMN_NOTE_TIME + " INTEGER,"
+                + COLUMN_NOTE_SOURCE + " TEXT DEFAULT '" + NOTE_SOURCE_CALL + "'"
                 + ")";
     }
 
@@ -308,13 +320,25 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     /**
      * Adds a timestamped note to a job call's timeline and refreshes the card preview.
+     * Defaults to source "call" (auto-detected/background origin).
      */
     public long insertNote(long jobCallId, String note, long timestamp) {
+        return insertNote(jobCallId, note, timestamp, NOTE_SOURCE_CALL);
+    }
+
+    /**
+     * Adds a timestamped note tagged with its origin: NOTE_SOURCE_CALL for a real
+     * call, or NOTE_SOURCE_MANUAL when the user manually uploaded/transcribed a
+     * recording from the edit-log screen. The timeline numbers these separately
+     * ("Call N" vs "MCall N").
+     */
+    public long insertNote(long jobCallId, String note, long timestamp, String source) {
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues v = new ContentValues();
         v.put(COLUMN_NOTE_JOB_ID, jobCallId);
         v.put(COLUMN_NOTE_TEXT, note);
         v.put(COLUMN_NOTE_TIME, timestamp);
+        v.put(COLUMN_NOTE_SOURCE, source == null ? NOTE_SOURCE_CALL : source);
         long id = db.insert(TABLE_NOTES, null, v);
         db.close();
         refreshNotesPreview(jobCallId);
@@ -331,11 +355,14 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 new String[]{String.valueOf(jobCallId)}, null, null, COLUMN_NOTE_TIME + " DESC");
         if (c != null) {
             while (c.moveToNext()) {
+                int sourceIdx = c.getColumnIndex(COLUMN_NOTE_SOURCE);
+                String source = sourceIdx >= 0 ? c.getString(sourceIdx) : null;
                 list.add(new CallNote(
                         c.getLong(c.getColumnIndexOrThrow(COLUMN_NOTE_ID)),
                         c.getLong(c.getColumnIndexOrThrow(COLUMN_NOTE_JOB_ID)),
                         c.getString(c.getColumnIndexOrThrow(COLUMN_NOTE_TEXT)),
-                        c.getLong(c.getColumnIndexOrThrow(COLUMN_NOTE_TIME))));
+                        c.getLong(c.getColumnIndexOrThrow(COLUMN_NOTE_TIME)),
+                        source == null ? NOTE_SOURCE_CALL : source));
             }
             c.close();
         }
