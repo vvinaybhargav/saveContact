@@ -422,13 +422,27 @@ public class CallReceiver extends BroadcastReceiver {
             @Override
             public void run() {
                 try {
-                    DebugLogger.log(context, "[BgTranscribe] Waiting 5 seconds for native call recording to finalize...");
-                    Thread.sleep(5000);
-                    
                     long callEndTime = timestamp + (duration * 1000L);
-                    File audioFile = CallRecordingScanner.findLatestCallRecording(context, phoneNumber, callEndTime);
+
+                    // A single fixed wait-then-check missed the recording file when the OEM
+                    // recorder took longer to finalize (e.g. right after a previous call's
+                    // Deepgram/OpenAI requests kept the device busy). Retry a few times
+                    // instead of giving up after one look.
+                    File audioFile = null;
+                    int[] retryDelaysMs = {5000, 4000, 5000, 6000}; // 5s, 9s, 14s, 20s total
+                    for (int attempt = 0; attempt < retryDelaysMs.length; attempt++) {
+                        DebugLogger.log(context, "[BgTranscribe] Waiting " + (retryDelaysMs[attempt] / 1000)
+                                + "s before scan attempt " + (attempt + 1) + "/" + retryDelaysMs.length + "...");
+                        Thread.sleep(retryDelaysMs[attempt]);
+                        audioFile = CallRecordingScanner.findLatestCallRecording(context, phoneNumber, callEndTime);
+                        if (audioFile != null) {
+                            DebugLogger.log(context, "[BgTranscribe] Recording found on attempt " + (attempt + 1) + ".");
+                            break;
+                        }
+                    }
+
                     if (audioFile == null) {
-                        DebugLogger.log(context, "[BgTranscribe] No call recording file found for number: " + phoneNumber);
+                        DebugLogger.log(context, "[BgTranscribe] No call recording file found for number: " + phoneNumber + " after " + retryDelaysMs.length + " attempts.");
                         showSaveNotification(context, phoneNumber, duration);
                         return;
                     }
