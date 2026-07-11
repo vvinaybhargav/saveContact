@@ -16,9 +16,6 @@ import org.json.JSONObject;
 public class CallActionReceiver extends BroadcastReceiver {
 
     private static final String TAG = "CallActionReceiver";
-    public static final String ACTION_ANSWER = "com.example.callsaver.action.ANSWER";
-    public static final String ACTION_DECLINE = "com.example.callsaver.action.DECLINE";
-    public static final String ACTION_HANGUP = "com.example.callsaver.action.HANGUP";
     public static final String ACTION_QUICK_SAVE = "com.example.callsaver.action.QUICK_SAVE_TRANSCRIBE";
 
     @Override
@@ -26,16 +23,7 @@ public class CallActionReceiver extends BroadcastReceiver {
         if (intent == null) return;
         String action = intent.getAction();
 
-        if (ACTION_ANSWER.equals(action)) {
-            OngoingCall.answer();
-            cancelCallNotification(context);
-        } else if (ACTION_DECLINE.equals(action)) {
-            OngoingCall.reject();
-            cancelCallNotification(context);
-        } else if (ACTION_HANGUP.equals(action)) {
-            OngoingCall.hangup();
-            cancelCallNotification(context);
-        } else if (ACTION_QUICK_SAVE.equals(action)) {
+        if (ACTION_QUICK_SAVE.equals(action)) {
             String phoneNumber = intent.getStringExtra("phone_number");
             int duration = intent.getIntExtra("duration", 0);
             long timestamp = intent.getLongExtra("timestamp", System.currentTimeMillis());
@@ -59,13 +47,6 @@ public class CallActionReceiver extends BroadcastReceiver {
                     }
                 }).start();
             }
-        }
-    }
-
-    private void cancelCallNotification(Context context) {
-        NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-        if (nm != null) {
-            nm.cancel(CallService.CALL_NOTIF_ID);
         }
     }
 
