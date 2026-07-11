@@ -75,6 +75,8 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
     private EditText activeEtNotes;
     private EditText activeEtNextSteps;
     private Spinner activeSpinnerRound;
+    private View activeLlTranscriptionProgress;
+    private TextView activeTvTranscriptionStatus;
     private MaterialCardView cardPermissionsBanner;
     private FloatingActionButton fabAddCall;
     private EditText etSearch;
@@ -519,9 +521,21 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         activeEtNotes = etNotes;
         activeEtNextSteps = etNextSteps;
         activeSpinnerRound = spinnerRound;
+        activeLlTranscriptionProgress = dialogView.findViewById(R.id.ll_dialog_transcription_progress);
+        activeTvTranscriptionStatus = dialogView.findViewById(R.id.tv_dialog_transcription_status);
 
         if (etTentativeSchedule != null) {
             etTentativeSchedule.setOnClickListener(v -> showDateTimePicker(etTentativeSchedule));
+        }
+
+        View btnTomorrow = dialogView.findViewById(R.id.btn_schedule_tomorrow);
+        if (btnTomorrow != null && etTentativeSchedule != null) {
+            btnTomorrow.setOnClickListener(v -> {
+                java.util.Calendar cal = java.util.Calendar.getInstance();
+                cal.add(java.util.Calendar.DAY_OF_YEAR, 1);
+                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd 'at' hh:mm a", java.util.Locale.getDefault());
+                etTentativeSchedule.setText(sdf.format(cal.getTime()));
+            });
         }
 
         Button btnCancel = dialogView.findViewById(R.id.btn_dialog_cancel);
@@ -571,6 +585,8 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             activeEtNotes = null;
             activeEtNextSteps = null;
             activeSpinnerRound = null;
+            activeLlTranscriptionProgress = null;
+            activeTvTranscriptionStatus = null;
         });
 
         // Configure Dialog Mode (Edit vs. Add)
@@ -1024,6 +1040,12 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                     
                     // Show feedback
                     Toast.makeText(requireContext(), "⌛ Transcribing selected file: " + selectedFile.getName(), Toast.LENGTH_LONG).show();
+                    if (activeLlTranscriptionProgress != null) {
+                        activeLlTranscriptionProgress.setVisibility(View.VISIBLE);
+                    }
+                    if (activeTvTranscriptionStatus != null) {
+                        activeTvTranscriptionStatus.setText("✨ Transcribing call recording via Deepgram...");
+                    }
                     
                     Transcriber.transcribeCallRecording(requireContext(), selectedFile, new Transcriber.TranscriptionCallback() {
                         @Override
@@ -1034,6 +1056,9 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                             String openAiKey = requireContext().getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE).getString("openai_api_key", "").trim();
                             if (openAiKey.isEmpty()) {
                                 // Fallback: No OpenAI key -> Save transcription raw
+                                if (activeLlTranscriptionProgress != null) {
+                                    activeLlTranscriptionProgress.setVisibility(View.GONE);
+                                }
                                 String currentNotes = etNotesField.getText().toString().trim();
                                 etNotesField.setText(currentNotes.isEmpty() ? text : currentNotes + "\n" + text);
                                 Toast.makeText(requireContext(), "Transcription success! Saved raw.", Toast.LENGTH_SHORT).show();
@@ -1041,6 +1066,9 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                             }
 
                             // Query OpenAI
+                            if (activeTvTranscriptionStatus != null) {
+                                activeTvTranscriptionStatus.setText("✨ Extracting fields using OpenAI...");
+                            }
                             Toast.makeText(requireContext(), "✨ Running AI analysis...", Toast.LENGTH_SHORT).show();
                             OpenAiClient.extractFields(requireContext(), text, new OpenAiClient.OpenAiCallback() {
                                 @Override
@@ -1094,11 +1122,18 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                                         DebugLogger.log(requireContext(), "Failed to parse OpenAI fields in dialog: " + e.getMessage());
                                         etNotesField.setText(text);
                                         Toast.makeText(requireContext(), "AI analysis failed. Pre-filled raw transcription.", Toast.LENGTH_LONG).show();
+                                    } finally {
+                                        if (activeLlTranscriptionProgress != null) {
+                                            activeLlTranscriptionProgress.setVisibility(View.GONE);
+                                        }
                                     }
                                 }
 
                                 @Override
                                 public void onError(String error) {
+                                    if (activeLlTranscriptionProgress != null) {
+                                        activeLlTranscriptionProgress.setVisibility(View.GONE);
+                                    }
                                     if (!isAdded()) return;
                                     etNotesField.setText(text);
                                     Toast.makeText(requireContext(), "AI analysis failed: " + error + ". Pre-filled raw.", Toast.LENGTH_LONG).show();
@@ -1108,6 +1143,9 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
 
                         @Override
                         public void onError(String error) {
+                            if (activeLlTranscriptionProgress != null) {
+                                activeLlTranscriptionProgress.setVisibility(View.GONE);
+                            }
                             if (isAdded()) {
                                 Toast.makeText(requireContext(), "Error transcribing: " + error, Toast.LENGTH_LONG).show();
                             }

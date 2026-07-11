@@ -52,6 +52,8 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
 
     private EditText activeDialogNotesField;
     private TextInputLayout activeDialogTilNotes;
+    private View activeLlTranscriptionProgress;
+    private TextView activeTvTranscriptionStatus;
 
     @Nullable
     @Override
@@ -212,6 +214,16 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
             etTentativeSchedule.setOnClickListener(v -> showDateTimePicker(etTentativeSchedule));
         }
 
+        View btnTomorrow = dialogView.findViewById(R.id.btn_schedule_tomorrow);
+        if (btnTomorrow != null && etTentativeSchedule != null) {
+            btnTomorrow.setOnClickListener(v -> {
+                java.util.Calendar cal = java.util.Calendar.getInstance();
+                cal.add(java.util.Calendar.DAY_OF_YEAR, 1);
+                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd 'at' hh:mm a", java.util.Locale.getDefault());
+                etTentativeSchedule.setText(sdf.format(cal.getTime()));
+            });
+        }
+
         Button btnCancel = dialogView.findViewById(R.id.btn_dialog_cancel);
         Button btnSave = dialogView.findViewById(R.id.btn_dialog_save);
         Button btnDelete = dialogView.findViewById(R.id.btn_dialog_delete);
@@ -221,6 +233,8 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
 
         activeDialogNotesField = etNotes;
         activeDialogTilNotes = tilNotes;
+        activeLlTranscriptionProgress = dialogView.findViewById(R.id.ll_dialog_transcription_progress);
+        activeTvTranscriptionStatus = dialogView.findViewById(R.id.tv_dialog_transcription_status);
 
         View tvDialogManualRecording = dialogView.findViewById(R.id.tv_dialog_manual_recording);
         if (tvDialogManualRecording != null) {
@@ -385,6 +399,13 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
             dialog.dismiss();
         });
 
+        dialog.setOnDismissListener(d -> {
+            activeDialogNotesField = null;
+            activeDialogTilNotes = null;
+            activeLlTranscriptionProgress = null;
+            activeTvTranscriptionStatus = null;
+        });
+
         if (dialog.getWindow() != null) {
             dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         }
@@ -469,6 +490,12 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
                 .setItems(fileNames, (dialog, which) -> {
                     File selectedFile = audioFiles.get(which);
                     Toast.makeText(requireContext(), "⌛ Transcribing selected file: " + selectedFile.getName(), Toast.LENGTH_LONG).show();
+                    if (activeLlTranscriptionProgress != null) {
+                        activeLlTranscriptionProgress.setVisibility(View.VISIBLE);
+                    }
+                    if (activeTvTranscriptionStatus != null) {
+                        activeTvTranscriptionStatus.setText("✨ Transcribing call recording via Deepgram...");
+                    }
 
                     Transcriber.transcribeCallRecording(requireContext(), selectedFile, new Transcriber.TranscriptionCallback() {
                         @Override
@@ -477,12 +504,18 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
 
                             String openAiKey = requireContext().getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE).getString("openai_api_key", "").trim();
                             if (openAiKey.isEmpty()) {
+                                if (activeLlTranscriptionProgress != null) {
+                                    activeLlTranscriptionProgress.setVisibility(View.GONE);
+                                }
                                 String currentNotes = etNotesField.getText().toString().trim();
                                 etNotesField.setText(currentNotes.isEmpty() ? text : currentNotes + "\n" + text);
                                 Toast.makeText(requireContext(), "Transcription success! Saved raw.", Toast.LENGTH_SHORT).show();
                                 return;
                             }
 
+                            if (activeTvTranscriptionStatus != null) {
+                                activeTvTranscriptionStatus.setText("✨ Extracting fields using OpenAI...");
+                            }
                             Toast.makeText(requireContext(), "✨ Running AI analysis...", Toast.LENGTH_SHORT).show();
                             OpenAiClient.extractFields(requireContext(), text, new OpenAiClient.OpenAiCallback() {
                                 @Override
@@ -541,11 +574,18 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
                                     } catch (Exception e) {
                                         etNotesField.setText(text);
                                         Toast.makeText(requireContext(), "AI analysis failed. Pre-filled raw transcription.", Toast.LENGTH_LONG).show();
+                                    } finally {
+                                        if (activeLlTranscriptionProgress != null) {
+                                            activeLlTranscriptionProgress.setVisibility(View.GONE);
+                                        }
                                     }
                                 }
 
                                 @Override
                                 public void onError(String error) {
+                                    if (activeLlTranscriptionProgress != null) {
+                                        activeLlTranscriptionProgress.setVisibility(View.GONE);
+                                    }
                                     etNotesField.setText(text);
                                     Toast.makeText(requireContext(), "AI analysis failed: " + error + ". Pre-filled raw.", Toast.LENGTH_LONG).show();
                                 }
@@ -554,6 +594,9 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
 
                         @Override
                         public void onError(String error) {
+                            if (activeLlTranscriptionProgress != null) {
+                                activeLlTranscriptionProgress.setVisibility(View.GONE);
+                            }
                             Toast.makeText(requireContext(), "Error transcribing: " + error, Toast.LENGTH_LONG).show();
                         }
                     });

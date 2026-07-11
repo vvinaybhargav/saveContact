@@ -173,14 +173,21 @@ public class CallReceiver extends BroadcastReceiver {
                                 db.insertCallHistory(call.getId(), typeLabel, entry.duration, entry.date);
                             }
                             
+                            boolean autoTranscribe = prefs.getBoolean("auto_transcribe_background", true);
+
                             if (isOutgoing || isIncomingAnswered) {
-                                DebugLogger.log(context, "[Receiver] Launching SaveContactActivity popup for " + entry.number);
-                                Intent dialogIntent = new Intent(context, SaveContactActivity.class);
-                                dialogIntent.putExtra("phone_number", entry.number);
-                                dialogIntent.putExtra("duration", entry.duration);
-                                dialogIntent.putExtra("timestamp", entry.date);
-                                dialogIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                                context.startActivity(dialogIntent);
+                                if (autoTranscribe && entry.duration >= 15) {
+                                    DebugLogger.log(context, "[Receiver] Auto-transcribing call for " + entry.number + " in background...");
+                                    triggerBackgroundTranscription(context, entry.number, entry.duration, entry.date);
+                                } else {
+                                    DebugLogger.log(context, "[Receiver] Launching SaveContactActivity popup for " + entry.number);
+                                    Intent dialogIntent = new Intent(context, SaveContactActivity.class);
+                                    dialogIntent.putExtra("phone_number", entry.number);
+                                    dialogIntent.putExtra("duration", entry.duration);
+                                    dialogIntent.putExtra("timestamp", entry.date);
+                                    dialogIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                                    context.startActivity(dialogIntent);
+                                }
                             } else {
                                 DebugLogger.log(context, "[Receiver] Call not answered or not outgoing (Skipped popup)");
                             }
@@ -388,6 +395,215 @@ public class CallReceiver extends BroadcastReceiver {
             this.date = date;
             this.duration = duration;
             this.type = type;
+        }
+    }
+
+    private void triggerBackgroundTranscription(Context context, String phoneNumber, int duration, long timestamp) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    DebugLogger.log(context, "[BgTranscribe] Waiting 5 seconds for native call recording to finalize...");
+                    Thread.sleep(5000);
+                    
+                    long callEndTime = timestamp + (duration * 1000L);
+                    File audioFile = CallRecordingScanner.findLatestCallRecording(context, phoneNumber, callEndTime);
+                    if (audioFile == null) {
+                        DebugLogger.log(context, "[BgTranscribe] No call recording file found for number: " + phoneNumber);
+                        showNotification(context, "No recording found", "Could not locate call recording audio file for " + phoneNumber);
+                        return;
+                    }
+                    
+                    DebugLogger.log(context, "[BgTranscribe] Found recording file: " + audioFile.getName() + " (" + audioFile.length() + " bytes). Starting Deepgram transcription...");
+                    showNotification(context, "Processing call recording", "AI is transcribing and parsing your call with " + phoneNumber + "...");
+                    
+                    Transcriber.transcribeCallRecording(context, audioFile, new Transcriber.TranscriptionCallback() {
+                        @Override
+                        public void onSuccess(String transcript) {
+                            DebugLogger.log(context, "[BgTranscribe] Deepgram success! Length: " + transcript.length() + " chars. Querying OpenAI for fields...");
+                            
+                            OpenAiClient.extractFields(context, transcript, new OpenAiClient.OpenAiCallback() {
+                                @Override
+                                public void onSuccess(org.json.JSONObject result) {
+                                    try {
+                                        DebugLogger.log(context, "[BgTranscribe] OpenAI success! Parsing fields...");
+                                        
+                                        String company = result.optString("company_name", "").trim();
+                                        String recruiter = result.optString("recruiter_name", "").trim();
+                                        String role = result.optString("applied_role", "").trim();
+                                        String round = result.optString("present_round", "Screening").trim();
+                                        String schedule = result.optString("tentative_schedule", "").trim();
+                                        String notice = result.optString("notice_period", "").trim();
+                                        String agenda = result.optString("main_agenda", "").trim();
+                                        String nextSteps = result.optString("next_steps", "").trim();
+                                        String candidate = result.optString("candidate_name", "").trim();
+                                        
+                                        // Save/update SQLite database
+                                        DatabaseHelper db = new DatabaseHelper(context);
+                                        JobCall existingCall = db.getJobCallByNumber(context, phoneNumber);
+                                        
+                                        long jobCallId;
+                                        
+                                        if (existingCall != null) {
+                                            jobCallId = existingCall.getId();
+                                            
+                                            // Merge/update empty fields
+                                            if (existingCall.getCompanyName() == null || existingCall.getCompanyName().isEmpty()) {
+                                                existingCall.setCompanyName(company);
+                                            }
+                                            if (existingCall.getRecruiterName() == null || existingCall.getRecruiterName().isEmpty()) {
+                                                existingCall.setRecruiterName(recruiter);
+                                            }
+                                            if (existingCall.getAppliedRole() == null || existingCall.getAppliedRole().isEmpty()) {
+                                                existingCall.setAppliedRole(role);
+                                            }
+                                            if (existingCall.getRoundStatus() == null || existingCall.getRoundStatus().isEmpty()) {
+                                                existingCall.setRoundStatus(round);
+                                            }
+                                            if (existingCall.getTentativeSchedule() == null || existingCall.getTentativeSchedule().isEmpty()) {
+                                                existingCall.setTentativeSchedule(schedule);
+                                            }
+                                            if (existingCall.getNoticePeriod() == null || existingCall.getNoticePeriod().isEmpty()) {
+                                                existingCall.setNoticePeriod(notice);
+                                            }
+                                            if (existingCall.getMainAgenda() == null || existingCall.getMainAgenda().isEmpty()) {
+                                                existingCall.setMainAgenda(agenda);
+                                            }
+                                            if (existingCall.getNextSteps() == null || existingCall.getNextSteps().isEmpty()) {
+                                                existingCall.setNextSteps(nextSteps);
+                                            }
+                                            if (existingCall.getCandidateName() == null || existingCall.getCandidateName().isEmpty()) {
+                                                existingCall.setCandidateName(candidate);
+                                            }
+                                            db.updateJobCall(existingCall);
+                                        } else {
+                                            // Create new call record
+                                            String finalCompany = company.isEmpty() ? "Unknown Recruiter" : company;
+                                            JobCall call = new JobCall(phoneNumber, finalCompany, round, "", "", duration, timestamp);
+                                            call.setRecruiterName(recruiter);
+                                            call.setAppliedRole(role);
+                                            call.setTentativeSchedule(schedule);
+                                            call.setNoticePeriod(notice);
+                                            call.setMainAgenda(agenda);
+                                            call.setNextSteps(nextSteps);
+                                            call.setCandidateName(candidate);
+                                            
+                                            jobCallId = db.insertJobCall(call);
+                                        }
+                                        
+                                        // Save notes
+                                        String summaryNote = agenda;
+                                        if (!nextSteps.isEmpty()) {
+                                            if (!summaryNote.isEmpty()) summaryNote += "; ";
+                                            summaryNote += "Next steps: " + nextSteps;
+                                        }
+                                        if (summaryNote.trim().isEmpty()) {
+                                            summaryNote = "AI call summary logged.";
+                                        }
+                                        db.insertNote(jobCallId, summaryNote + " (AI Auto-transcribed)", System.currentTimeMillis());
+                                        
+                                        // Link phone to job
+                                        String finalRecruiter = recruiter.isEmpty() ? "Recruiter" : recruiter;
+                                        db.linkPhoneToJob(jobCallId, phoneNumber, finalRecruiter);
+                                        
+                                        // Log history entry
+                                        db.insertCallHistory(jobCallId, "Incoming", duration, timestamp);
+                                        
+                                        // Trigger system notification
+                                        String companyDisplay = company.isEmpty() ? "Recruiter" : company;
+                                        String title = "✨ AI parsed call with " + companyDisplay;
+                                        String content = round + " - " + (role.isEmpty() ? "GCP Engineer" : role) + " role";
+                                        if (!schedule.isEmpty()) {
+                                            content += "; next call: " + schedule;
+                                        }
+                                        
+                                        // Show final notification that launches a Calendar intent
+                                        showCalendarNotification(context, title, content, companyDisplay, role, schedule, summaryNote);
+                                        
+                                        DebugLogger.log(context, "[BgTranscribe] Call fully processed and saved to database!");
+                                        
+                                    } catch (Exception e) {
+                                        DebugLogger.log(context, "[BgTranscribe] Error updating database: " + e.getMessage());
+                                        showNotification(context, "Database Save Error", "Could not save parsed recruiter data: " + e.getMessage());
+                                    }
+                                }
+                                
+                                @Override
+                                public void onError(String error) {
+                                    DebugLogger.log(context, "[BgTranscribe] OpenAI API error: " + error);
+                                    showNotification(context, "AI Analysis Failed", "OpenAI failed: " + error);
+                                }
+                            });
+                        }
+                        
+                        @Override
+                        public void onError(String error) {
+                            DebugLogger.log(context, "[BgTranscribe] Deepgram Transcription error: " + error);
+                            showNotification(context, "Transcription Failed", "Deepgram failed: " + error);
+                        }
+                    });
+                    
+                } catch (InterruptedException e) {
+                    DebugLogger.log(context, "[BgTranscribe] Thread interrupted: " + e.getMessage());
+                } catch (Exception e) {
+                    DebugLogger.log(context, "[BgTranscribe] Error in worker thread: " + e.getMessage());
+                }
+            }
+        }).start();
+    }
+
+    private void showNotification(Context context, String title, String content) {
+        NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        if (nm == null) return;
+        
+        Notification notification = new NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.sym_action_call)
+                .setContentTitle(title)
+                .setContentText(content)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setAutoCancel(true)
+                .build();
+                
+        try {
+            nm.notify(9999, notification);
+        } catch (SecurityException e) {
+            Log.e(TAG, "Cannot post notification: " + e.getMessage());
+        }
+    }
+
+    private void showCalendarNotification(Context context, String title, String content, String company, String role, String schedule, String notes) {
+        NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        if (nm == null) return;
+        
+        Intent calendarIntent = new Intent(Intent.ACTION_INSERT)
+                .setData(Uri.parse("content://com.android.calendar/events"))
+                .putExtra("title", "Interview: " + role + " @ " + company)
+                .putExtra("description", "Notes: " + notes + "\nSchedule: " + schedule)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                
+        calendarIntent.putExtra("beginTime", System.currentTimeMillis() + 24 * 60 * 60 * 1000L); // Default tomorrow
+        calendarIntent.putExtra("endTime", System.currentTimeMillis() + 24 * 60 * 60 * 1000L + 30 * 60 * 1000L);
+        
+        int piFlags = PendingIntent.FLAG_UPDATE_CURRENT;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            piFlags |= PendingIntent.FLAG_IMMUTABLE;
+        }
+        PendingIntent pendingIntent = PendingIntent.getActivity(context, (int)System.currentTimeMillis(), calendarIntent, piFlags);
+        
+        Notification notification = new NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.sym_action_call)
+                .setContentTitle(title)
+                .setContentText(content)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setCategory(NotificationCompat.CATEGORY_RECOMMENDATION)
+                .setAutoCancel(true)
+                .setContentIntent(pendingIntent)
+                .build();
+                
+        try {
+            nm.notify((int) System.currentTimeMillis(), notification);
+        } catch (SecurityException e) {
+            Log.e(TAG, "Cannot post notification: " + e.getMessage());
         }
     }
 }

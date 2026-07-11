@@ -103,7 +103,7 @@ public class MainActivity extends AppCompatActivity {
 
         ImageView btnSettings = findViewById(R.id.btn_main_settings);
         if (btnSettings != null) {
-            btnSettings.setOnClickListener(v -> showSettingsDialog());
+            btnSettings.setOnClickListener(v -> startActivity(new Intent(this, SettingsActivity.class)));
         }
     }
 
@@ -275,93 +275,5 @@ public class MainActivity extends AppCompatActivity {
                 upcomingFragment.onResume();
             }
         }
-    }
-
-    private void showSettingsDialog() {
-        LayoutInflater inflater = getLayoutInflater();
-        View dialogView = inflater.inflate(R.layout.dialog_settings, null);
-
-        EditText etDeepgram = dialogView.findViewById(R.id.et_settings_deepgram_key);
-        EditText etOpenAi = dialogView.findViewById(R.id.et_settings_openai_key);
-        EditText etTalkingPoints = dialogView.findViewById(R.id.et_settings_talking_points);
-        View btnCancel = dialogView.findViewById(R.id.btn_settings_cancel);
-        View btnSave = dialogView.findViewById(R.id.btn_settings_save);
-
-        SharedPreferences prefs = getSharedPreferences("CallSaverPrefs", MODE_PRIVATE);
-        etDeepgram.setText(prefs.getString("deepgram_api_key", ""));
-        etOpenAi.setText(prefs.getString("openai_api_key", ""));
-        if (etTalkingPoints != null) {
-            etTalkingPoints.setText(prefs.getString("user_talking_points", ""));
-        }
-
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setView(dialogView);
-
-        AlertDialog dialog = builder.create();
-
-        View tvDiagnostics = dialogView.findViewById(R.id.tv_settings_diagnostics);
-        if (tvDiagnostics != null) {
-            tvDiagnostics.setOnClickListener(v -> {
-                dialog.dismiss();
-                showDebugLogsDialog();
-            });
-        }
-
-        btnCancel.setOnClickListener(v -> dialog.dismiss());
-
-        btnSave.setOnClickListener(v -> {
-            String dg = etDeepgram.getText().toString().trim();
-            String oa = etOpenAi.getText().toString().trim();
-            String tp = etTalkingPoints != null ? etTalkingPoints.getText().toString().trim() : "";
-            prefs.edit()
-                    .putString("deepgram_api_key", dg)
-                    .putString("openai_api_key", oa)
-                    .putString("user_talking_points", tp)
-                    .apply();
-            Toast.makeText(this, "API Keys saved successfully!", Toast.LENGTH_SHORT).show();
-            dialog.dismiss();
-        });
-
-        if (dialog.getWindow() != null) {
-            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
-        }
-        dialog.show();
-
-        View parent = (View) dialogView.getParent();
-        if (parent != null) {
-            parent.setBackgroundResource(R.drawable.spinner_border);
-        }
-    }
-
-    private void showDebugLogsDialog() {
-        String logs = DebugLogger.readLogs(this);
-
-        TextView tv = new TextView(this);
-        tv.setText(logs);
-        tv.setTextSize(11);
-        tv.setTextIsSelectable(true);
-        tv.setPadding(40, 24, 40, 24);
-        tv.setTypeface(android.graphics.Typeface.MONOSPACE);
-
-        android.widget.ScrollView scroll = new android.widget.ScrollView(this);
-        scroll.addView(tv);
-
-        new AlertDialog.Builder(this)
-                .setTitle("Diagnostic logs")
-                .setView(scroll)
-                .setPositiveButton("Close", null)
-                .setNeutralButton("Clear", (d, w) -> {
-                    DebugLogger.clearLogs(this);
-                    Toast.makeText(this, "Logs cleared", Toast.LENGTH_SHORT).show();
-                })
-                .setNegativeButton("Copy", (d, w) -> {
-                    android.content.ClipboardManager cm = (android.content.ClipboardManager)
-                            getSystemService(Context.CLIPBOARD_SERVICE);
-                    if (cm != null) {
-                        cm.setPrimaryClip(android.content.ClipData.newPlainText("logs", logs));
-                        Toast.makeText(this, "Logs copied", Toast.LENGTH_SHORT).show();
-                    }
-                })
-                .show();
     }
 }

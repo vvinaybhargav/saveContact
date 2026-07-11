@@ -77,6 +77,12 @@
             android:exported="false"
             android:parentActivityName=".MainActivity" />
 
+        <!-- Settings screen -->
+        <activity
+            android:name=".SettingsActivity"
+            android:exported="false"
+            android:parentActivityName=".MainActivity" />
+
         <!-- Best-effort call recorder (foreground service, microphone type) -->
         <service
             android:name=".CallRecorderService"

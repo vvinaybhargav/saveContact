@@ -129,6 +129,16 @@ public class SaveContactActivity extends AppCompatActivity {
         if (etTentativeSchedule != null) {
             etTentativeSchedule.setOnClickListener(v -> showDateTimePicker(etTentativeSchedule));
         }
+
+        View btnTomorrow = findViewById(R.id.btn_schedule_tomorrow);
+        if (btnTomorrow != null && etTentativeSchedule != null) {
+            btnTomorrow.setOnClickListener(v -> {
+                java.util.Calendar cal = java.util.Calendar.getInstance();
+                cal.add(java.util.Calendar.DAY_OF_YEAR, 1);
+                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd 'at' hh:mm a", java.util.Locale.getDefault());
+                etTentativeSchedule.setText(sdf.format(cal.getTime()));
+            });
+        }
         
         TextInputLayout tilNotes = findViewById(R.id.til_notes);
 
