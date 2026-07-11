@@ -56,9 +56,9 @@ public class Transcriber {
 
         RequestBody requestBody = RequestBody.create(audioFile, MediaType.parse("application/octet-stream"));
 
-        // Use Deepgram Nova-2 model with auto language detection and formatting
+        // Use Deepgram Nova-3 model with auto language detection and formatting
         Request request = new Request.Builder()
-                .url("https://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&detect_language=true")
+                .url("https://api.deepgram.com/v1/listen?model=nova-3&smart_format=true&detect_language=true")
                 .header("Authorization", "Token " + apiKey)
                 .header("Content-Type", "application/octet-stream")
                 .post(requestBody)
