@@ -284,12 +284,16 @@ public class MainActivity extends AppCompatActivity {
 
         EditText etDeepgram = dialogView.findViewById(R.id.et_settings_deepgram_key);
         EditText etOpenAi = dialogView.findViewById(R.id.et_settings_openai_key);
+        EditText etTalkingPoints = dialogView.findViewById(R.id.et_settings_talking_points);
         View btnCancel = dialogView.findViewById(R.id.btn_settings_cancel);
         View btnSave = dialogView.findViewById(R.id.btn_settings_save);
 
         SharedPreferences prefs = getSharedPreferences("CallSaverPrefs", MODE_PRIVATE);
         etDeepgram.setText(prefs.getString("deepgram_api_key", ""));
         etOpenAi.setText(prefs.getString("openai_api_key", ""));
+        if (etTalkingPoints != null) {
+            etTalkingPoints.setText(prefs.getString("user_talking_points", ""));
+        }
 
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setView(dialogView);
@@ -309,9 +313,11 @@ public class MainActivity extends AppCompatActivity {
         btnSave.setOnClickListener(v -> {
             String dg = etDeepgram.getText().toString().trim();
             String oa = etOpenAi.getText().toString().trim();
+            String tp = etTalkingPoints != null ? etTalkingPoints.getText().toString().trim() : "";
             prefs.edit()
                     .putString("deepgram_api_key", dg)
                     .putString("openai_api_key", oa)
+                    .putString("user_talking_points", tp)
                     .apply();
             Toast.makeText(this, "API Keys saved successfully!", Toast.LENGTH_SHORT).show();
             dialog.dismiss();

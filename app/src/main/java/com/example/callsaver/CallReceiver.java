@@ -243,6 +243,16 @@ public class CallReceiver extends BroadcastReceiver {
             content = "Tap to review call recording and transcribe notes.";
         }
 
+        // Quick Action Pending Intent
+        Intent quickActionIntent = new Intent(context, CallActionReceiver.class);
+        quickActionIntent.setAction("com.example.callsaver.action.QUICK_SAVE_TRANSCRIBE");
+        quickActionIntent.putExtra("phone_number", number);
+        quickActionIntent.putExtra("duration", duration);
+        quickActionIntent.putExtra("timestamp", System.currentTimeMillis());
+
+        PendingIntent quickActionPendingIntent = PendingIntent.getBroadcast(
+                context, number.hashCode() + 100, quickActionIntent, piFlags);
+
         Notification notification = new NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.sym_action_call)
                 .setContentTitle(title)
@@ -251,6 +261,7 @@ public class CallReceiver extends BroadcastReceiver {
                 .setCategory(NotificationCompat.CATEGORY_RECOMMENDATION)
                 .setAutoCancel(true)
                 .setContentIntent(pendingIntent)
+                .addAction(android.R.drawable.ic_menu_save, "Quick Save & Transcribe", quickActionPendingIntent)
                 .build();
 
         try {

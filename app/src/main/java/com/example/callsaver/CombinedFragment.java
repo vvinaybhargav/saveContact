@@ -185,8 +185,10 @@ public class CombinedFragment extends Fragment implements CombinedAdapter.OnComb
                     // Lookup from SQLite local recruiter logs
                     JobCall jobCall = dbHelper.getJobCallByNumber(requireContext(), number);
 
-                    allCombinedList.add(new CombinedAdapter.CombinedCallModel(number, name, type, date, sim, duration, jobCall));
-                    count++;
+                    if (jobCall != null) {
+                        allCombinedList.add(new CombinedAdapter.CombinedCallModel(number, name, type, date, sim, duration, jobCall));
+                        count++;
+                    }
                 } while (cursor.moveToNext() && count < 80);
             }
         } catch (Exception e) {

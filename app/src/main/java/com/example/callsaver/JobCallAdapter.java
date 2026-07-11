@@ -27,6 +27,7 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
 
     public interface OnItemClickListener {
         void onItemClick(JobCall jobCall);
+        void onFollowUpClick(JobCall jobCall);
     }
 
     public JobCallAdapter(Context context, List<JobCall> callList, OnItemClickListener listener) {
@@ -100,6 +101,15 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
         holder.btnActionCall.setOnClickListener(v -> {
             callDirectly(call.getPhoneNumber());
         });
+
+        // Follow Up Action
+        if (holder.btnActionFollowup != null) {
+            holder.btnActionFollowup.setOnClickListener(v -> {
+                if (listener != null) {
+                    listener.onFollowUpClick(call);
+                }
+            });
+        }
 
         // Card Click Action
         holder.itemView.setOnClickListener(v -> {
@@ -227,7 +237,7 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
         TextView tvCompanyName, tvPhoneNumber, tvTags, tvNotesPreview, tvCallTime, tvAvatarText, tvStatusBadge;
-        MaterialCardView cardAvatar, btnActionCall;
+        MaterialCardView cardAvatar, btnActionCall, btnActionFollowup;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -240,6 +250,7 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
             tvStatusBadge = itemView.findViewById(R.id.tv_status_badge);
             cardAvatar = itemView.findViewById(R.id.card_avatar);
             btnActionCall = itemView.findViewById(R.id.btn_action_call);
+            btnActionFollowup = itemView.findViewById(R.id.btn_action_followup);
         }
     }
 }

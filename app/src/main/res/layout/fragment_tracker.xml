@@ -199,6 +199,36 @@
             android:focusable="true"
             android:background="?android:attr/selectableItemBackground" />
 
+        <!-- Upcoming Interviews Section -->
+        <LinearLayout
+            android:id="@+id/ll_upcoming_interviews_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="16dp"
+            android:visibility="gone">
+            
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="📅 UPCOMING INTERVIEWS"
+                android:textColor="@color/text_muted"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.05"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginBottom="8dp" />
+                
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rv_upcoming_interviews"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:paddingHorizontal="12dp"
+                android:clipToPadding="false"
+                android:scrollbars="none" />
+        </LinearLayout>
+
 
 
 

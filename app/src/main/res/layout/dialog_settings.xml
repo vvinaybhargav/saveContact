@@ -73,6 +73,29 @@
             android:singleLine="true"/>
     </com.google.android.material.textfield.TextInputLayout>
 
+    <!-- Resume Highlights / Talking Points -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Resume Highlights / Key Talking Points"
+        android:layout_marginBottom="16dp"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        app:boxCornerRadiusTopStart="8dp"
+        app:boxCornerRadiusTopEnd="8dp"
+        app:boxCornerRadiusBottomStart="8dp"
+        app:boxCornerRadiusBottomEnd="8dp"
+        app:boxStrokeColor="@color/accent_indigo"
+        app:hintTextColor="@color/accent_indigo">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/et_settings_talking_points"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="textMultiLine"
+            android:maxLines="3"
+            android:singleLine="false"/>
+    </com.google.android.material.textfield.TextInputLayout>
+
     <!-- Diagnostics Link -->
     <TextView
         android:id="@+id/tv_settings_diagnostics"

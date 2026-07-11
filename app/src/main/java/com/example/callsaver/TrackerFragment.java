@@ -79,6 +79,11 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
     private FloatingActionButton fabAddCall;
     private EditText etSearch;
 
+    private RecyclerView rvUpcomingInterviews;
+    private View llUpcomingInterviewsContainer;
+    private UpcomingInterviewsAdapter upcomingAdapter;
+    private List<JobCall> upcomingList;
+
     private TextView tvStatLeads;
     private TextView tvStatScreenings;
     private TextView tvStatInterviews;
@@ -149,6 +154,21 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         allCallsList = new ArrayList<>();
         adapter = new JobCallAdapter(requireContext(), callList, this);
         rvJobCalls.setAdapter(adapter);
+
+        rvUpcomingInterviews = view.findViewById(R.id.rv_upcoming_interviews);
+        llUpcomingInterviewsContainer = view.findViewById(R.id.ll_upcoming_interviews_container);
+
+        if (rvUpcomingInterviews != null) {
+            rvUpcomingInterviews.setLayoutManager(new LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false));
+            upcomingList = new ArrayList<>();
+            upcomingAdapter = new UpcomingInterviewsAdapter(requireContext(), upcomingList, new UpcomingInterviewsAdapter.OnInterviewClickListener() {
+                @Override
+                public void onInterviewClick(JobCall call) {
+                    showAddEditCallDialog(call);
+                }
+            });
+            rvUpcomingInterviews.setAdapter(upcomingAdapter);
+        }
 
         // Permissions banner click
         cardPermissionsBanner.setOnClickListener(v -> handlePermissionsRequestFlow());
@@ -371,6 +391,36 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         if (tvStatInterviews != null) tvStatInterviews.setText(String.valueOf(interviews));
         if (tvStatOffers != null) tvStatOffers.setText(String.valueOf(offers));
 
+        // Filter and update Upcoming Interviews deck
+        if (upcomingList != null) {
+            List<JobCall> activeInterviews = new ArrayList<>();
+            for (JobCall c : allCallsList) {
+                String status = c.getRoundStatus();
+                if (status != null && (status.equals("Rejected") || status.equals("Offered"))) {
+                    continue;
+                }
+                
+                String schedule = c.getTentativeSchedule();
+                if (schedule != null && !schedule.trim().isEmpty()) {
+                    activeInterviews.add(c);
+                } else if (status != null && (status.equals("Screening") || status.equals("1st Round") || status.equals("2nd Round") || status.equals("Final Round") || status.equals("HR / Salary"))) {
+                    activeInterviews.add(c);
+                }
+            }
+            upcomingList.clear();
+            upcomingList.addAll(activeInterviews);
+            if (upcomingAdapter != null) {
+                upcomingAdapter.notifyDataSetChanged();
+            }
+            if (llUpcomingInterviewsContainer != null) {
+                if (upcomingList.isEmpty()) {
+                    llUpcomingInterviewsContainer.setVisibility(View.GONE);
+                } else {
+                    llUpcomingInterviewsContainer.setVisibility(View.VISIBLE);
+                }
+            }
+        }
+
         filterList(searchQuery, selectedStatus);
     }
 
@@ -426,6 +476,53 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
     @Override
     public void onItemClick(JobCall jobCall) {
         showAddEditCallDialog(jobCall);
+    }
+
+    @Override
+    public void onFollowUpClick(JobCall call) {
+        if (getContext() == null) return;
+        
+        String[] options = {"Share via WhatsApp", "Draft Email"};
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Follow up with recruiter")
+                .setItems(options, (dialog, which) -> {
+                    String recruiterName = call.getRecruiterName() != null && !call.getRecruiterName().isEmpty() ? call.getRecruiterName() : "Recruiter";
+                    String companyName = call.getCompanyName() != null && !call.getCompanyName().isEmpty() ? call.getCompanyName() : "Company";
+                    String role = call.getAppliedRole() != null && !call.getAppliedRole().isEmpty() ? call.getAppliedRole() : "Developer Role";
+                    String schedule = call.getTentativeSchedule() != null && !call.getTentativeSchedule().isEmpty() ? call.getTentativeSchedule() : "our next meeting";
+                    
+                    String message = String.format("Hi %s,\n\nThanks for discussing the %s position at %s today. As agreed, here is my resume.\n\nLooking forward to %s.\n\nBest regards,\nVinay",
+                            recruiterName, role, companyName, schedule.contains("next") || schedule.contains("tomorrow") || schedule.contains("at") ? "our next call on " + schedule : "our next call");
+                    
+                    if (which == 0) {
+                        // WhatsApp
+                        try {
+                            Intent whatsappIntent = new Intent(Intent.ACTION_SEND);
+                            whatsappIntent.setType("text/plain");
+                            whatsappIntent.putExtra(Intent.EXTRA_TEXT, message);
+                            whatsappIntent.setPackage("com.whatsapp");
+                            startActivity(whatsappIntent);
+                        } catch (Exception e) {
+                            Intent intent = new Intent(Intent.ACTION_SEND);
+                            intent.setType("text/plain");
+                            intent.putExtra(Intent.EXTRA_TEXT, message);
+                            startActivity(Intent.createChooser(intent, "Share via"));
+                        }
+                    } else {
+                        // Email
+                        Intent emailIntent = new Intent(Intent.ACTION_SENDTO);
+                        emailIntent.setData(Uri.parse("mailto:"));
+                        emailIntent.putExtra(Intent.EXTRA_SUBJECT, "Follow-up: " + role + " at " + companyName);
+                        emailIntent.putExtra(Intent.EXTRA_TEXT, message);
+                        try {
+                            startActivity(Intent.createChooser(emailIntent, "Send email..."));
+                        } catch (Exception e) {
+                            Toast.makeText(requireContext(), "No email app installed", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     /**

@@ -183,6 +183,19 @@ public class CallerIdService extends Service {
             tvNotesTimeline.setText(sb.toString());
         }
 
+        // Bind and populate Talking Points highlights
+        View llHighlights = overlayView.findViewById(R.id.ll_overlay_highlights_container);
+        TextView tvHighlights = overlayView.findViewById(R.id.tv_overlay_highlights);
+        if (llHighlights != null && tvHighlights != null) {
+            String highlights = getSharedPreferences("CallSaverPrefs", MODE_PRIVATE).getString("user_talking_points", "").trim();
+            if (!highlights.isEmpty()) {
+                tvHighlights.setText(highlights);
+                llHighlights.setVisibility(View.VISIBLE);
+            } else {
+                llHighlights.setVisibility(View.GONE);
+            }
+        }
+
         // Configure Window Layout parameters (Middle of screen, draw over other apps)
         int layoutType;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
