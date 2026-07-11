@@ -23,6 +23,10 @@ import android.content.SharedPreferences;
 import android.widget.AdapterView;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
+import java.util.Locale;
+import java.text.SimpleDateFormat;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
@@ -410,6 +414,97 @@ public class SaveContactActivity extends AppCompatActivity {
                 imm.showSoftInput(etCompanyName, InputMethodManager.SHOW_IMPLICIT);
             }
         }, 150);
+
+        View tvManualRecording = findViewById(R.id.tv_manual_recording);
+        if (tvManualRecording != null) {
+            tvManualRecording.setOnClickListener(v -> showManualRecordingPickerDialog());
+        }
+    }
+
+    private void showManualRecordingPickerDialog() {
+        File[] candidateDirs = new File[] {
+                new File(android.os.Environment.getExternalStorageDirectory(), "Music/Recordings/Call Recordings"),
+                new File(android.os.Environment.getExternalStorageDirectory(), "Recordings/Call"),
+                new File(android.os.Environment.getExternalStorageDirectory(), "Recordings/Call Recordings"),
+                new File(android.os.Environment.getExternalStorageDirectory(), "Recordings"),
+                new File(android.os.Environment.getExternalStorageDirectory(), "Music/Recordings")
+        };
+
+        final List<File> audioFiles = new ArrayList<>();
+        for (File dir : candidateDirs) {
+            if (dir.exists() && dir.isDirectory()) {
+                File[] files = dir.listFiles();
+                if (files != null) {
+                    for (File f : files) {
+                        if (f.isFile()) {
+                            String name = f.getName().toLowerCase();
+                            boolean isAudio = name.endsWith(".mp3") || name.endsWith(".wav") || 
+                                              name.endsWith(".m4a") || name.endsWith(".amr") || 
+                                              name.endsWith(".aac") || name.endsWith(".ogg") ||
+                                              name.endsWith(".mp4");
+                            if (isAudio) {
+                                audioFiles.add(f);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Sort by date modified DESC (newest first)
+        Collections.sort(audioFiles, (f1, f2) -> Long.compare(f2.lastModified(), f1.lastModified()));
+
+        if (audioFiles.isEmpty()) {
+            Toast.makeText(this, "No call recording files found on device storage.", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        // Limit listing to top 50 recent files
+        int limit = Math.min(audioFiles.size(), 50);
+        String[] fileNames = new String[limit];
+        SimpleDateFormat sdf = new SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault());
+        for (int i = 0; i < limit; i++) {
+            File f = audioFiles.get(i);
+            String dateStr = sdf.format(new Date(f.lastModified()));
+            double sizeMb = f.length() / (1024.0 * 1024.0);
+            fileNames[i] = f.getName() + "\n(" + dateStr + " · " + String.format(Locale.getDefault(), "%.2f MB", sizeMb) + ")";
+        }
+
+        new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("Select Call Recording File")
+                .setItems(fileNames, (dialog, which) -> {
+                    File selectedFile = audioFiles.get(which);
+                    recordingFile = selectedFile;
+                    
+                    DebugLogger.log(this, "[Activity] Manually selected recording: " + selectedFile.getAbsolutePath());
+                    
+                    // Show recording player controls and auto transcribe
+                    llRecordingPanel.setVisibility(View.VISIBLE);
+                    setupAudioPlayer();
+                    
+                    final View playBtn = findViewById(R.id.iv_play_pause);
+                    if (playBtn != null && playBtn.getParent() instanceof View) {
+                        ((View) playBtn.getParent()).setVisibility(View.VISIBLE);
+                    }
+                    
+                    View autoTranscribeBtn = findViewById(R.id.btn_auto_transcribe);
+                    if (autoTranscribeBtn != null) {
+                        autoTranscribeBtn.setVisibility(View.VISIBLE);
+                        
+                        SharedPreferences apiPrefs = getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE);
+                        String savedKey = apiPrefs.getString("deepgram_api_key", "");
+                        if (!savedKey.isEmpty()) {
+                            autoTranscribeBtn.performClick();
+                        } else {
+                            pbTranscribe.setVisibility(View.GONE);
+                            if (tvTranscriptionStatus != null) {
+                                tvTranscriptionStatus.setText("✅ Recording located. Tap Auto-Transcribe.");
+                            }
+                        }
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     private void configureShowWhenLocked() {
