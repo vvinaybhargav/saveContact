@@ -240,7 +240,7 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
         });
 
         ArrayAdapter<CharSequence> spinnerAdapter = ArrayAdapter.createFromResource(requireContext(),
-                R.array.interview_rounds, android.R.layout.simple_spinner_item);
+                R.array.round_statuses, android.R.layout.simple_spinner_item);
         spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerRound.setAdapter(spinnerAdapter);
 
@@ -267,24 +267,7 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
             int roundPos = spinnerAdapter.getPosition(editCall.getRoundStatus());
             spinnerRound.setSelection(roundPos >= 0 ? roundPos : 0);
 
-            List<CallNote> notesList = dbHelper.getNotesForJob(editCall.getId());
-            if (notesList != null && !notesList.isEmpty()) {
-                labelNotes.setVisibility(View.VISIBLE);
-                llNotesTimeline.removeAllViews();
-                SimpleDateFormat dateFormat = new SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault());
-
-                for (CallNote note : notesList) {
-                    View noteItemView = getLayoutInflater().inflate(R.layout.item_timeline_note, llNotesTimeline, false);
-                    TextView tvNoteContent = noteItemView.findViewById(R.id.tv_timeline_note_content);
-                    TextView tvNoteTime = noteItemView.findViewById(R.id.tv_timeline_note_time);
-
-                    tvNoteContent.setText(note.note);
-                    tvNoteTime.setText(dateFormat.format(new Date(note.timestamp)));
-                    llNotesTimeline.addView(noteItemView);
-                }
-            } else {
-                labelNotes.setVisibility(View.GONE);
-            }
+            populateTimeline(llNotesTimeline, labelNotes, editCall.getId());
 
             btnDelete.setOnClickListener(v -> {
                 dbHelper.deleteJobCall(editCall.getId());
@@ -577,5 +560,71 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
                 })
                 .setNegativeButton("Cancel", null)
                 .show();
+    }
+
+    private void populateTimeline(LinearLayout container, View label, long jobId) {
+        if (container == null) return;
+        container.removeAllViews();
+
+        List<TimelineRow> rows = new ArrayList<>();
+        for (CallNote n : dbHelper.getNotesForJob(jobId)) {
+            TimelineRow r = new TimelineRow();
+            r.ts = n.timestamp;
+            r.text = n.note;
+            r.isNote = true;
+            r.noteId = n.id;
+            rows.add(r);
+        }
+        for (CallHistory h : dbHelper.getCallHistoryForJob(jobId)) {
+            TimelineRow r = new TimelineRow();
+            r.ts = h.timestamp;
+            r.text = describeCall(h);
+            r.isNote = false;
+            rows.add(r);
+        }
+
+        if (rows.isEmpty()) {
+            if (label != null) label.setVisibility(View.GONE);
+            return;
+        }
+        if (label != null) label.setVisibility(View.VISIBLE);
+
+        Collections.sort(rows, (a, b) -> Long.compare(b.ts, a.ts));
+
+        LayoutInflater inflater = getLayoutInflater();
+        SimpleDateFormat sdf = new SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault());
+        for (TimelineRow r : rows) {
+            View row = inflater.inflate(R.layout.item_note_row, container, false);
+            ((TextView) row.findViewById(R.id.tv_note_text)).setText(r.text);
+            ((TextView) row.findViewById(R.id.tv_note_time)).setText(sdf.format(new Date(r.ts)));
+            View delete = row.findViewById(R.id.btn_delete_note);
+            if (r.isNote) {
+                delete.setOnClickListener(v -> {
+                    dbHelper.deleteNote(r.noteId, jobId);
+                    container.removeView(row);
+                    if (container.getChildCount() == 0 && label != null) {
+                        label.setVisibility(View.GONE);
+                    }
+                });
+            } else {
+                delete.setVisibility(View.GONE);
+            }
+            container.addView(row);
+        }
+    }
+
+    private String describeCall(CallHistory h) {
+        String label = h.type + " call";
+        if (h.duration > 0) {
+            label += " · " + String.format(Locale.getDefault(), "%d:%02d", h.duration / 60, h.duration % 60);
+        }
+        return label;
+    }
+
+    private static class TimelineRow {
+        long ts;
+        String text;
+        boolean isNote;
+        long noteId;
     }
 }
