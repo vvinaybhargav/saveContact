@@ -801,19 +801,16 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
 
         LayoutInflater inflater = getLayoutInflater();
         SimpleDateFormat sdf = new SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault());
-        // Real calls and manually-uploaded recordings are numbered in their own
-        // separate sequences: "1st Call, 2nd Call..." vs "1st MCall, 2nd MCall...".
-        int callNumber = 1;
-        int manualNumber = 1;
+        // One running counter across the whole chronological sequence; only the
+        // word changes per entry: "Call" for a real call, "MCall" for a manual upload.
+        int ordinal = 1;
         for (CallNote n : chronological) {
             String clean = cleanNoteText(n.note);
             if (clean.trim().isEmpty()) {
                 continue;
             }
 
-            boolean manual = n.isManual();
-            int ordinal = manual ? manualNumber : callNumber;
-            String label2 = ordinal + getOrdinalSuffix(ordinal) + (manual ? " MCall" : " Call");
+            String label2 = ordinal + getOrdinalSuffix(ordinal) + (n.isManual() ? " MCall" : " Call");
 
             View row = inflater.inflate(R.layout.item_call_note_row, container, false);
             ((TextView) row.findViewById(R.id.tv_call_ordinal)).setText(label2);
@@ -828,7 +825,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             });
 
             container.addView(row);
-            if (manual) manualNumber++; else callNumber++;
+            ordinal++;
         }
 
         if (container.getChildCount() == 0 && label != null) {

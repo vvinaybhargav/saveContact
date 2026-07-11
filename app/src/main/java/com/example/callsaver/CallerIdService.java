@@ -216,6 +216,8 @@ public class CallerIdService extends Service {
             List<CallNote> chronologicalNotes = new ArrayList<>(notesList);
             java.util.Collections.reverse(chronologicalNotes);
             
+            // One running counter across the whole chronological sequence; only the
+            // word changes per entry: "Call" for a real call, "MCall" for a manual upload.
             int callCounter = 1;
             for (int i = 0; i < chronologicalNotes.size(); i++) {
                 CallNote note = chronologicalNotes.get(i);
@@ -223,9 +225,9 @@ public class CallerIdService extends Service {
                 if (noteClean.isEmpty()) {
                     continue;
                 }
-                
+
                 TextView titleTv = new TextView(this);
-                titleTv.setText(callCounter + getOrdinalSuffix(callCounter) + " Call");
+                titleTv.setText(callCounter + getOrdinalSuffix(callCounter) + (note.isManual() ? " MCall" : " Call"));
                 titleTv.setTextColor(0xFF6366F1); // Indigo accent color
                 titleTv.setTextSize(12);
                 titleTv.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
