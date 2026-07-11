@@ -92,6 +92,7 @@ public class CallerIdService extends Service {
         // Resolve structured properties from database
         String candidateName = "";
         String mainAgenda = "";
+        String appliedRole = "";
         if (jobCallId != -1) {
             DatabaseHelper db = new DatabaseHelper(this);
             JobCall matchedCall = db.getJobCallByNumber(this, phoneNumber);
@@ -102,6 +103,7 @@ public class CallerIdService extends Service {
                 tags = matchedCall.getTags();
                 company = matchedCall.getCompanyName();
                 recruiter = matchedCall.getRecruiterName();
+                appliedRole = matchedCall.getAppliedRole();
             }
         }
 
@@ -122,10 +124,10 @@ public class CallerIdService extends Service {
         }
         tvCallerName.setText(title);
 
-        // Set Status
-        String statusText = "Round: " + (roundStatus != null && !roundStatus.isEmpty() ? roundStatus : "-");
-        if (tags != null && !tags.trim().isEmpty()) {
-            statusText += " · " + tags;
+        // Set Status: Round - Role role
+        String statusText = (roundStatus != null && !roundStatus.isEmpty()) ? roundStatus : "Screening";
+        if (appliedRole != null && !appliedRole.trim().isEmpty()) {
+            statusText += " - " + appliedRole.trim() + " role";
         }
         tvCallerStatus.setText(statusText);
 
@@ -138,49 +140,29 @@ public class CallerIdService extends Service {
             cardAvatar.setCardBackgroundColor(avatarColors[colorIndex]);
         }
 
-        // Fetch and format pointwise timeline notes (exactly 3 lines: Agenda, Latest, and Next Action)
+        // Fetch and format pointwise timeline notes (combined text block, max 3 lines)
         if (jobCallId == -1) {
             tvNotesTimeline.setText("Not saved in Tracker yet.");
         } else {
-            StringBuilder sb = new StringBuilder();
-            
-            // Line 1: Agenda
-            String agendaLine = (mainAgenda != null && !mainAgenda.trim().isEmpty()) ? mainAgenda.trim() : "No active agenda.";
-            if (agendaLine.length() > 60) {
-                agendaLine = agendaLine.substring(0, 57) + "...";
-            }
-            sb.append("• Agenda: ").append(agendaLine).append("\n");
-            
-            // Line 2: Latest Note
             DatabaseHelper db = new DatabaseHelper(this);
-            List<CallNote> notes = db.getNotesForJob(jobCallId);
-            String notesLine = "No previous notes.";
-            if (notes != null && !notes.isEmpty()) {
-                notesLine = notes.get(0).note.trim();
-                if (notesLine.length() > 60) {
-                    notesLine = notesLine.substring(0, 57) + "...";
+            List<CallNote> notesList = db.getNotesForJob(jobCallId);
+            StringBuilder sb = new StringBuilder();
+            if (notesList != null && !notesList.isEmpty()) {
+                for (int i = 0; i < notesList.size(); i++) {
+                    String noteText = notesList.get(i).note.trim();
+                    if (!noteText.isEmpty()) {
+                        if (sb.length() > 0) {
+                            sb.append("; ");
+                        }
+                        sb.append(noteText);
+                    }
                 }
             }
-            sb.append("• Latest: ").append(notesLine).append("\n");
-            
-            // Line 3: Next Steps
-            String nextLine = "No next steps.";
-            JobCall matchedCall = db.getJobCallByNumber(this, phoneNumber);
-            if (matchedCall != null) {
-                String ns = matchedCall.getNextSteps();
-                String ts = matchedCall.getTentativeSchedule();
-                if (ns != null && !ns.trim().isEmpty()) {
-                    nextLine = ns.trim();
-                } else if (ts != null && !ts.trim().isEmpty()) {
-                    nextLine = "Next call: " + ts.trim();
-                }
+            String notesStr = sb.toString().trim();
+            if (notesStr.isEmpty()) {
+                notesStr = "No previous notes.";
             }
-            if (nextLine.length() > 60) {
-                nextLine = nextLine.substring(0, 57) + "...";
-            }
-            sb.append("• Next: ").append(nextLine);
-            
-            tvNotesTimeline.setText(sb.toString());
+            tvNotesTimeline.setText(notesStr);
         }
 
         // Bind and populate Talking Points highlights

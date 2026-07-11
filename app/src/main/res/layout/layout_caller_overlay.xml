@@ -121,7 +121,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="LAST 5 NOTES"
+                android:text="Notes"
                 android:textColor="@color/text_muted"
                 android:textSize="10sp"
                 android:textStyle="bold"
@@ -133,12 +133,12 @@
                 android:id="@+id/tv_overlay_notes"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="1. Note content here...\n2. Another note details..."
+                android:text=""
                 android:textColor="@color/text_secondary"
                 android:textSize="13sp"
                 android:lineSpacingMultiplier="1.2"
-                android:maxLines="8"
-                android:scrollbars="vertical" />
+                android:maxLines="3"
+                android:ellipsize="end" />
 
             <!-- Talking Points (Highlights) Section -->
             <LinearLayout
