@@ -14,6 +14,7 @@ import android.view.MenuItem;
 import android.widget.Toast;
 import android.widget.ImageView;
 import android.widget.EditText;
+import android.widget.TextView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.content.SharedPreferences;
@@ -295,6 +296,14 @@ public class MainActivity extends AppCompatActivity {
 
         AlertDialog dialog = builder.create();
 
+        View tvDiagnostics = dialogView.findViewById(R.id.tv_settings_diagnostics);
+        if (tvDiagnostics != null) {
+            tvDiagnostics.setOnClickListener(v -> {
+                dialog.dismiss();
+                showDebugLogsDialog();
+            });
+        }
+
         btnCancel.setOnClickListener(v -> dialog.dismiss());
 
         btnSave.setOnClickListener(v -> {
@@ -317,5 +326,37 @@ public class MainActivity extends AppCompatActivity {
         if (parent != null) {
             parent.setBackgroundResource(R.drawable.spinner_border);
         }
+    }
+
+    private void showDebugLogsDialog() {
+        String logs = DebugLogger.readLogs(this);
+
+        TextView tv = new TextView(this);
+        tv.setText(logs);
+        tv.setTextSize(11);
+        tv.setTextIsSelectable(true);
+        tv.setPadding(40, 24, 40, 24);
+        tv.setTypeface(android.graphics.Typeface.MONOSPACE);
+
+        android.widget.ScrollView scroll = new android.widget.ScrollView(this);
+        scroll.addView(tv);
+
+        new AlertDialog.Builder(this)
+                .setTitle("Diagnostic logs")
+                .setView(scroll)
+                .setPositiveButton("Close", null)
+                .setNeutralButton("Clear", (d, w) -> {
+                    DebugLogger.clearLogs(this);
+                    Toast.makeText(this, "Logs cleared", Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Copy", (d, w) -> {
+                    android.content.ClipboardManager cm = (android.content.ClipboardManager)
+                            getSystemService(Context.CLIPBOARD_SERVICE);
+                    if (cm != null) {
+                        cm.setPrimaryClip(android.content.ClipData.newPlainText("logs", logs));
+                        Toast.makeText(this, "Logs copied", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .show();
     }
 }

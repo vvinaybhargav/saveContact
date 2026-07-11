@@ -199,53 +199,8 @@
             android:focusable="true"
             android:background="?android:attr/selectableItemBackground" />
 
-        <TextView
-            android:id="@+id/tv_view_recordings"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="end"
-            android:layout_marginHorizontal="16dp"
-            android:layout_marginTop="2dp"
-            android:paddingVertical="4dp"
-            android:text="Call recordings ›"
-            android:textColor="@color/accent_indigo"
-            android:textSize="13sp"
-            android:textStyle="bold"
-            android:clickable="true"
-            android:focusable="true"
-            android:background="?android:attr/selectableItemBackground" />
 
-        <TextView
-            android:id="@+id/tv_test_overlay"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="end"
-            android:layout_marginHorizontal="16dp"
-            android:layout_marginTop="2dp"
-            android:paddingVertical="4dp"
-            android:text="Test overlay banner (3 sec delay) ›"
-            android:textColor="@color/accent_indigo"
-            android:textSize="13sp"
-            android:textStyle="bold"
-            android:clickable="true"
-            android:focusable="true"
-            android:background="?android:attr/selectableItemBackground" />
 
-        <TextView
-            android:id="@+id/tv_view_debug_logs"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="end"
-            android:layout_marginHorizontal="16dp"
-            android:layout_marginTop="2dp"
-            android:paddingVertical="4dp"
-            android:text="View Diagnostic Logs &amp; Errors ›"
-            android:textColor="@color/accent_indigo"
-            android:textSize="13sp"
-            android:textStyle="bold"
-            android:clickable="true"
-            android:focusable="true"
-            android:background="?android:attr/selectableItemBackground" />
 
         <!-- Live Transcription Status Banner -->
         <com.google.android.material.card.MaterialCardView

@@ -163,39 +163,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         View tvAnalytics = view.findViewById(R.id.tv_view_analytics);
         if (cardStats != null) cardStats.setOnClickListener(openAnalytics);
         if (tvAnalytics != null) tvAnalytics.setOnClickListener(openAnalytics);
-        View tvRecordings = view.findViewById(R.id.tv_view_recordings);
-        if (tvRecordings != null) {
-            tvRecordings.setOnClickListener(v ->
-                    startActivity(new Intent(requireContext(), RecordingsActivity.class)));
-        }
 
-        View tvTestOverlay = view.findViewById(R.id.tv_test_overlay);
-        if (tvTestOverlay != null) {
-            tvTestOverlay.setOnClickListener(v -> {
-                Toast.makeText(requireContext(), "Starting test banner in 3 seconds. Go to home screen!", Toast.LENGTH_LONG).show();
-                v.postDelayed(() -> {
-                    if (isAdded()) {
-                        Intent intent = new Intent(requireContext(), CallerIdService.class);
-                        intent.putExtra("phone_number", "121");
-                        intent.putExtra("company_name", "Test Recruiter Inc.");
-                        intent.putExtra("round_status", "Interview Round");
-                        intent.putExtra("tags", "Remote, Tech");
-                        intent.putExtra("job_call_id", -1L);
-                        intent.putExtra("recruiter_name", "John Doe");
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                            requireContext().startForegroundService(intent);
-                        } else {
-                            requireContext().startService(intent);
-                        }
-                    }
-                }, 3000);
-            });
-        }
-
-        View tvViewDebugLogs = view.findViewById(R.id.tv_view_debug_logs);
-        if (tvViewDebugLogs != null) {
-            tvViewDebugLogs.setOnClickListener(v -> showDebugLogsDialog());
-        }
 
         // Setup filter chips
         setupFilterChips(view);
@@ -290,37 +258,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         }
     }
 
-    private void showDebugLogsDialog() {
-        String logs = DebugLogger.readLogs(requireContext());
 
-        TextView tv = new TextView(requireContext());
-        tv.setText(logs);
-        tv.setTextSize(11);
-        tv.setTextIsSelectable(true);
-        tv.setPadding(40, 24, 40, 24);
-        tv.setTypeface(android.graphics.Typeface.MONOSPACE);
-
-        android.widget.ScrollView scroll = new android.widget.ScrollView(requireContext());
-        scroll.addView(tv);
-
-        new AlertDialog.Builder(requireContext())
-                .setTitle("Diagnostic logs")
-                .setView(scroll)
-                .setPositiveButton("Close", null)
-                .setNeutralButton("Clear", (d, w) -> {
-                    DebugLogger.clearLogs(requireContext());
-                    Toast.makeText(requireContext(), "Logs cleared", Toast.LENGTH_SHORT).show();
-                })
-                .setNegativeButton("Copy", (d, w) -> {
-                    android.content.ClipboardManager cm = (android.content.ClipboardManager)
-                            requireContext().getSystemService(android.content.Context.CLIPBOARD_SERVICE);
-                    if (cm != null) {
-                        cm.setPrimaryClip(android.content.ClipData.newPlainText("logs", logs));
-                        Toast.makeText(requireContext(), "Logs copied", Toast.LENGTH_SHORT).show();
-                    }
-                })
-                .show();
-    }
 
     private void setupFilterChips(View view) {
         int[] chipIds = {
