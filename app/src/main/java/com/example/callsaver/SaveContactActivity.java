@@ -114,12 +114,12 @@ public class SaveContactActivity extends AppCompatActivity {
         TextView tvPhoneNumber = findViewById(R.id.tv_phone_number);
         etCompanyName = findViewById(R.id.et_company_name);
         etRecruiterName = findViewById(R.id.et_recruiter_name);
-        etTags = findViewById(R.id.et_tags);
+        etTags = null;
         etNotes = findViewById(R.id.et_notes);
         spinnerRound = findViewById(R.id.spinner_round);
         spinnerAccount = findViewById(R.id.spinner_account);
 
-        etCandidateName = findViewById(R.id.et_candidate_name);
+        etCandidateName = null;
         etAppliedRole = findViewById(R.id.et_applied_role);
         etTentativeSchedule = findViewById(R.id.et_tentative_schedule);
         etNoticePeriod = findViewById(R.id.et_notice_period);
@@ -261,7 +261,7 @@ public class SaveContactActivity extends AppCompatActivity {
                             btnAutoTranscribe.setEnabled(true);
                             
                             try {
-                                if (result.has("candidate_name") && !result.isNull("candidate_name")) {
+                                if (result.has("candidate_name") && !result.isNull("candidate_name") && etCandidateName != null) {
                                     String current = etCandidateName.getText().toString().trim();
                                     if (current.isEmpty()) {
                                         etCandidateName.setText(result.getString("candidate_name"));
@@ -466,13 +466,13 @@ public class SaveContactActivity extends AppCompatActivity {
         if (existingCall != null) {
             etCompanyName.setText(existingCall.getCompanyName());
             etRecruiterName.setText(existingCall.getRecruiterName());
-            etTags.setText(existingCall.getTags());
+            if (etTags != null) etTags.setText(existingCall.getTags());
             etNotes.setText(existingCall.getNotes());
             if (existingCall.getRoundStatus() != null) {
                 int pos = adapter.getPosition(existingCall.getRoundStatus());
                 spinnerRound.setSelection(pos >= 0 ? pos : 0);
             }
-            etCandidateName.setText(existingCall.getCandidateName());
+            if (etCandidateName != null) etCandidateName.setText(existingCall.getCandidateName());
             etAppliedRole.setText(existingCall.getAppliedRole());
             etTentativeSchedule.setText(existingCall.getTentativeSchedule());
             etNoticePeriod.setText(existingCall.getNoticePeriod());
@@ -488,11 +488,11 @@ public class SaveContactActivity extends AppCompatActivity {
         btnSaveBoth.setOnClickListener(v -> {
             String company = etCompanyName.getText().toString().trim();
             String recruiter = etRecruiterName.getText().toString().trim();
-            String tags = etTags.getText().toString().trim();
+            String tags = etTags != null ? etTags.getText().toString().trim() : "";
             String notes = etNotes.getText().toString().trim();
             String round = spinnerRound.getSelectedItem().toString();
 
-            String candidate = etCandidateName.getText().toString().trim();
+            String candidate = etCandidateName != null ? etCandidateName.getText().toString().trim() : "";
             String role = etAppliedRole.getText().toString().trim();
             String schedule = etTentativeSchedule.getText().toString().trim();
             String notice = etNoticePeriod.getText().toString().trim();

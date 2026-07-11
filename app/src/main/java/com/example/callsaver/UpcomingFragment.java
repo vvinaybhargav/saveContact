@@ -195,13 +195,13 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
         EditText etPhone = dialogView.findViewById(R.id.et_phone);
         EditText etCompany = dialogView.findViewById(R.id.et_company);
         EditText etRecruiter = dialogView.findViewById(R.id.et_recruiter_name);
-        EditText etTags = dialogView.findViewById(R.id.et_tags);
+        EditText etTags = null;
         EditText etNotes = dialogView.findViewById(R.id.et_notes);
         LinearLayout llNotesTimeline = dialogView.findViewById(R.id.ll_notes_timeline);
         View labelNotes = dialogView.findViewById(R.id.label_notes);
         Spinner spinnerRound = dialogView.findViewById(R.id.spinner_round);
 
-        EditText etCandidateName = dialogView.findViewById(R.id.et_candidate_name);
+        EditText etCandidateName = null;
         EditText etAppliedRole = dialogView.findViewById(R.id.et_applied_role);
         EditText etTentativeSchedule = dialogView.findViewById(R.id.et_tentative_schedule);
         EditText etNoticePeriod = dialogView.findViewById(R.id.et_notice_period);
@@ -254,10 +254,10 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
             etPhone.setText(editCall.getPhoneNumber());
             etCompany.setText(editCall.getCompanyName());
             etRecruiter.setText(editCall.getRecruiterName());
-            etTags.setText(editCall.getTags());
+            if (etTags != null) etTags.setText(editCall.getTags());
             etNotes.setText("");
 
-            etCandidateName.setText(editCall.getCandidateName());
+            if (etCandidateName != null) etCandidateName.setText(editCall.getCandidateName());
             etAppliedRole.setText(editCall.getAppliedRole());
             etTentativeSchedule.setText(editCall.getTentativeSchedule());
             etNoticePeriod.setText(editCall.getNoticePeriod());
@@ -277,7 +277,7 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
             });
 
             btnSaveContacts.setOnClickListener(v -> {
-                String cName = etCandidateName.getText().toString().trim();
+                String cName = etCandidateName != null ? etCandidateName.getText().toString().trim() : "";
                 String cComp = etCompany.getText().toString().trim();
                 String cRole = etAppliedRole.getText().toString().trim();
                 String phone = etPhone.getText().toString().trim();
@@ -327,11 +327,11 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
             String phone = etPhone.getText().toString().trim();
             String comp = etCompany.getText().toString().trim();
             String recruiterName = etRecruiter.getText().toString().trim();
-            String tagsVal = etTags.getText().toString().trim();
+            String tagsVal = etTags != null ? etTags.getText().toString().trim() : "";
             String notesVal = etNotes.getText().toString().trim();
             String roundVal = spinnerRound.getSelectedItem().toString();
 
-            String candidate = etCandidateName.getText().toString().trim();
+            String candidate = etCandidateName != null ? etCandidateName.getText().toString().trim() : "";
             String role = etAppliedRole.getText().toString().trim();
             String schedule = etTentativeSchedule.getText().toString().trim();
             String notice = etNoticePeriod.getText().toString().trim();
@@ -573,13 +573,6 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
             r.text = n.note;
             r.isNote = true;
             r.noteId = n.id;
-            rows.add(r);
-        }
-        for (CallHistory h : dbHelper.getCallHistoryForJob(jobId)) {
-            TimelineRow r = new TimelineRow();
-            r.ts = h.timestamp;
-            r.text = describeCall(h);
-            r.isNote = false;
             rows.add(r);
         }
 

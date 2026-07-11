@@ -497,13 +497,13 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         EditText etPhone = dialogView.findViewById(R.id.et_phone);
         EditText etCompany = dialogView.findViewById(R.id.et_company);
         EditText etRecruiter = dialogView.findViewById(R.id.et_recruiter_name);
-        EditText etTags = dialogView.findViewById(R.id.et_tags);
+        EditText etTags = null;
         EditText etNotes = dialogView.findViewById(R.id.et_notes);
         LinearLayout llNotesTimeline = dialogView.findViewById(R.id.ll_notes_timeline);
         View labelNotes = dialogView.findViewById(R.id.label_notes);
         Spinner spinnerRound = dialogView.findViewById(R.id.spinner_round);
 
-        EditText etCandidateName = dialogView.findViewById(R.id.et_candidate_name);
+        EditText etCandidateName = null;
         EditText etAppliedRole = dialogView.findViewById(R.id.et_applied_role);
         EditText etTentativeSchedule = dialogView.findViewById(R.id.et_tentative_schedule);
         EditText etNoticePeriod = dialogView.findViewById(R.id.et_notice_period);
@@ -579,9 +579,9 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             etPhone.setText(editCall.getPhoneNumber());
             etCompany.setText(editCall.getCompanyName());
             etRecruiter.setText(editCall.getRecruiterName());
-            etTags.setText(editCall.getTags());
+            if (etTags != null) etTags.setText(editCall.getTags());
             
-            etCandidateName.setText(editCall.getCandidateName());
+            if (etCandidateName != null) etCandidateName.setText(editCall.getCandidateName());
             etAppliedRole.setText(editCall.getAppliedRole());
             etTentativeSchedule.setText(editCall.getTentativeSchedule());
             etNoticePeriod.setText(editCall.getNoticePeriod());
@@ -615,12 +615,12 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                 JobCall existingCall = dbHelper.getJobCallByNumber(requireContext(), editCall.getPhoneNumber());
                 if (existingCall != null) {
                     etCompany.setText(existingCall.getCompanyName());
-                    etTags.setText(existingCall.getTags());
+                    if (etTags != null) etTags.setText(existingCall.getTags());
                     if (existingCall.getRoundStatus() != null) {
                         int position = spinnerAdapter.getPosition(existingCall.getRoundStatus());
                         spinnerRound.setSelection(position >= 0 ? position : 0);
                     }
-                    etCandidateName.setText(existingCall.getCandidateName());
+                    if (etCandidateName != null) etCandidateName.setText(existingCall.getCandidateName());
                     etAppliedRole.setText(existingCall.getAppliedRole());
                     etTentativeSchedule.setText(existingCall.getTentativeSchedule());
                     etNoticePeriod.setText(existingCall.getNoticePeriod());
@@ -677,11 +677,11 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             String phone = etPhone.getText().toString().trim();
             String company = etCompany.getText().toString().trim();
             String recruiter = etRecruiter.getText().toString().trim();
-            String tags = etTags.getText().toString().trim();
+            String tags = etTags != null ? etTags.getText().toString().trim() : "";
             String noteToAdd = etNotes != null ? etNotes.getText().toString().trim() : "";
             String round = spinnerRound.getSelectedItem().toString();
 
-            String candidate = etCandidateName.getText().toString().trim();
+            String candidate = etCandidateName != null ? etCandidateName.getText().toString().trim() : "";
             String role = etAppliedRole.getText().toString().trim();
             String schedule = etTentativeSchedule.getText().toString().trim();
             String notice = etNoticePeriod.getText().toString().trim();
@@ -803,13 +803,6 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             r.text = n.note;
             r.isNote = true;
             r.noteId = n.id;
-            rows.add(r);
-        }
-        for (CallHistory h : dbHelper.getCallHistoryForJob(jobId)) {
-            TimelineRow r = new TimelineRow();
-            r.ts = h.timestamp;
-            r.text = describeCall(h);
-            r.isNote = false;
             rows.add(r);
         }
 

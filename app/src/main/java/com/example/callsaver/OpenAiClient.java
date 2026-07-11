@@ -44,6 +44,9 @@ public class OpenAiClient {
 
         Handler mainHandler = new Handler(Looper.getMainLooper());
 
+        java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault());
+        String currentDateStr = sdf.format(new java.util.Date());
+
         try {
             JSONObject jsonBody = new JSONObject();
             jsonBody.put("model", "gpt-4o-mini");
@@ -66,7 +69,7 @@ public class OpenAiClient {
                     "  \"company_name\": string or null,\n" +
                     "  \"applied_role\": string or null,\n" +
                     "  \"present_round\": string (e.g., \"Screening\", \"Technical\", \"HR\"),\n" +
-                    "  \"tentative_schedule\": string or null,\n" +
+                    "  \"tentative_schedule\": string or null (Resolve relative schedules like 'tomorrow', 'next Monday', or 'day after' to an absolute date format relative to today: [Current Date: " + currentDateStr + "]. For example, if it says 'tomorrow at 3 PM', output '2026-07-12 at 03:00 PM'),\n" +
                     "  \"notice_period\": string or null,\n" +
                     "  \"main_agenda\": string,\n" +
                     "  \"key_discussion_points\": [string],\n" +

@@ -61,28 +61,6 @@
         android:gravity="start" />
 
     <com.google.android.material.textfield.TextInputLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="12dp"
-        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-        app:boxCornerRadiusTopStart="12dp"
-        app:boxCornerRadiusTopEnd="12dp"
-        app:boxCornerRadiusBottomStart="12dp"
-        app:boxCornerRadiusBottomEnd="12dp"
-        app:boxStrokeColor="@color/accent_indigo"
-        app:hintTextColor="@color/accent_indigo"
-        app:startIconDrawable="@android:drawable/ic_menu_myplaces"
-        app:startIconTint="@color/text_muted">
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/et_candidate_name"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Candidate Name"
-            android:inputType="textPersonName"
-            android:textColor="@color/text_primary" />
-    </com.google.android.material.textfield.TextInputLayout>
-
-    <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/til_recruiter_name"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -131,7 +109,7 @@
     <com.google.android.material.textfield.TextInputLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="12dp"
+        android:layout_marginBottom="16dp"
         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
         app:boxCornerRadiusTopStart="12dp"
         app:boxCornerRadiusTopEnd="12dp"
@@ -145,30 +123,7 @@
             android:id="@+id/et_applied_role"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Applied Role"
-            android:inputType="textCapWords"
-            android:textColor="@color/text_primary" />
-    </com.google.android.material.textfield.TextInputLayout>
-
-    <com.google.android.material.textfield.TextInputLayout
-        android:id="@+id/til_tags"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
-        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-        app:boxCornerRadiusTopStart="12dp"
-        app:boxCornerRadiusTopEnd="12dp"
-        app:boxCornerRadiusBottomStart="12dp"
-        app:boxCornerRadiusBottomEnd="12dp"
-        app:boxStrokeColor="@color/accent_indigo"
-        app:hintTextColor="@color/accent_indigo"
-        app:startIconDrawable="@android:drawable/ic_menu_compass"
-        app:startIconTint="@color/text_muted">
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/et_tags"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="@string/hint_tags"
+            android:hint="Applied Role / Skills"
             android:inputType="textCapWords"
             android:textColor="@color/text_primary" />
     </com.google.android.material.textfield.TextInputLayout>
@@ -258,7 +213,7 @@
         android:id="@+id/label_notes"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Call history &amp; notes"
+        android:text="Notes"
         android:textColor="@color/text_secondary"
         android:textSize="12sp"
         android:textStyle="bold"
@@ -277,7 +232,7 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="📝 Call Notes &amp; History"
+        android:text="📝 Notes"
         android:textColor="@color/accent_indigo"
         android:textSize="14sp"
         android:textStyle="bold"
