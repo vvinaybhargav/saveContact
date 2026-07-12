@@ -297,6 +297,56 @@ public class CallReceiver extends BroadcastReceiver {
         }
     }
 
+    /**
+     * Tells the user WHY the after-call AI processing didn't save anything (missing
+     * recording, transcription failure, OpenAI error, DB error, etc.) instead of
+     * silently doing nothing or showing a generic "tap to save" prompt. Tapping still
+     * opens the manual save/transcribe flow so they can fix it themselves. No calendar
+     * action here - purely informational.
+     */
+    private void showAiFailureNotification(Context context, String number, int duration, String reason) {
+        NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        if (nm == null) return;
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(
+                    CHANNEL_ID,
+                    "Save recruiter contacts",
+                    NotificationManager.IMPORTANCE_HIGH);
+            channel.setDescription("Prompts you to save unknown callers to your Job Tracker.");
+            nm.createNotificationChannel(channel);
+        }
+
+        Intent tapIntent = new Intent(context, SaveContactActivity.class);
+        tapIntent.putExtra("phone_number", number);
+        tapIntent.putExtra("timestamp", System.currentTimeMillis());
+        tapIntent.putExtra("duration", duration);
+        tapIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+
+        int piFlags = PendingIntent.FLAG_UPDATE_CURRENT;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            piFlags |= PendingIntent.FLAG_IMMUTABLE;
+        }
+        PendingIntent pendingIntent = PendingIntent.getActivity(
+                context, number.hashCode() + 300, tapIntent, piFlags);
+
+        Notification notification = new NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.ic_dialog_alert)
+                .setContentTitle("⚠ Call not auto-logged for " + number)
+                .setContentText(reason)
+                .setStyle(new NotificationCompat.BigTextStyle().bigText(reason))
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setAutoCancel(true)
+                .setContentIntent(pendingIntent)
+                .build();
+
+        try {
+            nm.notify(number.hashCode() + 300, notification);
+        } catch (SecurityException e) {
+            Log.e(TAG, "Cannot post AI-failure notification: " + e.getMessage());
+        }
+    }
+
     private boolean isDefaultDialer(Context context) {
         try {
             TelecomManager tm = (TelecomManager) context.getSystemService(Context.TELECOM_SERVICE);
@@ -443,7 +493,8 @@ public class CallReceiver extends BroadcastReceiver {
 
                     if (audioFile == null) {
                         DebugLogger.log(context, "[BgTranscribe] No call recording file found for number: " + phoneNumber + " after " + retryDelaysMs.length + " attempts.");
-                        showSaveNotification(context, phoneNumber, duration);
+                        showAiFailureNotification(context, phoneNumber, duration,
+                                "No call recording file was found on the device, so nothing could be auto-transcribed. Tap to save/transcribe manually.");
                         return;
                     }
                     
@@ -624,22 +675,25 @@ public class CallReceiver extends BroadcastReceiver {
                                         DebugLogger.log(context, "[BgTranscribe] Call fully processed and saved to database!");
                                                                             } catch (Exception e) {
                                          DebugLogger.log(context, "[BgTranscribe] Error updating database: " + e.getMessage());
-                                         showSaveNotification(context, phoneNumber, duration);
+                                         showAiFailureNotification(context, phoneNumber, duration,
+                                                 "Call was transcribed and analyzed, but saving to the Tracker failed: " + e.getMessage());
                                      }
                                  }
-                                 
+
                                  @Override
                                  public void onError(String error) {
                                      DebugLogger.log(context, "[BgTranscribe] OpenAI API error: " + error);
-                                     showSaveNotification(context, phoneNumber, duration);
+                                     showAiFailureNotification(context, phoneNumber, duration,
+                                             "Call was transcribed, but AI field extraction failed: " + error);
                                  }
                              });
                         }
-                        
+
                         @Override
                         public void onError(String error) {
                             DebugLogger.log(context, "[BgTranscribe] Deepgram Transcription error: " + error);
-                            showSaveNotification(context, phoneNumber, duration);
+                            showAiFailureNotification(context, phoneNumber, duration,
+                                    "Call recording transcription failed: " + error);
                         }
                     });
                     

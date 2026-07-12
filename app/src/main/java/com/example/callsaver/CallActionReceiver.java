@@ -194,14 +194,16 @@ public class CallActionReceiver extends BroadcastReceiver {
 
                         } catch (Exception e) {
                             saveFallbackLead(context, phoneNumber, duration, timestamp, rawTranscript);
-                            postStatusNotification(context, phoneNumber, "✅ Saved Call", "Saved transcription raw (AI extraction error).");
+                            postStatusNotification(context, phoneNumber, "⚠️ Saved raw - AI extraction failed",
+                                    "Transcript saved, but fields weren't extracted: " + e.getMessage());
                         }
                     }
 
                     @Override
                     public void onError(String error) {
                         saveFallbackLead(context, phoneNumber, duration, timestamp, rawTranscript);
-                        postStatusNotification(context, phoneNumber, "✅ Saved Call", "Saved transcription raw (AI server error).");
+                        postStatusNotification(context, phoneNumber, "⚠️ Saved raw - AI analysis failed",
+                                "Transcript saved, but AI analysis failed: " + error);
                     }
                 });
             }
@@ -246,6 +248,7 @@ public class CallActionReceiver extends BroadcastReceiver {
                 .setSmallIcon(android.R.drawable.sym_action_call)
                 .setContentTitle(title)
                 .setContentText(content)
+                .setStyle(new NotificationCompat.BigTextStyle().bigText(content))
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setAutoCancel(true)
                 .build();
