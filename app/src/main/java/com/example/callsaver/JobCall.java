@@ -19,6 +19,8 @@ public class JobCall {
     private String mainAgenda = "";
     private String keyDiscussionPoints = "";
     private String nextSteps = "";
+    private String matchingSkills = "";
+    private String notMatchingSkills = "";
 
     private static String clean(String val) {
         if (val == null || val.trim().equalsIgnoreCase("null")) {
@@ -176,5 +178,21 @@ public class JobCall {
 
     public void setNextSteps(String nextSteps) {
         this.nextSteps = clean(nextSteps);
+    }
+
+    public String getMatchingSkills() {
+        return matchingSkills;
+    }
+
+    public void setMatchingSkills(String matchingSkills) {
+        this.matchingSkills = clean(matchingSkills);
+    }
+
+    public String getNotMatchingSkills() {
+        return notMatchingSkills;
+    }
+
+    public void setNotMatchingSkills(String notMatchingSkills) {
+        this.notMatchingSkills = clean(notMatchingSkills);
     }
 }

@@ -13,7 +13,7 @@ import java.util.List;
 public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "JobTracker.db";
-    private static final int DATABASE_VERSION = 9; // V9: rename "Rejected" status to "Negative"
+    private static final int DATABASE_VERSION = 10; // V10: add matching_skills / not_matching_skills
 
     public static final String TABLE_NAME = "job_calls";
     public static final String COLUMN_ID = "id";
@@ -33,6 +33,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public static final String COLUMN_MAIN_AGENDA = "main_agenda";
     public static final String COLUMN_KEY_DISCUSSION_POINTS = "key_discussion_points";
     public static final String COLUMN_NEXT_STEPS = "next_steps";
+
+    // V10: comma-separated skills mentioned on calls that matched / didn't match the
+    // user's stated interests (Settings > My Interests).
+    public static final String COLUMN_MATCHING_SKILLS = "matching_skills";
+    public static final String COLUMN_NOT_MATCHING_SKILLS = "not_matching_skills";
 
     // V4: individual timestamped notes, one row per note, linked to a job call.
     public static final String TABLE_NOTES = "call_notes";
@@ -81,7 +86,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 + COLUMN_NOTICE_PERIOD + " TEXT,"
                 + COLUMN_MAIN_AGENDA + " TEXT,"
                 + COLUMN_KEY_DISCUSSION_POINTS + " TEXT,"
-                + COLUMN_NEXT_STEPS + " TEXT"
+                + COLUMN_NEXT_STEPS + " TEXT,"
+                + COLUMN_MATCHING_SKILLS + " TEXT,"
+                + COLUMN_NOT_MATCHING_SKILLS + " TEXT"
                 + ")";
         db.execSQL(CREATE_TABLE);
         db.execSQL(createNotesTableSql());
@@ -130,6 +137,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             ContentValues v = new ContentValues();
             v.put(COLUMN_ROUND_STATUS, "Negative");
             db.update(TABLE_NAME, v, COLUMN_ROUND_STATUS + "=?", new String[]{"Rejected"});
+        }
+        if (oldVersion < 10) {
+            db.execSQL("ALTER TABLE " + TABLE_NAME + " ADD COLUMN " + COLUMN_MATCHING_SKILLS + " TEXT");
+            db.execSQL("ALTER TABLE " + TABLE_NAME + " ADD COLUMN " + COLUMN_NOT_MATCHING_SKILLS + " TEXT");
         }
     }
 
@@ -228,6 +239,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         values.put(COLUMN_MAIN_AGENDA, jobCall.getMainAgenda());
         values.put(COLUMN_KEY_DISCUSSION_POINTS, jobCall.getKeyDiscussionPoints());
         values.put(COLUMN_NEXT_STEPS, jobCall.getNextSteps());
+        values.put(COLUMN_MATCHING_SKILLS, jobCall.getMatchingSkills());
+        values.put(COLUMN_NOT_MATCHING_SKILLS, jobCall.getNotMatchingSkills());
 
         long id = db.insert(TABLE_NAME, null, values);
         if (id != -1) {
@@ -270,6 +283,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 call.setMainAgenda(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_MAIN_AGENDA)));
                 call.setKeyDiscussionPoints(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_KEY_DISCUSSION_POINTS)));
                 call.setNextSteps(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_NEXT_STEPS)));
+                call.setMatchingSkills(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_MATCHING_SKILLS)));
+                call.setNotMatchingSkills(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_NOT_MATCHING_SKILLS)));
                 callsList.add(call);
             } while (cursor.moveToNext());
         }
@@ -316,6 +331,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 call.setMainAgenda(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_MAIN_AGENDA)));
                 call.setKeyDiscussionPoints(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_KEY_DISCUSSION_POINTS)));
                 call.setNextSteps(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_NEXT_STEPS)));
+                call.setMatchingSkills(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_MATCHING_SKILLS)));
+                call.setNotMatchingSkills(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_NOT_MATCHING_SKILLS)));
                 callsList.add(call);
             } while (cursor.moveToNext());
         }
@@ -377,6 +394,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         values.put(COLUMN_MAIN_AGENDA, jobCall.getMainAgenda());
         values.put(COLUMN_KEY_DISCUSSION_POINTS, jobCall.getKeyDiscussionPoints());
         values.put(COLUMN_NEXT_STEPS, jobCall.getNextSteps());
+        values.put(COLUMN_MATCHING_SKILLS, jobCall.getMatchingSkills());
+        values.put(COLUMN_NOT_MATCHING_SKILLS, jobCall.getNotMatchingSkills());
 
         int count = db.update(TABLE_NAME, values, COLUMN_ID + " = ?",
                 new String[]{String.valueOf(jobCall.getId())});
@@ -632,6 +651,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                     call.setMainAgenda(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_MAIN_AGENDA)));
                     call.setKeyDiscussionPoints(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_KEY_DISCUSSION_POINTS)));
                     call.setNextSteps(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_NEXT_STEPS)));
+                call.setMatchingSkills(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_MATCHING_SKILLS)));
+                call.setNotMatchingSkills(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_NOT_MATCHING_SKILLS)));
                     cursor.close();
                     db.close();
                     return call;
@@ -680,6 +701,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 call.setMainAgenda(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_MAIN_AGENDA)));
                 call.setKeyDiscussionPoints(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_KEY_DISCUSSION_POINTS)));
                 call.setNextSteps(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_NEXT_STEPS)));
+                call.setMatchingSkills(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_MATCHING_SKILLS)));
+                call.setNotMatchingSkills(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_NOT_MATCHING_SKILLS)));
             }
             cursor.close();
         }

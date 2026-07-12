@@ -300,8 +300,8 @@ public class CallerIdService extends Service {
         // Bind and populate Call History (first log / most recent call timestamps)
         View llRecentCall = overlayView.findViewById(R.id.ll_overlay_recent_call_container);
         TextView tvRecentCall = overlayView.findViewById(R.id.tv_overlay_recent_call);
+        DatabaseHelper dbHelper = new DatabaseHelper(this);
         if (llRecentCall != null && tvRecentCall != null && jobCallId != -1) {
-            DatabaseHelper dbHelper = new DatabaseHelper(this);
             long[] times = dbHelper.getFirstAndRecentCallTimes(jobCallId);
             if (times[0] > 0) {
                 java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("dd MMM, hh:mm a", java.util.Locale.getDefault());
@@ -311,6 +311,23 @@ public class CallerIdService extends Service {
                 llRecentCall.setVisibility(View.VISIBLE);
             } else {
                 llRecentCall.setVisibility(View.GONE);
+            }
+        }
+
+        // Bind and populate Skills Match (Matching / Not Matching vs. My Interests)
+        View llSkillsMatch = overlayView.findViewById(R.id.ll_overlay_skills_match_container);
+        TextView tvSkillsMatching = overlayView.findViewById(R.id.tv_overlay_skills_matching);
+        TextView tvSkillsNotMatching = overlayView.findViewById(R.id.tv_overlay_skills_not_matching);
+        if (llSkillsMatch != null && tvSkillsMatching != null && tvSkillsNotMatching != null && jobCallId != -1) {
+            JobCall currentJobCall = dbHelper.getJobCallById(jobCallId);
+            String matching = currentJobCall != null ? currentJobCall.getMatchingSkills() : "";
+            String notMatching = currentJobCall != null ? currentJobCall.getNotMatchingSkills() : "";
+            if ((matching == null || matching.isEmpty()) && (notMatching == null || notMatching.isEmpty())) {
+                llSkillsMatch.setVisibility(View.GONE);
+            } else {
+                tvSkillsMatching.setText(matching == null || matching.isEmpty() ? "-" : matching);
+                tvSkillsNotMatching.setText(notMatching == null || notMatching.isEmpty() ? "-" : notMatching);
+                llSkillsMatch.setVisibility(View.VISIBLE);
             }
         }
 

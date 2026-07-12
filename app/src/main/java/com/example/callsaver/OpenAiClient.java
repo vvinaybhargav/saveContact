@@ -47,6 +47,9 @@ public class OpenAiClient {
         java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault());
         String currentDateStr = sdf.format(new java.util.Date());
 
+        String userInterests = context.getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE)
+                .getString("user_talking_points", "").trim();
+
         try {
             JSONObject jsonBody = new JSONObject();
             jsonBody.put("model", "gpt-4o-mini");
@@ -80,6 +83,14 @@ public class OpenAiClient {
                     "\n" +
                     "\"sentiment_comment\": string or null - ONLY when the call had a clearly POSITIVE outcome (shortlisted, moving forward, offer) or clearly NEGATIVE outcome (rejected, profile doesn't match, withdrawing). One short sentence describing it, e.g. \"Shortlisted for L1, recruiter said profile matches well.\" or \"Rejected - recruiter said experience doesn't match requirement.\". null if the call was neutral/inconclusive.\n" +
                     "\n" +
+                    (userInterests.isEmpty() ? "" :
+                    "The candidate's stated skills/interests (from their profile) are: \"" + userInterests + "\".\n" +
+                    "Look at the technologies/skills/tools the RECRUITER or interviewer brings up in this call (e.g. specific cloud services, frameworks, languages). For each one:\n" +
+                    "  - If it is the same as, or a specific instance/sub-tool of, something already in the candidate's stated skills (e.g. candidate lists \"GCP Data Engineer\" and the call mentions \"BigQuery\" or \"Dataflow\" - those ARE GCP data engineering tools), put the candidate's OWN matching skill phrase (not the sub-tool) into \"matching_skills\", deduplicated, don't repeat the same phrase twice, don't add sub-tools separately.\n" +
+                    "  - If it is a distinct skill/technology NOT covered by anything in the candidate's stated skills (e.g. candidate never mentioned AWS or Flink), put that specific skill name into \"not_matching_skills\".\n" +
+                    "  - Only include skills that were actually discussed in THIS call - don't restate the candidate's full skill list.\n" +
+                    "  - If no clear skills/technologies were discussed, return empty arrays for both.\n" +
+                    "\n") +
                     "Return a strict JSON object with the following keys:\n" +
                     "{\n" +
                     "  \"candidate_name\": string or null,\n" +
@@ -92,7 +103,9 @@ public class OpenAiClient {
                     "  \"notice_period\": string or null,\n" +
                     "  \"main_agenda\": string,\n" +
                     "  \"key_discussion_points\": [string],\n" +
-                    "  \"next_steps\": string\n" +
+                    "  \"next_steps\": string,\n" +
+                    "  \"matching_skills\": [string],\n" +
+                    "  \"not_matching_skills\": [string]\n" +
                     "}");
             messages.put(systemMsg);
 
@@ -154,6 +167,22 @@ public class OpenAiClient {
 
         } catch (Exception e) {
             callback.onError("Failed to build request body: " + e.getMessage());
+        }
+    }
+
+    /** Joins a JSON array of strings from an extractFields() result into a comma-separated string. */
+    public static String jsonArrayToCsv(JSONObject result, String key) {
+        if (!result.has(key)) return "";
+        try {
+            JSONArray arr = result.getJSONArray(key);
+            List<String> items = new ArrayList<>();
+            for (int i = 0; i < arr.length(); i++) {
+                String s = arr.optString(i, "").trim();
+                if (!s.isEmpty()) items.add(s);
+            }
+            return String.join(", ", items);
+        } catch (Exception e) {
+            return "";
         }
     }
 

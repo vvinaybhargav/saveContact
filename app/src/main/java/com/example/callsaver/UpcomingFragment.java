@@ -266,6 +266,9 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
         EditText etNotes = dialogView.findViewById(R.id.et_notes);
         LinearLayout llNotesTimeline = dialogView.findViewById(R.id.ll_notes_timeline);
         View labelNotes = dialogView.findViewById(R.id.label_notes);
+        View llSkillsMatchSection = dialogView.findViewById(R.id.ll_skills_match_section);
+        TextView tvSkillsMatching = dialogView.findViewById(R.id.tv_skills_matching);
+        TextView tvSkillsNotMatching = dialogView.findViewById(R.id.tv_skills_not_matching);
         Spinner spinnerRound = dialogView.findViewById(R.id.spinner_round);
 
         EditText etCandidateName = null;
@@ -347,6 +350,7 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
             spinnerRound.setSelection(roundPos >= 0 ? roundPos : 0);
 
             populateTimeline(llNotesTimeline, labelNotes, editCall.getId());
+            populateSkillsMatch(llSkillsMatchSection, tvSkillsMatching, tvSkillsNotMatching, editCall);
 
             btnDelete.setOnClickListener(v -> {
                 dbHelper.deleteJobCall(editCall.getId());
@@ -676,6 +680,19 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
                 })
                 .setNegativeButton("Cancel", null)
                 .show();
+    }
+
+    private void populateSkillsMatch(View section, TextView tvMatching, TextView tvNotMatching, JobCall call) {
+        if (section == null || tvMatching == null || tvNotMatching == null || call == null) return;
+        String matching = call.getMatchingSkills();
+        String notMatching = call.getNotMatchingSkills();
+        if ((matching == null || matching.isEmpty()) && (notMatching == null || notMatching.isEmpty())) {
+            section.setVisibility(View.GONE);
+            return;
+        }
+        section.setVisibility(View.VISIBLE);
+        tvMatching.setText(matching == null || matching.isEmpty() ? "-" : matching);
+        tvNotMatching.setText(notMatching == null || notMatching.isEmpty() ? "-" : notMatching);
     }
 
     private void populateTimeline(LinearLayout container, View label, long jobId) {

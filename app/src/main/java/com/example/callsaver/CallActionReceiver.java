@@ -120,6 +120,8 @@ public class CallActionReceiver extends BroadcastReceiver {
                             if (!sentimentComment.isEmpty()) {
                                 notes = "• " + sentimentComment + "\n" + notes;
                             }
+                            String matchingSkills = OpenAiClient.jsonArrayToCsv(result, "matching_skills");
+                            String notMatchingSkills = OpenAiClient.jsonArrayToCsv(result, "not_matching_skills");
 
                             if (existing != null) {
                                 // Link phone to existing company and update status rounds
@@ -151,6 +153,12 @@ public class CallActionReceiver extends BroadcastReceiver {
                                 if (!recruiter.isEmpty()) {
                                     existing.setRecruiterName(recruiter);
                                 }
+                                if (!matchingSkills.isEmpty() || !notMatchingSkills.isEmpty()) {
+                                    existing.setMatchingSkills(SkillMatchUtils.mergeSkillListExcluding(
+                                            existing.getMatchingSkills(), matchingSkills, notMatchingSkills));
+                                    existing.setNotMatchingSkills(SkillMatchUtils.mergeSkillListExcluding(
+                                            existing.getNotMatchingSkills(), notMatchingSkills, existing.getMatchingSkills()));
+                                }
                                 db.updateJobCall(existing);
                                 postStatusNotification(context, phoneNumber, "✅ Lead Updated", "Updated interview details for " + existing.getCompanyName() + ".");
                             } else {
@@ -163,6 +171,8 @@ public class CallActionReceiver extends BroadcastReceiver {
                                 newCall.setNoticePeriod(notice);
                                 newCall.setMainAgenda(agenda);
                                 newCall.setNextSteps(nextSteps);
+                                newCall.setMatchingSkills(matchingSkills);
+                                newCall.setNotMatchingSkills(notMatchingSkills);
 
                                 long newId = db.insertJobCall(newCall);
                                 if (newId > 0 && !notes.isEmpty()) {

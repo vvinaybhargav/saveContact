@@ -476,7 +476,9 @@ public class CallReceiver extends BroadcastReceiver {
                                         String nextSteps = optClean(result, "next_steps", "");
                                         String candidate = optClean(result, "candidate_name", "");
                                         String sentimentComment = optClean(result, "sentiment_comment", "");
-                                        
+                                        String matchingSkills = OpenAiClient.jsonArrayToCsv(result, "matching_skills");
+                                        String notMatchingSkills = OpenAiClient.jsonArrayToCsv(result, "not_matching_skills");
+
                                         // Save/update SQLite database
                                         DatabaseHelper db = new DatabaseHelper(context);
                                         JobCall existingCall = db.getJobCallByNumber(context, phoneNumber);
@@ -504,6 +506,12 @@ public class CallReceiver extends BroadcastReceiver {
                                             // an already-more-advanced stage.
                                             if (OpenAiClient.shouldUpdateRoundStatus(existingCall.getRoundStatus(), round)) {
                                                 existingCall.setRoundStatus(round);
+                                            }
+                                            if (!matchingSkills.isEmpty() || !notMatchingSkills.isEmpty()) {
+                                                existingCall.setMatchingSkills(SkillMatchUtils.mergeSkillListExcluding(
+                                                        existingCall.getMatchingSkills(), matchingSkills, notMatchingSkills));
+                                                existingCall.setNotMatchingSkills(SkillMatchUtils.mergeSkillListExcluding(
+                                                        existingCall.getNotMatchingSkills(), notMatchingSkills, existingCall.getMatchingSkills()));
                                             }
                                             // Unlike the "only fill if blank" fields above, the next-call date
                                             // must always reflect the MOST RECENT schedule mentioned, not the
@@ -538,7 +546,9 @@ public class CallReceiver extends BroadcastReceiver {
                                             call.setMainAgenda(agenda);
                                             call.setNextSteps(nextSteps);
                                             call.setCandidateName(candidate);
-                                            
+                                            call.setMatchingSkills(matchingSkills);
+                                            call.setNotMatchingSkills(notMatchingSkills);
+
                                             jobCallId = db.insertJobCall(call);
                                         }
                                         

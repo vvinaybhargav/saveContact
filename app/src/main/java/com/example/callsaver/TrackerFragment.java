@@ -623,6 +623,9 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         EditText etNotes = dialogView.findViewById(R.id.et_notes);
         LinearLayout llNotesTimeline = dialogView.findViewById(R.id.ll_notes_timeline);
         View labelNotes = dialogView.findViewById(R.id.label_notes);
+        View llSkillsMatchSection = dialogView.findViewById(R.id.ll_skills_match_section);
+        TextView tvSkillsMatching = dialogView.findViewById(R.id.tv_skills_matching);
+        TextView tvSkillsNotMatching = dialogView.findViewById(R.id.tv_skills_not_matching);
         Spinner spinnerRound = dialogView.findViewById(R.id.spinner_round);
 
         EditText etCandidateName = null;
@@ -716,6 +719,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
 
             // Calls + notes are shown as a merged timeline below; the field adds a new note.
             populateTimeline(llNotesTimeline, labelNotes, editCall.getId());
+            populateSkillsMatch(llSkillsMatchSection, tvSkillsMatching, tvSkillsNotMatching, editCall);
             btnSave.setText(R.string.btn_update);
             btnDelete.setVisibility(View.VISIBLE);
             btnReminder.setVisibility(View.VISIBLE);
@@ -849,7 +853,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                 // update automatically from what was written, same as a real call.
                 if (!noteToAdd.isEmpty() && !noteWasFromManualUpload) {
                     runAiOnManualNote(editCall.getId(), noteToAdd, spinnerRound, etTentativeSchedule,
-                            llNotesTimeline, labelNotes);
+                            llNotesTimeline, labelNotes, llSkillsMatchSection, tvSkillsMatching, tvSkillsNotMatching);
                 }
                 return;
             } else {
@@ -917,6 +921,19 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
      * layout used in the caller-ID banner: oldest call first, each with its bulleted
      * notes and a delete option.
      */
+    private void populateSkillsMatch(View section, TextView tvMatching, TextView tvNotMatching, JobCall call) {
+        if (section == null || tvMatching == null || tvNotMatching == null || call == null) return;
+        String matching = call.getMatchingSkills();
+        String notMatching = call.getNotMatchingSkills();
+        if ((matching == null || matching.isEmpty()) && (notMatching == null || notMatching.isEmpty())) {
+            section.setVisibility(View.GONE);
+            return;
+        }
+        section.setVisibility(View.VISIBLE);
+        tvMatching.setText(matching == null || matching.isEmpty() ? "-" : matching);
+        tvNotMatching.setText(notMatching == null || notMatching.isEmpty() ? "-" : notMatching);
+    }
+
     private void populateTimeline(LinearLayout container, View label, long jobId) {
         if (container == null) return;
         container.removeAllViews();
@@ -1323,7 +1340,8 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
      * the on-screen spinner/date field only if the dialog is still open.
      */
     private void runAiOnManualNote(long jobId, String noteText, Spinner spinnerRoundRef,
-                                    EditText etScheduleRef, LinearLayout timelineContainer, View timelineLabel) {
+                                    EditText etScheduleRef, LinearLayout timelineContainer, View timelineLabel,
+                                    View skillsSection, TextView tvSkillsMatchingRef, TextView tvSkillsNotMatchingRef) {
         String apiKey = requireContext().getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE)
                 .getString("openai_api_key", "").trim();
         if (apiKey.isEmpty()) return;
@@ -1354,6 +1372,17 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                         dbHelper.insertNote(jobId, "• " + sentimentComment, System.currentTimeMillis());
                     }
 
+                    String matchingSkills = OpenAiClient.jsonArrayToCsv(result, "matching_skills");
+                    String notMatchingSkills = OpenAiClient.jsonArrayToCsv(result, "not_matching_skills");
+                    boolean skillsChanged = !matchingSkills.isEmpty() || !notMatchingSkills.isEmpty();
+                    if (skillsChanged) {
+                        current.setMatchingSkills(SkillMatchUtils.mergeSkillListExcluding(
+                                current.getMatchingSkills(), matchingSkills, notMatchingSkills));
+                        current.setNotMatchingSkills(SkillMatchUtils.mergeSkillListExcluding(
+                                current.getNotMatchingSkills(), notMatchingSkills, current.getMatchingSkills()));
+                        dbHelper.updateJobCall(current);
+                    }
+
                     if (isAdded() && getContext() != null) {
                         if (roundChanged && spinnerRoundRef != null) {
                             setSpinnerSelection(spinnerRoundRef, round);
@@ -1363,6 +1392,9 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                         }
                         if (!sentimentComment.isEmpty()) {
                             populateTimeline(timelineContainer, timelineLabel, jobId);
+                        }
+                        if (skillsChanged) {
+                            populateSkillsMatch(skillsSection, tvSkillsMatchingRef, tvSkillsNotMatchingRef, current);
                         }
                         refreshDashboardList();
                     }

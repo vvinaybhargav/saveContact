@@ -243,6 +243,66 @@
         android:orientation="vertical"
         android:layout_marginBottom="8dp" />
 
+    <!-- Skills Match: skills discussed on calls that matched / didn't match the
+         candidate's stated interests (Settings > My Interests). AI-populated. -->
+    <LinearLayout
+        android:id="@+id/ll_skills_match_section"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginBottom="12dp"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/label_skills_match"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Skills Match"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.05"
+            android:layout_marginBottom="8dp"
+            android:layout_marginStart="4dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Matching"
+            android:textColor="#4CAF50"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:layout_marginStart="4dp" />
+
+        <TextView
+            android:id="@+id/tv_skills_matching"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="-"
+            android:textColor="@color/text_primary"
+            android:textSize="13sp"
+            android:layout_marginStart="4dp"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Not Matching"
+            android:textColor="#E53935"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:layout_marginStart="4dp" />
+
+        <TextView
+            android:id="@+id/tv_skills_not_matching"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="-"
+            android:textColor="@color/text_primary"
+            android:textSize="13sp"
+            android:layout_marginStart="4dp" />
+    </LinearLayout>
+
     <!-- SECTION 3: NOTES (manual entry / recording upload) -->
     <LinearLayout
         android:layout_width="match_parent"
