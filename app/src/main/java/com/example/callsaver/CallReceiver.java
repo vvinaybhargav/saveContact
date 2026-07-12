@@ -213,6 +213,16 @@ public class CallReceiver extends BroadcastReceiver {
                         } else {
                             Log.d(TAG, "Latest call log is too old: diff = " + diff / 1000 + "s");
                             DebugLogger.log(context, "[Receiver] Latest call log is too old (diff = " + (diff / 1000) + "s)");
+                            // Only surface this to the user when it's a number we're already
+                            // tracking - otherwise every unrelated hangup/IDLE blip (which fires
+                            // this handler too) would notify for calls the user doesn't care about.
+                            DatabaseHelper db = new DatabaseHelper(context);
+                            JobCall trackedCall = db.getJobCallByNumber(context, entry.number);
+                            if (trackedCall != null) {
+                                showAiFailureNotification(context, entry.number, entry.duration,
+                                        "The system call log took too long to update (" + (diff / 1000)
+                                                + "s) after this call ended, so it couldn't be auto-processed. Tap to save/transcribe manually.");
+                            }
                         }
                     } else {
                         Log.d(TAG, "No call log entry found");
@@ -468,6 +478,7 @@ public class CallReceiver extends BroadcastReceiver {
     }
 
     private void triggerBackgroundTranscription(Context context, String phoneNumber, int duration, long timestamp) {
+        showProgressNotification(context, phoneNumber, "Looking for the call recording...");
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -493,18 +504,21 @@ public class CallReceiver extends BroadcastReceiver {
 
                     if (audioFile == null) {
                         DebugLogger.log(context, "[BgTranscribe] No call recording file found for number: " + phoneNumber + " after " + retryDelaysMs.length + " attempts.");
+                        dismissProgressNotification(context, phoneNumber);
                         showAiFailureNotification(context, phoneNumber, duration,
                                 "No call recording file was found on the device, so nothing could be auto-transcribed. Tap to save/transcribe manually.");
                         return;
                     }
-                    
+
                     DebugLogger.log(context, "[BgTranscribe] Found recording file: " + audioFile.getName() + " (" + audioFile.length() + " bytes). Starting Deepgram transcription...");
-                    
+                    showProgressNotification(context, phoneNumber, "Transcribing the recording...");
+
                     Transcriber.transcribeCallRecording(context, audioFile, new Transcriber.TranscriptionCallback() {
                         @Override
                         public void onSuccess(String transcript) {
                             DebugLogger.log(context, "[BgTranscribe] Deepgram success! Length: " + transcript.length() + " chars. Querying OpenAI for fields...");
-                            
+                            showProgressNotification(context, phoneNumber, "Extracting call details with AI...");
+
                             OpenAiClient.extractFields(context, transcript, new OpenAiClient.OpenAiCallback() {
                                 @Override
                                 public void onSuccess(org.json.JSONObject result) {
@@ -669,12 +683,13 @@ public class CallReceiver extends BroadcastReceiver {
                                             content += "; next call: " + schedule;
                                         }
                                         
-                                        // Show final notification that launches a Calendar intent
-                                        showCalendarNotification(context, title, content, companyDisplay, role, schedule, summaryNote);
-                                        
+                                        dismissProgressNotification(context, phoneNumber);
+                                        showCallProcessedNotification(context, phoneNumber, title, content);
+
                                         DebugLogger.log(context, "[BgTranscribe] Call fully processed and saved to database!");
-                                                                            } catch (Exception e) {
+                                     } catch (Exception e) {
                                          DebugLogger.log(context, "[BgTranscribe] Error updating database: " + e.getMessage());
+                                         dismissProgressNotification(context, phoneNumber);
                                          showAiFailureNotification(context, phoneNumber, duration,
                                                  "Call was transcribed and analyzed, but saving to the Tracker failed: " + e.getMessage());
                                      }
@@ -683,6 +698,7 @@ public class CallReceiver extends BroadcastReceiver {
                                  @Override
                                  public void onError(String error) {
                                      DebugLogger.log(context, "[BgTranscribe] OpenAI API error: " + error);
+                                     dismissProgressNotification(context, phoneNumber);
                                      showAiFailureNotification(context, phoneNumber, duration,
                                              "Call was transcribed, but AI field extraction failed: " + error);
                                  }
@@ -692,15 +708,22 @@ public class CallReceiver extends BroadcastReceiver {
                         @Override
                         public void onError(String error) {
                             DebugLogger.log(context, "[BgTranscribe] Deepgram Transcription error: " + error);
+                            dismissProgressNotification(context, phoneNumber);
                             showAiFailureNotification(context, phoneNumber, duration,
                                     "Call recording transcription failed: " + error);
                         }
                     });
-                    
+
                 } catch (InterruptedException e) {
                     DebugLogger.log(context, "[BgTranscribe] Thread interrupted: " + e.getMessage());
+                    dismissProgressNotification(context, phoneNumber);
+                    showAiFailureNotification(context, phoneNumber, duration,
+                            "Processing was interrupted before it finished: " + e.getMessage());
                 } catch (Exception e) {
                     DebugLogger.log(context, "[BgTranscribe] Error in worker thread: " + e.getMessage());
+                    dismissProgressNotification(context, phoneNumber);
+                    showAiFailureNotification(context, phoneNumber, duration,
+                            "Unexpected error while processing the call: " + e.getMessage());
                 }
             }
         }).start();
@@ -725,39 +748,80 @@ public class CallReceiver extends BroadcastReceiver {
         }
     }
 
-    private void showCalendarNotification(Context context, String title, String content, String company, String role, String schedule, String notes) {
+    /**
+     * Final "call fully processed" notification. Tapping opens the app (Tracker tab)
+     * instead of a Calendar-add screen - purely informational, no calendar action.
+     */
+    private void showCallProcessedNotification(Context context, String phoneNumber, String title, String content) {
         NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         if (nm == null) return;
-        
-        Intent calendarIntent = new Intent(Intent.ACTION_INSERT)
-                .setData(Uri.parse("content://com.android.calendar/events"))
-                .putExtra("title", "Interview: " + role + " @ " + company)
-                .putExtra("description", "Notes: " + notes + "\nSchedule: " + schedule)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                
-        calendarIntent.putExtra("beginTime", System.currentTimeMillis() + 24 * 60 * 60 * 1000L); // Default tomorrow
-        calendarIntent.putExtra("endTime", System.currentTimeMillis() + 24 * 60 * 60 * 1000L + 30 * 60 * 1000L);
-        
+
+        Intent tapIntent = new Intent(context, MainActivity.class);
+        tapIntent.putExtra("open_tab", "tracker");
+        tapIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+
         int piFlags = PendingIntent.FLAG_UPDATE_CURRENT;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             piFlags |= PendingIntent.FLAG_IMMUTABLE;
         }
-        PendingIntent pendingIntent = PendingIntent.getActivity(context, (int)System.currentTimeMillis(), calendarIntent, piFlags);
-        
+        PendingIntent pendingIntent = PendingIntent.getActivity(context, phoneNumber.hashCode() + 500, tapIntent, piFlags);
+
         Notification notification = new NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.sym_action_call)
                 .setContentTitle(title)
                 .setContentText(content)
+                .setStyle(new NotificationCompat.BigTextStyle().bigText(content))
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setCategory(NotificationCompat.CATEGORY_RECOMMENDATION)
                 .setAutoCancel(true)
                 .setContentIntent(pendingIntent)
                 .build();
-                
+
         try {
-            nm.notify((int) System.currentTimeMillis(), notification);
+            nm.notify(phoneNumber.hashCode() + 500, notification);
         } catch (SecurityException e) {
             Log.e(TAG, "Cannot post notification: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Ongoing low-key notification showing which stage of the after-call pipeline is
+     * currently running (looking for recording / transcribing / extracting fields),
+     * so the user isn't left wondering what's happening. Reuses one notification ID
+     * per phone number so each stage update replaces the last rather than stacking.
+     */
+    private void showProgressNotification(Context context, String phoneNumber, String stage) {
+        NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        if (nm == null) return;
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(
+                    CHANNEL_ID, "Save recruiter contacts", NotificationManager.IMPORTANCE_LOW);
+            nm.createNotificationChannel(channel);
+        }
+
+        Notification notification = new NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.sym_action_call)
+                .setContentTitle("Processing call - " + phoneNumber)
+                .setContentText(stage)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setOngoing(true)
+                .setOnlyAlertOnce(true)
+                .build();
+
+        try {
+            nm.notify(phoneNumber.hashCode() + 400, notification);
+        } catch (SecurityException e) {
+            Log.e(TAG, "Cannot post progress notification: " + e.getMessage());
+        }
+    }
+
+    private void dismissProgressNotification(Context context, String phoneNumber) {
+        NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        if (nm == null) return;
+        try {
+            nm.cancel(phoneNumber.hashCode() + 400);
+        } catch (Exception ignored) {
         }
     }
 

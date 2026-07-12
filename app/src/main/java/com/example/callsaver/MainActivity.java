@@ -122,8 +122,11 @@ public class MainActivity extends AppCompatActivity {
     private void handleOpenTabIntent(Intent intent) {
         if (intent == null) return;
         String openTab = intent.getStringExtra("open_tab");
-        if ("upcoming".equals(openTab) && bottomNavigation != null) {
+        if (bottomNavigation == null) return;
+        if ("upcoming".equals(openTab)) {
             bottomNavigation.setSelectedItemId(R.id.navigation_upcoming);
+        } else if ("tracker".equals(openTab)) {
+            bottomNavigation.setSelectedItemId(R.id.navigation_tracker);
         }
     }
 
