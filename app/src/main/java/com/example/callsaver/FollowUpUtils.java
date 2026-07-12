@@ -23,6 +23,9 @@ public class FollowUpUtils {
     private static final SimpleDateFormat SCHEDULE_FORMAT =
             new SimpleDateFormat("yyyy-MM-dd 'at' hh:mm a", Locale.getDefault());
 
+    /** Grace period after the scheduled call time before we push a reminder notification. */
+    public static final long NOTIFICATION_DELAY_MILLIS = 2 * 60 * 60 * 1000L;
+
     /** Parses a tentative_schedule string into millis, or -1 if unparseable/empty. */
     public static long parseScheduleMillis(String schedule) {
         if (schedule == null || schedule.trim().isEmpty()) return -1;
@@ -46,5 +49,19 @@ public class FollowUpUtils {
         long scheduleMillis = parseScheduleMillis(call.getTentativeSchedule());
         if (scheduleMillis < 0) return false;
         return scheduleMillis < System.currentTimeMillis();
+    }
+
+    /**
+     * True if this call needs a follow-up (see {@link #needsFollowUp}) AND at least
+     * {@link #NOTIFICATION_DELAY_MILLIS} has passed since the scheduled time - used to
+     * delay the push notification so it doesn't fire the instant a call is due.
+     */
+    public static boolean needsFollowUpNotification(JobCall call) {
+        if (call == null) return false;
+        String status = call.getRoundStatus();
+        if (status != null && TERMINAL_STATUSES.contains(status.trim())) return false;
+        long scheduleMillis = parseScheduleMillis(call.getTentativeSchedule());
+        if (scheduleMillis < 0) return false;
+        return System.currentTimeMillis() - scheduleMillis >= NOTIFICATION_DELAY_MILLIS;
     }
 }

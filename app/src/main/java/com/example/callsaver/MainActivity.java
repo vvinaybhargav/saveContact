@@ -90,10 +90,8 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // Load Recents fragment by default
-        getSupportFragmentManager().beginTransaction()
-                .replace(R.id.fragment_container, recentsFragment)
-                .commit();
+        // Load Tracker fragment by default
+        bottomNavigation.setSelectedItemId(R.id.navigation_tracker);
 
         // Auto check/request permissions on first launch
         requestRequiredPermissionsIfMissing();

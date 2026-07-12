@@ -37,7 +37,7 @@ public class FollowUpNotifier {
         java.util.Set<String> stillPending = new java.util.HashSet<>();
 
         for (JobCall call : allCalls) {
-            if (!FollowUpUtils.needsFollowUp(call)) continue;
+            if (!FollowUpUtils.needsFollowUpNotification(call)) continue;
             String dedupeKey = call.getId() + "|" + call.getTentativeSchedule();
             stillPending.add(dedupeKey);
             if (notified.contains(dedupeKey)) continue;

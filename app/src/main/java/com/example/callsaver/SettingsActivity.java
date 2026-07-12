@@ -23,6 +23,9 @@ public class SettingsActivity extends AppCompatActivity {
     private EditText etOpenAiKey;
     private EditText etDeepgramKey;
     private EditText etUserName;
+    private EditText etUserInterests;
+    private Button btnRewriteInterests;
+    private static final int REQ_CODE_INTERESTS_SPEECH = 700;
     private SwitchMaterial switchAutoTranscribe;
     private Button btnSave;
     private Button btnAnalytics;
@@ -51,6 +54,9 @@ public class SettingsActivity extends AppCompatActivity {
         etOpenAiKey = findViewById(R.id.settings_openai_key);
         etDeepgramKey = findViewById(R.id.settings_deepgram_key);
         etUserName = findViewById(R.id.settings_user_name);
+        etUserInterests = findViewById(R.id.settings_user_interests);
+        btnRewriteInterests = findViewById(R.id.btn_settings_rewrite_interests);
+        com.google.android.material.textfield.TextInputLayout tilInterests = findViewById(R.id.til_settings_interests);
         switchAutoTranscribe = findViewById(R.id.switch_auto_transcribe);
         btnSave = findViewById(R.id.btn_settings_save_keys);
         btnAnalytics = findViewById(R.id.btn_settings_analytics);
@@ -63,6 +69,7 @@ public class SettingsActivity extends AppCompatActivity {
         etOpenAiKey.setText(prefs.getString("openai_api_key", ""));
         etDeepgramKey.setText(prefs.getString("deepgram_api_key", ""));
         etUserName.setText(prefs.getString("user_full_name", ""));
+        etUserInterests.setText(prefs.getString("user_talking_points", ""));
         switchAutoTranscribe.setChecked(prefs.getBoolean("auto_transcribe_background", true));
 
         // Setup save action
@@ -70,16 +77,66 @@ public class SettingsActivity extends AppCompatActivity {
             String openAi = etOpenAiKey.getText().toString().trim();
             String deepgram = etDeepgramKey.getText().toString().trim();
             String userName = etUserName.getText().toString().trim();
+            String interests = etUserInterests.getText().toString().trim();
             boolean autoTranscribe = switchAutoTranscribe.isChecked();
 
             prefs.edit()
                     .putString("openai_api_key", openAi)
                     .putString("deepgram_api_key", deepgram)
                     .putString("user_full_name", userName)
+                    .putString("user_talking_points", interests)
                     .putBoolean("auto_transcribe_background", autoTranscribe)
                     .apply();
 
             Toast.makeText(this, "Settings saved successfully!", Toast.LENGTH_SHORT).show();
+        });
+
+        // Mic input for My Interests
+        if (tilInterests != null) {
+            tilInterests.setEndIconOnClickListener(v -> {
+                Intent intent = new Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+                intent.putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+                intent.putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault());
+                intent.putExtra(android.speech.RecognizerIntent.EXTRA_PROMPT, "Speak your interests...");
+                try {
+                    startActivityForResult(intent, REQ_CODE_INTERESTS_SPEECH);
+                } catch (Exception e) {
+                    Toast.makeText(this, "Speech recognition is not supported.", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+
+        // Rewrite My Interests via OpenAI
+        btnRewriteInterests.setOnClickListener(v -> {
+            String raw = etUserInterests.getText().toString().trim();
+            if (raw.isEmpty()) {
+                Toast.makeText(this, "Type or speak your interests first.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            btnRewriteInterests.setEnabled(false);
+            btnRewriteInterests.setText("✨ Rewriting...");
+            OpenAiClient.rewriteText(this,
+                    "You help a job seeker phrase their job-search interests/preferences clearly and " +
+                            "concisely, for their own reference (roles, companies, industries, work mode, etc. " +
+                            "they care about). Rewrite the given rough notes into a clean, well-organized " +
+                            "paragraph or short bullet list preserving all the original meaning and details, " +
+                            "without adding facts that weren't stated. Return plain text only, no markdown headers.",
+                    raw, new OpenAiClient.TextCallback() {
+                        @Override
+                        public void onSuccess(String text) {
+                            etUserInterests.setText(text);
+                            btnRewriteInterests.setEnabled(true);
+                            btnRewriteInterests.setText("✨ Rewrite with AI");
+                            Toast.makeText(SettingsActivity.this, "Rewritten! Tap Save to keep it.", Toast.LENGTH_SHORT).show();
+                        }
+
+                        @Override
+                        public void onError(String error) {
+                            btnRewriteInterests.setEnabled(true);
+                            btnRewriteInterests.setText("✨ Rewrite with AI");
+                            Toast.makeText(SettingsActivity.this, "Rewrite failed: " + error, Toast.LENGTH_LONG).show();
+                        }
+                    });
         });
 
         // Setup detailed analytics button
@@ -137,6 +194,20 @@ public class SettingsActivity extends AppCompatActivity {
         }
 
         btnClearCache.setText("Clear Cache (" + sizeText + ")");
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQ_CODE_INTERESTS_SPEECH && resultCode == RESULT_OK && data != null) {
+            java.util.ArrayList<String> results = data.getStringArrayListExtra(android.speech.RecognizerIntent.EXTRA_RESULTS);
+            if (results != null && !results.isEmpty()) {
+                String spoken = results.get(0);
+                String current = etUserInterests.getText().toString().trim();
+                etUserInterests.setText(current.isEmpty() ? spoken : current + " " + spoken);
+                etUserInterests.setSelection(etUserInterests.getText().length());
+            }
+        }
     }
 
     private void loadDiagnosticLogs() {

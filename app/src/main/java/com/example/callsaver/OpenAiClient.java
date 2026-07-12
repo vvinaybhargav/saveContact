@@ -157,6 +157,95 @@ public class OpenAiClient {
         }
     }
 
+    public interface TextCallback {
+        void onSuccess(String text);
+        void onError(String error);
+    }
+
+    /**
+     * Sends freeform text plus an instruction to OpenAI and returns the rewritten
+     * plain-text result (not JSON) - used for polishing user-typed/dictated notes
+     * like the "My Interests" profile field.
+     */
+    public static void rewriteText(Context context, String instruction, String rawText, TextCallback callback) {
+        String apiKey = context.getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE)
+                .getString("openai_api_key", "").trim();
+
+        if (apiKey.isEmpty()) {
+            callback.onError("OpenAI API Key is missing. Please save your OpenAI API Key first.");
+            return;
+        }
+        if (rawText == null || rawText.trim().isEmpty()) {
+            callback.onError("Nothing to rewrite.");
+            return;
+        }
+
+        Handler mainHandler = new Handler(Looper.getMainLooper());
+
+        try {
+            JSONObject jsonBody = new JSONObject();
+            jsonBody.put("model", "gpt-4o-mini");
+
+            JSONArray messages = new JSONArray();
+            JSONObject systemMsg = new JSONObject();
+            systemMsg.put("role", "system");
+            systemMsg.put("content", instruction);
+            messages.put(systemMsg);
+
+            JSONObject userMsg = new JSONObject();
+            userMsg.put("role", "user");
+            userMsg.put("content", rawText);
+            messages.put(userMsg);
+
+            jsonBody.put("messages", messages);
+
+            RequestBody body = RequestBody.create(jsonBody.toString(), MediaType.parse("application/json; charset=utf-8"));
+            Request request = new Request.Builder()
+                    .url("https://api.openai.com/v1/chat/completions")
+                    .header("Authorization", "Bearer " + apiKey)
+                    .header("Content-Type", "application/json")
+                    .post(body)
+                    .build();
+
+            client.newCall(request).enqueue(new Callback() {
+                @Override
+                public void onFailure(Call call, IOException e) {
+                    mainHandler.post(() -> callback.onError("Network error: " + e.getMessage()));
+                }
+
+                @Override
+                public void onResponse(Call call, Response response) throws IOException {
+                    try {
+                        String responseBody = response.body() != null ? response.body().string() : "";
+                        if (!response.isSuccessful()) {
+                            String errMsg = "";
+                            try {
+                                JSONObject errorObj = new JSONObject(responseBody).getJSONObject("error");
+                                errMsg = errorObj.optString("message", "");
+                            } catch (Exception ignore) {}
+                            final String finalErr = "OpenAI HTTP " + response.code()
+                                    + (errMsg.isEmpty() ? "" : ": " + errMsg);
+                            mainHandler.post(() -> callback.onError(finalErr));
+                            return;
+                        }
+
+                        JSONObject json = new JSONObject(responseBody);
+                        String content = json.getJSONArray("choices")
+                                .getJSONObject(0)
+                                .getJSONObject("message")
+                                .getString("content")
+                                .trim();
+                        mainHandler.post(() -> callback.onSuccess(content));
+                    } catch (Exception e) {
+                        mainHandler.post(() -> callback.onError("Failed to parse OpenAI response: " + e.getMessage()));
+                    }
+                }
+            });
+        } catch (Exception e) {
+            callback.onError("Failed to build request body: " + e.getMessage());
+        }
+    }
+
     private static final java.util.Set<String> VALID_ROUND_STATUSES = new java.util.HashSet<>(java.util.Arrays.asList(
             "Screening", "1st Round", "2nd Round", "Final Round", "HR / Salary", "Offered", "Not Interested", "Negative"));
 

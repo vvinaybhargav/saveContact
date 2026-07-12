@@ -45,14 +45,14 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
     private List<JobCall> allUpcomingList;
     private List<JobCall> filteredList;
 
-    private String selectedStatus = "1st Round";
+    private String selectedStatus = "All";
     private View layoutFilterChips;
     private final String[] statuses = {"All", "Screening", "1st Round", "2nd Round", "Final Round", "HR / Salary"};
     private TextView[] chips;
 
     // Sort by first-log time (ascending, oldest first) or by most recent call activity
     // (descending, newest first).
-    private boolean sortByFirstCall = true;
+    private boolean sortByFirstCall = false;
     private TextView chipSortFirstCall;
     private TextView chipSortRecentCall;
 
@@ -271,9 +271,12 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
         EditText etCandidateName = null;
         EditText etAppliedRole = dialogView.findViewById(R.id.et_applied_role);
         EditText etTentativeSchedule = dialogView.findViewById(R.id.et_tentative_schedule);
-        EditText etNoticePeriod = dialogView.findViewById(R.id.et_notice_period);
-        EditText etMainAgenda = dialogView.findViewById(R.id.et_main_agenda);
-        EditText etNextSteps = dialogView.findViewById(R.id.et_next_steps);
+        // Notice Period / Main Agenda / Next Steps were removed from the dialog UI;
+        // these ids no longer exist in dialog_add_call.xml, so findViewById would
+        // return null and crash on unguarded use. Keep them null and guard everywhere.
+        EditText etNoticePeriod = null;
+        EditText etMainAgenda = null;
+        EditText etNextSteps = null;
 
         if (etTentativeSchedule != null) {
             etTentativeSchedule.setOnClickListener(v -> showDateTimePicker(etTentativeSchedule));
@@ -339,9 +342,6 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
             if (etCandidateName != null) etCandidateName.setText(editCall.getCandidateName());
             etAppliedRole.setText(editCall.getAppliedRole());
             etTentativeSchedule.setText(editCall.getTentativeSchedule());
-            etNoticePeriod.setText(editCall.getNoticePeriod());
-            etMainAgenda.setText(editCall.getMainAgenda());
-            etNextSteps.setText(editCall.getNextSteps());
 
             int roundPos = spinnerAdapter.getPosition(editCall.getRoundStatus());
             spinnerRound.setSelection(roundPos >= 0 ? roundPos : 0);
@@ -413,9 +413,9 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
             String candidate = etCandidateName != null ? etCandidateName.getText().toString().trim() : "";
             String role = etAppliedRole.getText().toString().trim();
             String schedule = etTentativeSchedule.getText().toString().trim();
-            String notice = etNoticePeriod.getText().toString().trim();
-            String agenda = etMainAgenda.getText().toString().trim();
-            String nextStepsVal = etNextSteps.getText().toString().trim();
+            String notice = editCall != null ? editCall.getNoticePeriod() : "";
+            String agenda = editCall != null ? editCall.getMainAgenda() : "";
+            String nextStepsVal = editCall != null ? editCall.getNextSteps() : "";
 
             if (phone.isEmpty()) {
                 etPhone.setError("Phone number is required");

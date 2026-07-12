@@ -255,6 +255,40 @@
                     android:lineSpacingMultiplier="1.2" />
             </LinearLayout>
 
+            <!-- Recent Call Info Section (first log / most recent call timestamps) -->
+            <LinearLayout
+                android:id="@+id/ll_overlay_recent_call_container"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginTop="12dp"
+                android:visibility="gone">
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@color/divider"
+                    android:layout_marginBottom="12dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="📞 CALL HISTORY"
+                    android:textColor="@color/text_muted"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.05"
+                    android:layout_marginBottom="6dp" />
+
+                <TextView
+                    android:id="@+id/tv_overlay_recent_call"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="First call - -  |  Recent call - NA"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
             <!-- Collapsible Note-Taking Edit Panel -->
             <LinearLayout
                 android:id="@+id/ll_overlay_edit_panel"

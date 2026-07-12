@@ -284,7 +284,7 @@ public class CallerIdService extends Service {
             });
         }
 
-        // Bind and populate Talking Points highlights
+        // Bind and populate Talking Points highlights (a.k.a "My Interests" from Settings)
         View llHighlights = overlayView.findViewById(R.id.ll_overlay_highlights_container);
         TextView tvHighlights = overlayView.findViewById(R.id.tv_overlay_highlights);
         if (llHighlights != null && tvHighlights != null) {
@@ -294,6 +294,23 @@ public class CallerIdService extends Service {
                 llHighlights.setVisibility(View.VISIBLE);
             } else {
                 llHighlights.setVisibility(View.GONE);
+            }
+        }
+
+        // Bind and populate Call History (first log / most recent call timestamps)
+        View llRecentCall = overlayView.findViewById(R.id.ll_overlay_recent_call_container);
+        TextView tvRecentCall = overlayView.findViewById(R.id.tv_overlay_recent_call);
+        if (llRecentCall != null && tvRecentCall != null && jobCallId != -1) {
+            DatabaseHelper dbHelper = new DatabaseHelper(this);
+            long[] times = dbHelper.getFirstAndRecentCallTimes(jobCallId);
+            if (times[0] > 0) {
+                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("dd MMM, hh:mm a", java.util.Locale.getDefault());
+                String firstCallText = sdf.format(new java.util.Date(times[0]));
+                String recentCallText = times[1] > 0 ? sdf.format(new java.util.Date(times[1])) : "NA";
+                tvRecentCall.setText("First call - " + firstCallText + "  |  Recent call - " + recentCallText);
+                llRecentCall.setVisibility(View.VISIBLE);
+            } else {
+                llRecentCall.setVisibility(View.GONE);
             }
         }
 
