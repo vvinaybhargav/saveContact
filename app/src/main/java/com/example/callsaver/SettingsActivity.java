@@ -24,7 +24,6 @@ public class SettingsActivity extends AppCompatActivity {
     private EditText etDeepgramKey;
     private EditText etUserName;
     private EditText etUserInterests;
-    private Button btnRewriteInterests;
     private static final int REQ_CODE_INTERESTS_SPEECH = 700;
     private SwitchMaterial switchAutoTranscribe;
     private Button btnSave;
@@ -55,7 +54,6 @@ public class SettingsActivity extends AppCompatActivity {
         etDeepgramKey = findViewById(R.id.settings_deepgram_key);
         etUserName = findViewById(R.id.settings_user_name);
         etUserInterests = findViewById(R.id.settings_user_interests);
-        btnRewriteInterests = findViewById(R.id.btn_settings_rewrite_interests);
         com.google.android.material.textfield.TextInputLayout tilInterests = findViewById(R.id.til_settings_interests);
         switchAutoTranscribe = findViewById(R.id.switch_auto_transcribe);
         btnSave = findViewById(R.id.btn_settings_save_keys);
@@ -105,39 +103,6 @@ public class SettingsActivity extends AppCompatActivity {
                 }
             });
         }
-
-        // Rewrite My Interests via OpenAI
-        btnRewriteInterests.setOnClickListener(v -> {
-            String raw = etUserInterests.getText().toString().trim();
-            if (raw.isEmpty()) {
-                Toast.makeText(this, "Type or speak your interests first.", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            btnRewriteInterests.setEnabled(false);
-            btnRewriteInterests.setText("✨ Rewriting...");
-            OpenAiClient.rewriteText(this,
-                    "You help a job seeker phrase their job-search interests/preferences clearly and " +
-                            "concisely, for their own reference (roles, companies, industries, work mode, etc. " +
-                            "they care about). Rewrite the given rough notes into a clean, well-organized " +
-                            "paragraph or short bullet list preserving all the original meaning and details, " +
-                            "without adding facts that weren't stated. Return plain text only, no markdown headers.",
-                    raw, new OpenAiClient.TextCallback() {
-                        @Override
-                        public void onSuccess(String text) {
-                            etUserInterests.setText(text);
-                            btnRewriteInterests.setEnabled(true);
-                            btnRewriteInterests.setText("✨ Rewrite with AI");
-                            Toast.makeText(SettingsActivity.this, "Rewritten! Tap Save to keep it.", Toast.LENGTH_SHORT).show();
-                        }
-
-                        @Override
-                        public void onError(String error) {
-                            btnRewriteInterests.setEnabled(true);
-                            btnRewriteInterests.setText("✨ Rewrite with AI");
-                            Toast.makeText(SettingsActivity.this, "Rewrite failed: " + error, Toast.LENGTH_LONG).show();
-                        }
-                    });
-        });
 
         // Setup detailed analytics button
         btnAnalytics.setOnClickListener(v -> {

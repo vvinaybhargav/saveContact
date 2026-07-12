@@ -97,7 +97,7 @@
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="What kind of roles/companies you want. Type or use the mic, then tap Rewrite with AI to polish it."
+                        android:text="What kind of roles/skills you want (e.g. GCP Data Engineer, Python, SQL). Type or use the mic — the AI compares this against what's discussed on calls."
                         android:textColor="@color/text_secondary"
                         android:textSize="11sp"
                         android:layout_marginBottom="12dp"/>
@@ -128,16 +128,6 @@
                             android:textColor="@color/text_primary"
                             android:textSize="14sp" />
                     </com.google.android.material.textfield.TextInputLayout>
-
-                    <Button
-                        android:id="@+id/btn_settings_rewrite_interests"
-                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="10dp"
-                        android:text="✨ Rewrite with AI"
-                        android:textColor="@color/accent_indigo"
-                        app:strokeColor="@color/accent_indigo" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 

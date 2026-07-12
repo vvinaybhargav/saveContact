@@ -3,6 +3,7 @@ package com.example.callsaver;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
 import android.graphics.PixelFormat;
@@ -51,7 +52,7 @@ public class CallerIdService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         // Run as a foreground service immediately to avoid Android 8+ background crashes
-        showForegroundNotification();
+        showForegroundNotification(null);
 
         if (intent == null) {
             stopSelf();
@@ -70,6 +71,11 @@ public class CallerIdService extends Service {
             stopSelf();
             return START_NOT_STICKY;
         }
+
+        // Update the persistent notification with a tap-to-restore action carrying the
+        // same call details, so if the user swipes/closes the banner they can bring it
+        // back for the rest of the call without it disappearing for good.
+        showForegroundNotification(intent);
 
         windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
         if (windowManager == null) {
@@ -333,9 +339,10 @@ public class CallerIdService extends Service {
 
         // Layout parameters initialized early in onStartCommand
 
-        // Close action
+        // Close action - only hides the banner; the foreground notification stays so the
+        // user can tap it to bring the banner back for the rest of the call.
         if (btnClose != null) {
-            btnClose.setOnClickListener(v -> stopSelf());
+            btnClose.setOnClickListener(v -> removeOverlay());
         }
 
         // Edit Action - Toggle Expandable In-Call Notes & Focus
@@ -493,9 +500,11 @@ public class CallerIdService extends Service {
                             float deltaX = event.getRawX() - initialTouchX;
                             float deltaY = event.getRawY() - initialTouchY;
                             
-                            // Trigger dismiss only if swiped horizontally past threshold (180 pixels)
+                            // Trigger dismiss only if swiped horizontally past threshold (180 pixels).
+                            // Only hides the banner - the foreground notification stays so the user
+                            // can tap it to bring the banner back for the rest of the call.
                             if (Math.abs(deltaX) > 180f) {
-                                stopSelf();
+                                removeOverlay();
                             } else {
                                 // Snap back horizontally, but keep the new vertical height so user can reposition it!
                                 params.x = 0;
@@ -524,7 +533,7 @@ public class CallerIdService extends Service {
         return START_NOT_STICKY;
     }
 
-    private void showForegroundNotification() {
+    private void showForegroundNotification(Intent restoreSourceIntent) {
         NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         if (nm == null) return;
 
@@ -536,12 +545,27 @@ public class CallerIdService extends Service {
             nm.createNotificationChannel(channel);
         }
 
-        Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.sym_action_call)
-                .setContentTitle("Caller ID Overlay Active")
-                .setContentText("Checking call details in background...")
                 .setPriority(NotificationCompat.PRIORITY_LOW)
-                .build();
+                .setOngoing(true);
+
+        if (restoreSourceIntent != null) {
+            builder.setContentTitle("Caller ID banner active")
+                    .setContentText("Tap here if you swiped it away — brings the banner back.");
+
+            Intent restoreIntent = new Intent(restoreSourceIntent);
+            restoreIntent.setClass(this, CallerIdService.class);
+            int piFlags = PendingIntent.FLAG_UPDATE_CURRENT;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) piFlags |= PendingIntent.FLAG_IMMUTABLE;
+            PendingIntent restorePendingIntent = PendingIntent.getService(this, NOTIFICATION_ID, restoreIntent, piFlags);
+            builder.setContentIntent(restorePendingIntent);
+        } else {
+            builder.setContentTitle("Caller ID Overlay Active")
+                    .setContentText("Checking call details in background...");
+        }
+
+        Notification notification = builder.build();
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             startForeground(NOTIFICATION_ID, notification, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
