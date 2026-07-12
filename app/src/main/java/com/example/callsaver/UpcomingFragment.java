@@ -45,10 +45,16 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
     private List<JobCall> allUpcomingList;
     private List<JobCall> filteredList;
 
-    private String selectedStatus = "All";
+    private String selectedStatus = "1st Round";
     private View layoutFilterChips;
     private final String[] statuses = {"All", "Screening", "1st Round", "2nd Round", "Final Round", "HR / Salary"};
     private TextView[] chips;
+
+    // Sort by first-log time (ascending, oldest first) or by most recent call activity
+    // (descending, newest first).
+    private boolean sortByFirstCall = true;
+    private TextView chipSortFirstCall;
+    private TextView chipSortRecentCall;
 
     private EditText activeDialogNotesField;
     private TextInputLayout activeDialogTilNotes;
@@ -78,6 +84,7 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
         rvUpcomingList.setAdapter(adapter);
 
         setupFilterChips(view);
+        setupSortChips(view);
         loadUpcomingInterviews();
     }
 
@@ -156,6 +163,45 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
         }
     }
 
+    private void setupSortChips(View view) {
+        chipSortFirstCall = view.findViewById(R.id.chip_sort_first_call);
+        chipSortRecentCall = view.findViewById(R.id.chip_sort_recent_call);
+        if (chipSortFirstCall != null) {
+            chipSortFirstCall.setOnClickListener(v -> {
+                sortByFirstCall = true;
+                updateSortChipsUI();
+                filterList(selectedStatus);
+            });
+        }
+        if (chipSortRecentCall != null) {
+            chipSortRecentCall.setOnClickListener(v -> {
+                sortByFirstCall = false;
+                updateSortChipsUI();
+                filterList(selectedStatus);
+            });
+        }
+        updateSortChipsUI();
+    }
+
+    private void updateSortChipsUI() {
+        if (chipSortFirstCall == null || chipSortRecentCall == null || getContext() == null) return;
+        float density = getResources().getDisplayMetrics().density;
+        int selectedColor = androidx.core.content.ContextCompat.getColor(requireContext(), R.color.accent_indigo);
+        int unselectedBg = androidx.core.content.ContextCompat.getColor(requireContext(), R.color.divider);
+        int unselectedText = androidx.core.content.ContextCompat.getColor(requireContext(), R.color.text_secondary);
+
+        TextView[] sortChips = {chipSortFirstCall, chipSortRecentCall};
+        for (int i = 0; i < sortChips.length; i++) {
+            boolean selected = (i == 0) == sortByFirstCall;
+            android.graphics.drawable.GradientDrawable drawable = new android.graphics.drawable.GradientDrawable();
+            drawable.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
+            drawable.setCornerRadius(18 * density);
+            drawable.setColor(selected ? selectedColor : unselectedBg);
+            sortChips[i].setBackground(drawable);
+            sortChips[i].setTextColor(selected ? android.graphics.Color.WHITE : unselectedText);
+        }
+    }
+
     private void filterList(String status) {
         List<JobCall> filtered = new ArrayList<>();
         for (JobCall call : allUpcomingList) {
@@ -166,6 +212,19 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
                 filtered.add(call);
             }
         }
+
+        // Sort by first-log time (oldest first) or by most recent call activity
+        // (newest first), per the selected sort chip.
+        Collections.sort(filtered, (a, b) -> {
+            if (sortByFirstCall) {
+                return Long.compare(a.getTimestamp(), b.getTimestamp());
+            }
+            long[] ta = dbHelper.getFirstAndRecentCallTimes(a.getId());
+            long[] tb = dbHelper.getFirstAndRecentCallTimes(b.getId());
+            long recentA = ta[1] > 0 ? ta[1] : ta[0];
+            long recentB = tb[1] > 0 ? tb[1] : tb[0];
+            return Long.compare(recentB, recentA);
+        });
 
         filteredList.clear();
         filteredList.addAll(filtered);

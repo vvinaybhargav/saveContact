@@ -64,12 +64,30 @@ public class OpenAiClient {
                     "Filter out all filler words, irrelevant small talk, or technical chatter. Focus purely on job details.\n" +
                     "CRITICAL: Do NOT generate generic points like 'Candidate is interested in the position' or 'Candidate is interested in the role' in key_discussion_points. Only extract actual requirements, action items, or skills discussed.\n" +
                     "\n" +
+                    "\"recruiter_name\" must be the OTHER person on the call (the recruiter/interviewer), never the candidate. If a speaker says 'this is <name> speaking' and that is clearly the candidate introducing themselves, do not use that as recruiter_name.\n" +
+                    "\n" +
+                    "\"present_round\" MUST be exactly one of these values, chosen by what the call indicates about the CURRENT/NEXT stage of the pipeline (not a free-form label):\n" +
+                    "  \"Screening\" - initial/HR screening call, no technical round scheduled yet.\n" +
+                    "  \"1st Round\" - the call mentions 'L1', 'first round', 'first technical round', or schedules/discusses the first interview round.\n" +
+                    "  \"2nd Round\" - the call mentions 'L2', 'second round', or schedules/discusses the second interview round.\n" +
+                    "  \"Final Round\" - mentions 'final round', 'last round', or similar.\n" +
+                    "  \"HR / Salary\" - HR discussion, salary/compensation negotiation, offer discussion in progress.\n" +
+                    "  \"Offered\" - an offer was clearly extended.\n" +
+                    "  \"Not Interested\" - the CANDIDATE said they are not interested / want to withdraw.\n" +
+                    "  \"Negative\" - the recruiter/company clearly rejected the candidate or said the profile doesn't match, i.e. a negative outcome from their side.\n" +
+                    "  If nothing about the stage changed in this call, keep it as \"Screening\" only if you have no other information; otherwise infer the most advanced stage explicitly mentioned.\n" +
+                    "  Example: 'You've been shortlisted, we'd like to schedule your slot' with no round number = keep the current/likely stage (usually \"1st Round\" if this is the first scheduled interview) and put the date/time in tentative_schedule.\n" +
+                    "\n" +
+                    "\"sentiment_comment\": string or null - ONLY when the call had a clearly POSITIVE outcome (shortlisted, moving forward, offer) or clearly NEGATIVE outcome (rejected, profile doesn't match, withdrawing). One short sentence describing it, e.g. \"Shortlisted for L1, recruiter said profile matches well.\" or \"Rejected - recruiter said experience doesn't match requirement.\". null if the call was neutral/inconclusive.\n" +
+                    "\n" +
                     "Return a strict JSON object with the following keys:\n" +
                     "{\n" +
                     "  \"candidate_name\": string or null,\n" +
                     "  \"company_name\": string or null,\n" +
+                    "  \"recruiter_name\": string or null,\n" +
                     "  \"applied_role\": string or null,\n" +
-                    "  \"present_round\": string (e.g., \"Screening\", \"Technical\", \"HR\"),\n" +
+                    "  \"present_round\": string (one of the exact values listed above),\n" +
+                    "  \"sentiment_comment\": string or null,\n" +
                     "  \"tentative_schedule\": string or null (Resolve relative schedules like 'tomorrow', 'next Monday', or 'day after' to an absolute date format relative to today: [Current Date: " + currentDateStr + "]. For example, if it says 'tomorrow at 3 PM', output '2026-07-12 at 03:00 PM'),\n" +
                     "  \"notice_period\": string or null,\n" +
                     "  \"main_agenda\": string,\n" +
@@ -136,6 +154,59 @@ public class OpenAiClient {
 
         } catch (Exception e) {
             callback.onError("Failed to build request body: " + e.getMessage());
+        }
+    }
+
+    private static final java.util.Set<String> VALID_ROUND_STATUSES = new java.util.HashSet<>(java.util.Arrays.asList(
+            "Screening", "1st Round", "2nd Round", "Final Round", "HR / Salary", "Offered", "Not Interested", "Negative"));
+
+    /**
+     * Maps the AI's present_round value onto our exact enum, tolerating close variants
+     * ("L1"/"technical round 1" -> "1st Round", "rejected"/"not selected" -> "Negative",
+     * etc.) and falling back to the given default if nothing recognizable matches.
+     */
+    public static String normalizeRoundStatus(String raw, String fallback) {
+        if (raw == null || raw.trim().isEmpty()) return fallback;
+        if (VALID_ROUND_STATUSES.contains(raw.trim())) return raw.trim();
+
+        String s = raw.toLowerCase().trim();
+        if (s.contains("not interested") || s.contains("withdraw")) return "Not Interested";
+        if (s.contains("reject") || s.contains("negative") || s.contains("not selected")
+                || s.contains("doesn't match") || s.contains("does not match")) return "Negative";
+        if (s.contains("offer")) return "Offered";
+        if (s.contains("hr") || s.contains("salary") || s.contains("compensation")) return "HR / Salary";
+        if (s.contains("final")) return "Final Round";
+        if (s.contains("l2") || s.contains("second") || s.contains("2nd")) return "2nd Round";
+        if (s.contains("l1") || s.contains("first") || s.contains("1st") || s.contains("technical")) return "1st Round";
+        if (s.contains("screen")) return "Screening";
+        return fallback;
+    }
+
+    /**
+     * True if the incoming round status should replace the existing one. Terminal
+     * outcomes (Negative, Not Interested, Offered) always win. Otherwise only update
+     * when the new stage is strictly more advanced, so a vague/short follow-up call
+     * that the AI defaults to "Screening" never regresses an already-later stage.
+     */
+    public static boolean shouldUpdateRoundStatus(String existing, String incoming) {
+        if (existing == null || existing.trim().isEmpty()) return true;
+        if (incoming == null || incoming.trim().isEmpty()) return false;
+        if (incoming.equals("Negative") || incoming.equals("Not Interested") || incoming.equals("Offered")) return true;
+        return roundRank(incoming) > roundRank(existing);
+    }
+
+    private static int roundRank(String status) {
+        if (status == null) return 1;
+        switch (status) {
+            case "Screening": return 1;
+            case "1st Round": return 2;
+            case "2nd Round": return 3;
+            case "Final Round": return 4;
+            case "HR / Salary": return 5;
+            case "Offered": return 6;
+            case "Not Interested":
+            case "Negative": return 0;
+            default: return 1;
         }
     }
 }

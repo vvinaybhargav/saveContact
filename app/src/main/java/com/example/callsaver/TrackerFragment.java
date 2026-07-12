@@ -829,6 +829,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
 
                 dbHelper.updateJobCall(editCall);
                 dbHelper.linkPhoneToJob(editCall.getId(), phone, recruiter);
+                boolean noteWasFromManualUpload = activeDialogManualUploadUsed;
                 if (!noteToAdd.isEmpty()) {
                     dbHelper.insertNote(editCall.getId(), noteToAdd, System.currentTimeMillis(), noteSource);
                 }
@@ -842,6 +843,14 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                 if (etNotes != null) etNotes.setText("");
                 populateTimeline(llNotesTimeline, labelNotes, editCall.getId());
                 refreshDashboardList();
+
+                // A hand-typed note (not one already AI-processed via a recording
+                // upload) also gets run through the AI so the round/next-call date
+                // update automatically from what was written, same as a real call.
+                if (!noteToAdd.isEmpty() && !noteWasFromManualUpload) {
+                    runAiOnManualNote(editCall.getId(), noteToAdd, spinnerRound, etTentativeSchedule,
+                            llNotesTimeline, labelNotes);
+                }
                 return;
             } else {
                 // Insert mode
@@ -1304,6 +1313,69 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                 })
                 .setNegativeButton("Cancel", null)
                 .show();
+    }
+
+    /**
+     * Runs a hand-typed note through the AI (same field extraction used for real
+     * calls) so a manually noted "L1 scheduled tomorrow 2pm" or "not interested"
+     * updates the round status and next-call date automatically. Silently does
+     * nothing if no OpenAI key is configured. The DB is always updated on success;
+     * the on-screen spinner/date field only if the dialog is still open.
+     */
+    private void runAiOnManualNote(long jobId, String noteText, Spinner spinnerRoundRef,
+                                    EditText etScheduleRef, LinearLayout timelineContainer, View timelineLabel) {
+        String apiKey = requireContext().getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE)
+                .getString("openai_api_key", "").trim();
+        if (apiKey.isEmpty()) return;
+
+        OpenAiClient.extractFields(requireContext(), noteText, new OpenAiClient.OpenAiCallback() {
+            @Override
+            public void onSuccess(JSONObject result) {
+                if (dbHelper == null) return;
+                try {
+                    JobCall current = dbHelper.getJobCallById(jobId);
+                    if (current == null) return;
+
+                    String round = OpenAiClient.normalizeRoundStatus(
+                            optClean(result, "present_round", ""), current.getRoundStatus());
+                    boolean roundChanged = OpenAiClient.shouldUpdateRoundStatus(current.getRoundStatus(), round);
+                    if (roundChanged) {
+                        dbHelper.updateRoundStatus(jobId, round);
+                    }
+
+                    String schedule = optClean(result, "tentative_schedule", "");
+                    if (!schedule.isEmpty()) {
+                        current.setTentativeSchedule(schedule);
+                        dbHelper.updateJobCall(current);
+                    }
+
+                    String sentimentComment = optClean(result, "sentiment_comment", "");
+                    if (!sentimentComment.isEmpty()) {
+                        dbHelper.insertNote(jobId, "• " + sentimentComment, System.currentTimeMillis());
+                    }
+
+                    if (isAdded() && getContext() != null) {
+                        if (roundChanged && spinnerRoundRef != null) {
+                            setSpinnerSelection(spinnerRoundRef, round);
+                        }
+                        if (!schedule.isEmpty() && etScheduleRef != null) {
+                            etScheduleRef.setText(schedule);
+                        }
+                        if (!sentimentComment.isEmpty()) {
+                            populateTimeline(timelineContainer, timelineLabel, jobId);
+                        }
+                        refreshDashboardList();
+                    }
+                } catch (Exception e) {
+                    DebugLogger.log(requireContext(), "runAiOnManualNote failed: " + e.getMessage());
+                }
+            }
+
+            @Override
+            public void onError(String error) {
+                DebugLogger.log(requireContext(), "runAiOnManualNote AI error: " + error);
+            }
+        });
     }
 
     private void showDateTimePicker(EditText et) {

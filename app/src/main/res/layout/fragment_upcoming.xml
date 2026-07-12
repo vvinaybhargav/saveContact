@@ -71,6 +71,24 @@
                     <TextView android:id="@+id/chip_upcoming_hr" android:text="HR / Salary" style="@style/TrackerChipStyle" />
                 </LinearLayout>
             </HorizontalScrollView>
+
+            <!-- Sort by First Call / Recent Call -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="8dp">
+
+                <TextView
+                    android:id="@+id/chip_sort_first_call"
+                    android:text="Sort: First Call"
+                    style="@style/TrackerChipStyle"
+                    android:tag="selected" />
+                <TextView
+                    android:id="@+id/chip_sort_recent_call"
+                    android:text="Sort: Recent Call"
+                    style="@style/TrackerChipStyle" />
+            </LinearLayout>
         </LinearLayout>
     </com.google.android.material.appbar.AppBarLayout>
 

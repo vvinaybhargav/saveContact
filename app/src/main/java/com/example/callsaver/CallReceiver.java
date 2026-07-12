@@ -462,13 +462,20 @@ public class CallReceiver extends BroadcastReceiver {
                                         
                                         String company = optClean(result, "company_name", "");
                                         String recruiter = optClean(result, "recruiter_name", "");
+                                        if (ProfileUtils.isLikelyUserOwnName(context, recruiter)) {
+                                            // The AI picked up the user's own name (e.g. "This is
+                                            // Vinay Bhargav speaking") instead of the recruiter's.
+                                            recruiter = "";
+                                        }
                                         String role = optClean(result, "applied_role", "");
-                                        String round = optClean(result, "present_round", "Screening");
+                                        String round = OpenAiClient.normalizeRoundStatus(
+                                                optClean(result, "present_round", ""), "Screening");
                                         String schedule = optClean(result, "tentative_schedule", "");
                                         String notice = optClean(result, "notice_period", "");
                                         String agenda = optClean(result, "main_agenda", "");
                                         String nextSteps = optClean(result, "next_steps", "");
                                         String candidate = optClean(result, "candidate_name", "");
+                                        String sentimentComment = optClean(result, "sentiment_comment", "");
                                         
                                         // Save/update SQLite database
                                         DatabaseHelper db = new DatabaseHelper(context);
@@ -489,7 +496,13 @@ public class CallReceiver extends BroadcastReceiver {
                                             if (existingCall.getAppliedRole() == null || existingCall.getAppliedRole().isEmpty()) {
                                                 existingCall.setAppliedRole(role);
                                             }
-                                            if (existingCall.getRoundStatus() == null || existingCall.getRoundStatus().isEmpty()) {
+                                            // The interview status must actually progress with the
+                                            // conversation (e.g. "L1 interview" -> 1st Round, "2nd
+                                            // round" -> 2nd Round), and always reflect an explicit
+                                            // Offered/Negative/Not Interested outcome - but a generic
+                                            // fallback from a short/ambiguous call should never regress
+                                            // an already-more-advanced stage.
+                                            if (OpenAiClient.shouldUpdateRoundStatus(existingCall.getRoundStatus(), round)) {
                                                 existingCall.setRoundStatus(round);
                                             }
                                             // Unlike the "only fill if blank" fields above, the next-call date
@@ -559,6 +572,9 @@ public class CallReceiver extends BroadcastReceiver {
                                          String noteToSave = !summaryNote.isEmpty()
                                                  ? summaryNote + " (AI Auto-transcribed)"
                                                  : "• " + transcript.trim() + " (AI Auto-transcribed, raw)";
+                                         if (!sentimentComment.isEmpty()) {
+                                             noteToSave = "• " + sentimentComment + "\n" + noteToSave;
+                                         }
                                          db.insertNote(jobCallId, noteToSave, System.currentTimeMillis());
                                          if (summaryNote.isEmpty()) {
                                              summaryNote = "AI Call Auto-transcribed.";

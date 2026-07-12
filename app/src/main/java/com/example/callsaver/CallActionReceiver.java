@@ -90,6 +90,9 @@ public class CallActionReceiver extends BroadcastReceiver {
                             if (company.isEmpty()) company = "Unknown Company";
 
                             String recruiter = result.optString("recruiter_name", "").trim();
+                            if (ProfileUtils.isLikelyUserOwnName(context, recruiter)) {
+                                recruiter = "";
+                            }
                             String tags = "Auto-Saved";
                             String notes = "";
                             if (result.has("key_discussion_points")) {
@@ -106,11 +109,17 @@ public class CallActionReceiver extends BroadcastReceiver {
 
                             String candidate = result.optString("candidate_name", "").trim();
                             String role = result.optString("applied_role", "").trim();
-                            String round = result.optString("present_round", "Screening").trim();
+                            String round = OpenAiClient.normalizeRoundStatus(
+                                    result.optString("present_round", "").trim(), "Screening");
                             String schedule = result.optString("tentative_schedule", "").trim();
                             String notice = result.optString("notice_period", "").trim();
                             String agenda = result.optString("main_agenda", "").trim();
                             String nextSteps = result.optString("next_steps", "").trim();
+                            String sentimentComment = result.optString("sentiment_comment", "").trim();
+                            if (sentimentComment.equalsIgnoreCase("null")) sentimentComment = "";
+                            if (!sentimentComment.isEmpty()) {
+                                notes = "• " + sentimentComment + "\n" + notes;
+                            }
 
                             if (existing != null) {
                                 // Link phone to existing company and update status rounds
@@ -118,7 +127,7 @@ public class CallActionReceiver extends BroadcastReceiver {
                                 if (!notes.isEmpty()) {
                                     db.insertNote(existing.getId(), notes, System.currentTimeMillis());
                                 }
-                                
+
                                 // Enforce data preservation rule: only set if they were blank
                                 if (existing.getCandidateName() == null || existing.getCandidateName().trim().isEmpty()) {
                                     existing.setCandidateName(candidate);
@@ -130,8 +139,12 @@ public class CallActionReceiver extends BroadcastReceiver {
                                     existing.setCompanyName(company);
                                 }
 
-                                existing.setRoundStatus(round);
-                                existing.setTentativeSchedule(schedule);
+                                if (OpenAiClient.shouldUpdateRoundStatus(existing.getRoundStatus(), round)) {
+                                    existing.setRoundStatus(round);
+                                }
+                                if (!schedule.isEmpty()) {
+                                    existing.setTentativeSchedule(schedule);
+                                }
                                 existing.setNoticePeriod(notice);
                                 existing.setMainAgenda(agenda);
                                 existing.setNextSteps(nextSteps);

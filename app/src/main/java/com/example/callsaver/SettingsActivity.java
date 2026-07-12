@@ -22,6 +22,7 @@ public class SettingsActivity extends AppCompatActivity {
 
     private EditText etOpenAiKey;
     private EditText etDeepgramKey;
+    private EditText etUserName;
     private SwitchMaterial switchAutoTranscribe;
     private Button btnSave;
     private Button btnAnalytics;
@@ -49,6 +50,7 @@ public class SettingsActivity extends AppCompatActivity {
 
         etOpenAiKey = findViewById(R.id.settings_openai_key);
         etDeepgramKey = findViewById(R.id.settings_deepgram_key);
+        etUserName = findViewById(R.id.settings_user_name);
         switchAutoTranscribe = findViewById(R.id.switch_auto_transcribe);
         btnSave = findViewById(R.id.btn_settings_save_keys);
         btnAnalytics = findViewById(R.id.btn_settings_analytics);
@@ -60,17 +62,20 @@ public class SettingsActivity extends AppCompatActivity {
         // Load preferences
         etOpenAiKey.setText(prefs.getString("openai_api_key", ""));
         etDeepgramKey.setText(prefs.getString("deepgram_api_key", ""));
+        etUserName.setText(prefs.getString("user_full_name", ""));
         switchAutoTranscribe.setChecked(prefs.getBoolean("auto_transcribe_background", true));
 
         // Setup save action
         btnSave.setOnClickListener(v -> {
             String openAi = etOpenAiKey.getText().toString().trim();
             String deepgram = etDeepgramKey.getText().toString().trim();
+            String userName = etUserName.getText().toString().trim();
             boolean autoTranscribe = switchAutoTranscribe.isChecked();
 
             prefs.edit()
                     .putString("openai_api_key", openAi)
                     .putString("deepgram_api_key", deepgram)
+                    .putString("user_full_name", userName)
                     .putBoolean("auto_transcribe_background", autoTranscribe)
                     .apply();
 

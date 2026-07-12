@@ -7,13 +7,19 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
+
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 public class UpcomingInterviewsAdapter extends RecyclerView.Adapter<UpcomingInterviewsAdapter.ViewHolder> {
 
     private final Context context;
     private final List<JobCall> interviewList;
     private final OnInterviewClickListener listener;
+    private final DatabaseHelper dbHelper;
+    private final SimpleDateFormat sdf = new SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault());
 
     public interface OnInterviewClickListener {
         void onInterviewClick(JobCall call);
@@ -23,6 +29,7 @@ public class UpcomingInterviewsAdapter extends RecyclerView.Adapter<UpcomingInte
         this.context = context;
         this.interviewList = interviewList;
         this.listener = listener;
+        this.dbHelper = new DatabaseHelper(context);
     }
 
     @NonNull
@@ -47,6 +54,12 @@ public class UpcomingInterviewsAdapter extends RecyclerView.Adapter<UpcomingInte
             holder.tvSchedule.setText("Tentative / Yet to schedule");
         }
 
+        long[] times = dbHelper.getFirstAndRecentCallTimes(call.getId());
+        String firstCallText = times[0] > 0 ? sdf.format(new Date(times[0])) : "-";
+        String recentCallText = times[1] > 0 ? sdf.format(new Date(times[1])) : "NA";
+        holder.tvFirstCall.setText("First call - " + firstCallText);
+        holder.tvRecentCall.setText("Recent call - " + recentCallText);
+
         holder.itemView.setOnClickListener(v -> {
             if (listener != null) {
                 listener.onInterviewClick(call);
@@ -64,6 +77,8 @@ public class UpcomingInterviewsAdapter extends RecyclerView.Adapter<UpcomingInte
         TextView tvRole;
         TextView tvRound;
         TextView tvSchedule;
+        TextView tvFirstCall;
+        TextView tvRecentCall;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -71,6 +86,8 @@ public class UpcomingInterviewsAdapter extends RecyclerView.Adapter<UpcomingInte
             tvRole = itemView.findViewById(R.id.tv_item_ui_role);
             tvRound = itemView.findViewById(R.id.tv_item_ui_round);
             tvSchedule = itemView.findViewById(R.id.tv_item_ui_schedule);
+            tvFirstCall = itemView.findViewById(R.id.tv_item_ui_first_call);
+            tvRecentCall = itemView.findViewById(R.id.tv_item_ui_recent_call);
         }
     }
 }
