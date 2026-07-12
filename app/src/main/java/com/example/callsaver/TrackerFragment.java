@@ -1372,8 +1372,14 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                         dbHelper.insertNote(jobId, "• " + sentimentComment, System.currentTimeMillis());
                     }
 
-                    String matchingSkills = OpenAiClient.jsonArrayToCsv(result, "matching_skills");
-                    String notMatchingSkills = OpenAiClient.jsonArrayToCsv(result, "not_matching_skills");
+                    String userInterestsCsv = getContext() == null ? "" : getContext()
+                            .getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE)
+                            .getString("user_talking_points", "").trim();
+                    String[] reconciledSkills = SkillMatchUtils.reconcileWithInterests(userInterestsCsv,
+                            OpenAiClient.jsonArrayToCsv(result, "matching_skills"),
+                            OpenAiClient.jsonArrayToCsv(result, "not_matching_skills"));
+                    String matchingSkills = reconciledSkills[0];
+                    String notMatchingSkills = reconciledSkills[1];
                     boolean skillsChanged = !matchingSkills.isEmpty() || !notMatchingSkills.isEmpty();
                     if (skillsChanged) {
                         current.setMatchingSkills(SkillMatchUtils.mergeSkillListExcluding(

@@ -476,8 +476,13 @@ public class CallReceiver extends BroadcastReceiver {
                                         String nextSteps = optClean(result, "next_steps", "");
                                         String candidate = optClean(result, "candidate_name", "");
                                         String sentimentComment = optClean(result, "sentiment_comment", "");
-                                        String matchingSkills = OpenAiClient.jsonArrayToCsv(result, "matching_skills");
-                                        String notMatchingSkills = OpenAiClient.jsonArrayToCsv(result, "not_matching_skills");
+                                        String userInterestsCsv = context.getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE)
+                                                .getString("user_talking_points", "").trim();
+                                        String[] reconciledSkills = SkillMatchUtils.reconcileWithInterests(userInterestsCsv,
+                                                OpenAiClient.jsonArrayToCsv(result, "matching_skills"),
+                                                OpenAiClient.jsonArrayToCsv(result, "not_matching_skills"));
+                                        String matchingSkills = reconciledSkills[0];
+                                        String notMatchingSkills = reconciledSkills[1];
 
                                         // Save/update SQLite database
                                         DatabaseHelper db = new DatabaseHelper(context);
