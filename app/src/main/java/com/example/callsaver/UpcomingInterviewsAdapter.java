@@ -60,6 +60,8 @@ public class UpcomingInterviewsAdapter extends RecyclerView.Adapter<UpcomingInte
         holder.tvFirstCall.setText("First call - " + firstCallText);
         holder.tvRecentCall.setText("Recent call - " + recentCallText);
 
+        holder.tvFollowUp.setVisibility(FollowUpUtils.needsFollowUp(call) ? View.VISIBLE : View.GONE);
+
         holder.itemView.setOnClickListener(v -> {
             if (listener != null) {
                 listener.onInterviewClick(call);
@@ -79,6 +81,7 @@ public class UpcomingInterviewsAdapter extends RecyclerView.Adapter<UpcomingInte
         TextView tvSchedule;
         TextView tvFirstCall;
         TextView tvRecentCall;
+        TextView tvFollowUp;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -88,6 +91,7 @@ public class UpcomingInterviewsAdapter extends RecyclerView.Adapter<UpcomingInte
             tvSchedule = itemView.findViewById(R.id.tv_item_ui_schedule);
             tvFirstCall = itemView.findViewById(R.id.tv_item_ui_first_call);
             tvRecentCall = itemView.findViewById(R.id.tv_item_ui_recent_call);
+            tvFollowUp = itemView.findViewById(R.id.tv_item_ui_followup);
         }
     }
 }

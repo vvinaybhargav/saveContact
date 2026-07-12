@@ -94,6 +94,22 @@
                 android:ellipsize="end" />
         </LinearLayout>
 
+        <!-- Follow-up needed badge (shown when the scheduled call time has passed) -->
+        <TextView
+            android:id="@+id/tv_item_ui_followup"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="⚠ Call time passed - log an update"
+            android:textColor="@color/white_constant"
+            android:textStyle="bold"
+            android:textSize="11sp"
+            android:background="@drawable/badge_round_accent"
+            android:backgroundTint="#E53935"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="3dp"
+            android:visibility="gone" />
+
         <!-- First call / Recent call row -->
         <LinearLayout
             android:layout_width="match_parent"

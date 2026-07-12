@@ -105,6 +105,28 @@ public class MainActivity extends AppCompatActivity {
         if (btnSettings != null) {
             btnSettings.setOnClickListener(v -> startActivity(new Intent(this, SettingsActivity.class)));
         }
+
+        handleOpenTabIntent(getIntent());
+
+        if (androidx.core.content.ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                == PackageManager.PERMISSION_GRANTED || Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            FollowUpNotifier.checkAndNotify(this);
+        }
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleOpenTabIntent(intent);
+    }
+
+    private void handleOpenTabIntent(Intent intent) {
+        if (intent == null) return;
+        String openTab = intent.getStringExtra("open_tab");
+        if ("upcoming".equals(openTab) && bottomNavigation != null) {
+            bottomNavigation.setSelectedItemId(R.id.navigation_upcoming);
+        }
     }
 
     /**

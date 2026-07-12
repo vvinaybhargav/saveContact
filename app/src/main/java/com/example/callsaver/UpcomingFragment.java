@@ -214,8 +214,14 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
         }
 
         // Sort by first-log time (oldest first) or by most recent call activity
-        // (newest first), per the selected sort chip.
+        // (newest first), per the selected sort chip. Calls whose interview time has
+        // already passed without an update always float to the top regardless of sort.
         Collections.sort(filtered, (a, b) -> {
+            boolean followUpA = FollowUpUtils.needsFollowUp(a);
+            boolean followUpB = FollowUpUtils.needsFollowUp(b);
+            if (followUpA != followUpB) {
+                return followUpA ? -1 : 1;
+            }
             if (sortByFirstCall) {
                 return Long.compare(a.getTimestamp(), b.getTimestamp());
             }
