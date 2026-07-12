@@ -584,11 +584,19 @@ public class CallReceiver extends BroadcastReceiver {
                                          // short follow-up call that's just "still interested, will call back").
                                          // Falling through to the raw transcript instead of silently skipping
                                          // insertNote() matches the manual Quick-Save flow's fallback behavior.
-                                         String noteToSave = !summaryNote.isEmpty()
-                                                 ? summaryNote + " (AI Auto-transcribed)"
-                                                 : "• " + transcript.trim() + " (AI Auto-transcribed, raw)";
-                                         if (!sentimentComment.isEmpty()) {
-                                             noteToSave = "• " + sentimentComment + "\n" + noteToSave;
+                                         String noteToSave;
+                                         if (!summaryNote.isEmpty()) {
+                                             noteToSave = summaryNote + " (AI Auto-transcribed)";
+                                             if (!sentimentComment.isEmpty()) {
+                                                 noteToSave = "• " + sentimentComment + "\n" + noteToSave;
+                                             }
+                                         } else if (!sentimentComment.isEmpty()) {
+                                             // Short/filtered call with no clean discussion points, but the AI
+                                             // still identified a clear outcome - that's more useful on its own
+                                             // than dumping the entire raw transcript underneath it.
+                                             noteToSave = "• " + sentimentComment + " (AI Auto-transcribed)";
+                                         } else {
+                                             noteToSave = "• " + transcript.trim() + " (AI Auto-transcribed, raw)";
                                          }
                                          db.insertNote(jobCallId, noteToSave, System.currentTimeMillis());
                                          if (summaryNote.isEmpty()) {

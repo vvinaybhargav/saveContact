@@ -103,9 +103,7 @@ public class CallActionReceiver extends BroadcastReceiver {
                                 }
                                 notes = sb.toString().trim();
                             }
-                            if (notes.isEmpty()) {
-                                notes = rawTranscript;
-                            }
+                            boolean notesFromDiscussionPoints = !notes.isEmpty();
 
                             String candidate = result.optString("candidate_name", "").trim();
                             String role = result.optString("applied_role", "").trim();
@@ -117,8 +115,16 @@ public class CallActionReceiver extends BroadcastReceiver {
                             String nextSteps = result.optString("next_steps", "").trim();
                             String sentimentComment = result.optString("sentiment_comment", "").trim();
                             if (sentimentComment.equalsIgnoreCase("null")) sentimentComment = "";
-                            if (!sentimentComment.isEmpty()) {
-                                notes = "• " + sentimentComment + "\n" + notes;
+                            if (notesFromDiscussionPoints) {
+                                if (!sentimentComment.isEmpty()) {
+                                    notes = "• " + sentimentComment + "\n" + notes;
+                                }
+                            } else if (!sentimentComment.isEmpty()) {
+                                // Short/filtered call with no clean discussion points, but the AI still
+                                // identified a clear outcome - more useful than dumping the raw transcript.
+                                notes = "• " + sentimentComment;
+                            } else {
+                                notes = rawTranscript;
                             }
                             String userInterestsCsv = context.getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE)
                                     .getString("user_talking_points", "").trim();
