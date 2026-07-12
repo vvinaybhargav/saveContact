@@ -64,7 +64,8 @@ public class AnalyticsActivity extends AppCompatActivity {
             case "Final Round": return 4;
             case "HR / Salary": return 5;
             case "Offered": return 6;
-            case "Rejected": return 0;
+            case "Not Interested":
+            case "Negative": return 0;
             default: return 1;
         }
     }
@@ -83,7 +84,7 @@ public class AnalyticsActivity extends AppCompatActivity {
             int rank = stageRank(c.getRoundStatus());
             if (rank >= 2) reachedInterview++;
             if ("Offered".equals(c.getRoundStatus())) offered++;
-            if ("Rejected".equals(c.getRoundStatus())) rejected++;
+            if ("Negative".equals(c.getRoundStatus()) || "Not Interested".equals(c.getRoundStatus())) rejected++;
         }
         ((TextView) findViewById(R.id.tv_interview_rate)).setText(pct(reachedInterview, total) + "%");
         ((TextView) findViewById(R.id.tv_offer_rate)).setText(pct(offered, total) + "%");

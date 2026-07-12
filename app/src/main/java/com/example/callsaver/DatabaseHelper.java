@@ -13,7 +13,7 @@ import java.util.List;
 public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "JobTracker.db";
-    private static final int DATABASE_VERSION = 8; // V8: note source (call vs. manual upload)
+    private static final int DATABASE_VERSION = 9; // V9: rename "Rejected" status to "Negative"
 
     public static final String TABLE_NAME = "job_calls";
     public static final String COLUMN_ID = "id";
@@ -124,6 +124,12 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             // jumping straight from <4 to 8 gets it for free via createNotesTableSql().
             db.execSQL("ALTER TABLE " + TABLE_NOTES + " ADD COLUMN " + COLUMN_NOTE_SOURCE
                     + " TEXT DEFAULT '" + NOTE_SOURCE_CALL + "'");
+        }
+        if (oldVersion < 9) {
+            // The "Rejected" round status was renamed to "Negative"; migrate existing rows.
+            ContentValues v = new ContentValues();
+            v.put(COLUMN_ROUND_STATUS, "Negative");
+            db.update(TABLE_NAME, v, COLUMN_ROUND_STATUS + "=?", new String[]{"Rejected"});
         }
     }
 
@@ -271,6 +277,83 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         cursor.close();
         db.close();
         return callsList;
+    }
+
+    /**
+     * Fetches all job call logs ordered by most recent activity (latest call-history
+     * entry, latest note, or the entry's own timestamp - whichever is newest), not by
+     * when the entry was first created. Used by the Tracker list.
+     */
+    public List<JobCall> getAllJobCallsSortedByRecentActivity() {
+        List<JobCall> callsList = new ArrayList<>();
+        String selectQuery = "SELECT jc.*, "
+                + "MAX(jc." + COLUMN_TIMESTAMP + ", "
+                + "COALESCE((SELECT MAX(" + COLUMN_HIST_TIME + ") FROM " + TABLE_HISTORY
+                + " WHERE " + COLUMN_HIST_JOB_ID + "=jc." + COLUMN_ID + "), 0), "
+                + "COALESCE((SELECT MAX(" + COLUMN_NOTE_TIME + ") FROM " + TABLE_NOTES
+                + " WHERE " + COLUMN_NOTE_JOB_ID + "=jc." + COLUMN_ID + "), 0)) AS last_activity "
+                + "FROM " + TABLE_NAME + " jc ORDER BY last_activity DESC";
+
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.rawQuery(selectQuery, null);
+
+        if (cursor.moveToFirst()) {
+            do {
+                JobCall call = new JobCall(
+                        cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_ID)),
+                        cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_PHONE_NUMBER)),
+                        cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_COMPANY_NAME)),
+                        cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_ROUND_STATUS)),
+                        cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_TAGS)),
+                        cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_NOTES)),
+                        cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_DURATION)),
+                        cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_TIMESTAMP))
+                );
+                call.setCandidateName(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_CANDIDATE_NAME)));
+                call.setAppliedRole(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_APPLIED_ROLE)));
+                call.setTentativeSchedule(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_TENTATIVE_SCHEDULE)));
+                call.setNoticePeriod(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_NOTICE_PERIOD)));
+                call.setMainAgenda(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_MAIN_AGENDA)));
+                call.setKeyDiscussionPoints(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_KEY_DISCUSSION_POINTS)));
+                call.setNextSteps(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_NEXT_STEPS)));
+                callsList.add(call);
+            } while (cursor.moveToNext());
+        }
+
+        cursor.close();
+        db.close();
+        return callsList;
+    }
+
+    /**
+     * Returns the first-ever logged timestamp for a job (its creation time - "first call"),
+     * and the most recent call-history/note activity time ("recent call"), for display.
+     * Returns {firstCallMillis, mostRecentCallMillis}; mostRecentCallMillis is 0 if there
+     * has been no call-history/note activity beyond the initial log.
+     */
+    public long[] getFirstAndRecentCallTimes(long jobId) {
+        long firstCall = 0;
+        long recentCall = 0;
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor c = db.query(TABLE_NAME, new String[]{COLUMN_TIMESTAMP}, COLUMN_ID + "=?",
+                new String[]{String.valueOf(jobId)}, null, null, null);
+        if (c != null) {
+            if (c.moveToFirst()) firstCall = c.getLong(0);
+            c.close();
+        }
+        Cursor c2 = db.rawQuery(
+                "SELECT MAX(t) FROM (SELECT MAX(" + COLUMN_HIST_TIME + ") AS t FROM " + TABLE_HISTORY
+                        + " WHERE " + COLUMN_HIST_JOB_ID + "=? UNION SELECT MAX(" + COLUMN_NOTE_TIME + ") FROM "
+                        + TABLE_NOTES + " WHERE " + COLUMN_NOTE_JOB_ID + "=?)",
+                new String[]{String.valueOf(jobId), String.valueOf(jobId)});
+        if (c2 != null) {
+            if (c2.moveToFirst() && !c2.isNull(0)) recentCall = c2.getLong(0);
+            c2.close();
+        }
+        db.close();
+        // "Recent call" only makes sense if there was activity AFTER the first log.
+        if (recentCall <= firstCall) recentCall = 0;
+        return new long[]{firstCall, recentCall};
     }
 
     /**

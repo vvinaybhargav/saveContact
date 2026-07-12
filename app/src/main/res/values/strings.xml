@@ -61,6 +61,7 @@
         <item>Final Round</item>
         <item>HR / Salary</item>
         <item>Offered</item>
-        <item>Rejected</item>
+        <item>Not Interested</item>
+        <item>Negative</item>
     </string-array>
 </resources>

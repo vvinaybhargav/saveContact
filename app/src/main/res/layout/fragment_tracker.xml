@@ -321,7 +321,8 @@
                     <TextView android:id="@+id/chip_final" android:text="Final Round" style="@style/TrackerChipStyle" />
                     <TextView android:id="@+id/chip_hr" android:text="HR / Salary" style="@style/TrackerChipStyle" />
                     <TextView android:id="@+id/chip_offered" android:text="Offered" style="@style/TrackerChipStyle" />
-                    <TextView android:id="@+id/chip_rejected" android:text="Rejected" style="@style/TrackerChipStyle" />
+                    <TextView android:id="@+id/chip_not_interested" android:text="Not Interested" style="@style/TrackerChipStyle" />
+                    <TextView android:id="@+id/chip_rejected" android:text="Negative" style="@style/TrackerChipStyle" />
                 </LinearLayout>
             </HorizontalScrollView>
 

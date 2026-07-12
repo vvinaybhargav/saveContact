@@ -315,7 +315,7 @@ public class CallerIdService extends Service {
         if (spinnerOverlayRound != null) {
             ArrayAdapter<String> roundAdapter = new ArrayAdapter<>(this,
                     android.R.layout.simple_spinner_item,
-                    new String[]{"Screening", "1st Round", "2nd Round", "Final Round", "HR / Salary", "Offered", "Rejected"});
+                    new String[]{"Screening", "1st Round", "2nd Round", "Final Round", "HR / Salary", "Offered", "Not Interested", "Negative"});
             roundAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
             spinnerOverlayRound.setAdapter(roundAdapter);
             

@@ -108,7 +108,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
     private android.content.SharedPreferences.OnSharedPreferenceChangeListener prefsListener;
     private String selectedStatus = "All";
     private TextView[] chips;
-    private final String[] statuses = {"All", "Screening", "1st Round", "2nd Round", "Final Round", "HR / Salary", "Offered", "Rejected"};
+    private final String[] statuses = {"All", "Screening", "1st Round", "2nd Round", "Final Round", "HR / Salary", "Offered", "Not Interested", "Negative"};
 
     private final String[] requiredPermissions = {
             Manifest.permission.READ_PHONE_STATE,
@@ -281,7 +281,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         int[] chipIds = {
                 R.id.chip_all, R.id.chip_screening, R.id.chip_1st_round,
                 R.id.chip_2nd_round, R.id.chip_final, R.id.chip_hr,
-                R.id.chip_offered, R.id.chip_rejected
+                R.id.chip_offered, R.id.chip_not_interested, R.id.chip_rejected
         };
 
         chips = new TextView[chipIds.length];
@@ -362,7 +362,9 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
      */
     public void refreshDashboardList() {
         if (dbHelper == null) return;
-        List<JobCall> updatedCalls = dbHelper.getAllJobCalls();
+        // Tracker list orders by most recent activity (latest call/note), not by
+        // when the entry was first created.
+        List<JobCall> updatedCalls = dbHelper.getAllJobCallsSortedByRecentActivity();
         allCallsList.clear();
         allCallsList.addAll(updatedCalls);
 
@@ -832,6 +834,15 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                 }
 
                 Toast.makeText(requireContext(), "Log updated!", Toast.LENGTH_SHORT).show();
+
+                // Stay on this dialog and show the updated result instead of closing -
+                // clear the note field (it's now saved) and refresh the call-history
+                // timeline and the list behind the dialog.
+                activeDialogManualUploadUsed = false;
+                if (etNotes != null) etNotes.setText("");
+                populateTimeline(llNotesTimeline, labelNotes, editCall.getId());
+                refreshDashboardList();
+                return;
             } else {
                 // Insert mode
                 // Deduplicate check

@@ -94,7 +94,7 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
 
         for (JobCall c : allCalls) {
             String status = c.getRoundStatus();
-            if (status != null && (status.equals("Rejected") || status.equals("Offered"))) {
+            if (status != null && (status.equals("Negative") || status.equals("Not Interested") || status.equals("Offered"))) {
                 continue;
             }
 

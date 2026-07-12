@@ -130,7 +130,8 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
         }
         
         switch (status) {
-            case "Rejected":
+            case "Negative":
+            case "Not Interested":
                 textColor = context.getResources().getColor(R.color.status_error);
                 bgColor = context.getResources().getColor(R.color.status_red_bg);
                 break;
