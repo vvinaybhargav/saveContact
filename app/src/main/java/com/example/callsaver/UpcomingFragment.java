@@ -309,7 +309,9 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
 
         View tvDialogManualRecording = dialogView.findViewById(R.id.tv_dialog_manual_recording);
         if (tvDialogManualRecording != null) {
-            tvDialogManualRecording.setOnClickListener(v -> showManualRecordingDialogForNotesField(etNotes));
+            Long autoSaveJobId = (editCall != null && editCall.getId() > 0) ? (long) editCall.getId() : null;
+            tvDialogManualRecording.setOnClickListener(v -> showManualRecordingDialogForNotesField(etNotes, autoSaveJobId,
+                    llNotesTimeline, labelNotes, llSkillsMatchSection, tvSkillsMatching, tvSkillsNotMatching));
         }
 
         tilNotes.setEndIconOnClickListener(v -> {
@@ -505,7 +507,10 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
         datePickerDialog.show();
     }
 
-    private void showManualRecordingDialogForNotesField(final EditText etNotesField) {
+    private void showManualRecordingDialogForNotesField(final EditText etNotesField, final Long autoSaveJobId,
+                                                          final LinearLayout timelineContainer, final View timelineLabel,
+                                                          final View skillsSection, final TextView tvSkillsMatchingRef,
+                                                          final TextView tvSkillsNotMatchingRef) {
         if (getContext() == null || etNotesField == null) return;
 
         File[] candidateDirs = new File[] {
@@ -639,15 +644,75 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
                                             etNext.setText(nextStepsVal);
                                         }
 
+                                        String notesFromPoints = "";
                                         if (result.has("key_discussion_points")) {
                                             JSONArray arr = result.getJSONArray("key_discussion_points");
                                             StringBuilder sb = new StringBuilder();
                                             for (int i = 0; i < arr.length(); i++) {
                                                 sb.append("• ").append(arr.getString(i)).append("\n");
                                             }
-                                            etNotesField.setText(sb.toString().trim());
+                                            notesFromPoints = sb.toString().trim();
+                                            etNotesField.setText(notesFromPoints);
                                         }
-                                        Toast.makeText(requireContext(), "AI fields updated successfully!", Toast.LENGTH_SHORT).show();
+
+                                        // Auto-save straight to the DB, same as a real call - the user
+                                        // shouldn't have to also remember to tap Update after uploading a
+                                        // recording. Only possible for an existing lead.
+                                        if (autoSaveJobId != null && dbHelper != null) {
+                                            JobCall current = dbHelper.getJobCallById(autoSaveJobId);
+                                            if (current != null) {
+                                                if (!company.isEmpty() && current.getCompanyName().isEmpty()) current.setCompanyName(company);
+                                                if (!role.isEmpty() && current.getAppliedRole().isEmpty()) current.setAppliedRole(role);
+                                                if (!candidate.isEmpty() && current.getCandidateName().isEmpty()) current.setCandidateName(candidate);
+                                                if (!schedule.isEmpty()) current.setTentativeSchedule(schedule);
+                                                String normalizedRound = OpenAiClient.normalizeRoundStatus(round, current.getRoundStatus());
+                                                if (OpenAiClient.shouldUpdateRoundStatus(current.getRoundStatus(), normalizedRound)) {
+                                                    current.setRoundStatus(normalizedRound);
+                                                }
+                                                String sentimentComment = optClean(result, "sentiment_comment", "");
+                                                String userInterestsCsv = getContext() == null ? "" : getContext()
+                                                        .getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE)
+                                                        .getString("user_talking_points", "").trim();
+                                                String[] reconciled = SkillMatchUtils.reconcileWithInterests(userInterestsCsv,
+                                                        OpenAiClient.jsonArrayToCsv(result, "matching_skills"),
+                                                        OpenAiClient.jsonArrayToCsv(result, "not_matching_skills"));
+                                                if (!reconciled[0].isEmpty() || !reconciled[1].isEmpty()) {
+                                                    current.setMatchingSkills(SkillMatchUtils.mergeSkillListExcluding(
+                                                            current.getMatchingSkills(), reconciled[0], reconciled[1]));
+                                                    current.setNotMatchingSkills(SkillMatchUtils.mergeSkillListExcluding(
+                                                            current.getNotMatchingSkills(), reconciled[1], current.getMatchingSkills()));
+                                                }
+                                                dbHelper.updateJobCall(current);
+
+                                                String noteToSave = !notesFromPoints.isEmpty()
+                                                        ? notesFromPoints + " (AI Auto-transcribed)"
+                                                        : (!sentimentComment.isEmpty()
+                                                                ? "• " + sentimentComment + " (AI Auto-transcribed)"
+                                                                : "• " + text.trim() + " (AI Auto-transcribed, raw)");
+                                                if (!notesFromPoints.isEmpty() && !sentimentComment.isEmpty()) {
+                                                    noteToSave = "• " + sentimentComment + "\n" + noteToSave;
+                                                }
+                                                dbHelper.insertNote(autoSaveJobId, noteToSave, System.currentTimeMillis(), DatabaseHelper.NOTE_SOURCE_MANUAL);
+
+                                                etNotesField.setText("");
+                                                if (etSched != null && !schedule.isEmpty()) {
+                                                    etSched.setText(current.getTentativeSchedule());
+                                                }
+                                                if (spinRound != null) {
+                                                    ArrayAdapter<CharSequence> adapter = (ArrayAdapter<CharSequence>) spinRound.getAdapter();
+                                                    if (adapter != null) {
+                                                        int pos = adapter.getPosition(current.getRoundStatus());
+                                                        spinRound.setSelection(pos >= 0 ? pos : 0);
+                                                    }
+                                                }
+                                                populateTimeline(timelineContainer, timelineLabel, autoSaveJobId);
+                                                populateSkillsMatch(skillsSection, tvSkillsMatchingRef, tvSkillsNotMatchingRef, current);
+                                                loadUpcomingInterviews();
+                                                Toast.makeText(requireContext(), "Call logged automatically!", Toast.LENGTH_SHORT).show();
+                                            }
+                                        } else {
+                                            Toast.makeText(requireContext(), "AI fields updated successfully!", Toast.LENGTH_SHORT).show();
+                                        }
                                     } catch (Exception e) {
                                         etNotesField.setText(text);
                                         Toast.makeText(requireContext(), "AI analysis failed. Pre-filled raw transcription.", Toast.LENGTH_LONG).show();
