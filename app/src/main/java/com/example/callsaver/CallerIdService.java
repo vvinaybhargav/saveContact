@@ -194,7 +194,7 @@ public class CallerIdService extends Service {
             tvNotesTimeline.setText("• Not saved in Tracker yet.");
         } else {
             StringBuilder collapsedSb = new StringBuilder();
-            int pointsToShow = Math.min(allCleanedPoints.size(), 4);
+            int pointsToShow = Math.min(allCleanedPoints.size(), 3);
             for (int i = 0; i < pointsToShow; i++) {
                 if (collapsedSb.length() > 0) {
                     collapsedSb.append("\n");
@@ -270,11 +270,35 @@ public class CallerIdService extends Service {
             }
         }
 
+        // Bind Call History (first log / most recent call timestamps) - only shown
+        // when the notes section is expanded, not in the default collapsed view.
+        View llRecentCall = overlayView.findViewById(R.id.ll_overlay_recent_call_container);
+        TextView tvRecentCall = overlayView.findViewById(R.id.tv_overlay_recent_call);
+        DatabaseHelper dbHelper = new DatabaseHelper(this);
+        boolean hasRecentCallData = false;
+        if (llRecentCall != null && tvRecentCall != null && jobCallId != -1) {
+            long[] times = dbHelper.getFirstAndRecentCallTimes(jobCallId);
+            if (times[0] > 0) {
+                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("dd MMM, hh:mm a", java.util.Locale.getDefault());
+                String firstCallText = sdf.format(new java.util.Date(times[0]));
+                String recentCallText = times[1] > 0 ? sdf.format(new java.util.Date(times[1])) : "NA";
+                tvRecentCall.setText("First call - " + firstCallText + "  |  Recent call - " + recentCallText);
+                hasRecentCallData = true;
+            }
+        }
+        if (llRecentCall != null) {
+            llRecentCall.setVisibility(View.GONE);
+        }
+        final boolean finalHasRecentCallData = hasRecentCallData;
+
         // Hook click listeners
         if (btnExpand != null && btnCollapse != null && llCollapsedNotes != null && llExpandedNotes != null) {
             btnExpand.setOnClickListener(v -> {
                 llCollapsedNotes.setVisibility(View.GONE);
                 llExpandedNotes.setVisibility(View.VISIBLE);
+                if (llRecentCall != null) {
+                    llRecentCall.setVisibility(finalHasRecentCallData ? View.VISIBLE : View.GONE);
+                }
                 // Also expand window layout height to fit
                 params.height = WindowManager.LayoutParams.WRAP_CONTENT;
                 try {
@@ -286,6 +310,9 @@ public class CallerIdService extends Service {
             btnCollapse.setOnClickListener(v -> {
                 llCollapsedNotes.setVisibility(View.VISIBLE);
                 llExpandedNotes.setVisibility(View.GONE);
+                if (llRecentCall != null) {
+                    llRecentCall.setVisibility(View.GONE);
+                }
                 params.height = WindowManager.LayoutParams.WRAP_CONTENT;
                 try {
                     windowManager.updateViewLayout(overlayView, params);
@@ -293,36 +320,6 @@ public class CallerIdService extends Service {
                     e.printStackTrace();
                 }
             });
-        }
-
-        // Bind and populate Talking Points highlights (a.k.a "My Interests" from Settings)
-        View llHighlights = overlayView.findViewById(R.id.ll_overlay_highlights_container);
-        TextView tvHighlights = overlayView.findViewById(R.id.tv_overlay_highlights);
-        if (llHighlights != null && tvHighlights != null) {
-            String highlights = getSharedPreferences("CallSaverPrefs", MODE_PRIVATE).getString("user_talking_points", "").trim();
-            if (!highlights.isEmpty()) {
-                tvHighlights.setText(highlights);
-                llHighlights.setVisibility(View.VISIBLE);
-            } else {
-                llHighlights.setVisibility(View.GONE);
-            }
-        }
-
-        // Bind and populate Call History (first log / most recent call timestamps)
-        View llRecentCall = overlayView.findViewById(R.id.ll_overlay_recent_call_container);
-        TextView tvRecentCall = overlayView.findViewById(R.id.tv_overlay_recent_call);
-        DatabaseHelper dbHelper = new DatabaseHelper(this);
-        if (llRecentCall != null && tvRecentCall != null && jobCallId != -1) {
-            long[] times = dbHelper.getFirstAndRecentCallTimes(jobCallId);
-            if (times[0] > 0) {
-                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("dd MMM, hh:mm a", java.util.Locale.getDefault());
-                String firstCallText = sdf.format(new java.util.Date(times[0]));
-                String recentCallText = times[1] > 0 ? sdf.format(new java.util.Date(times[1])) : "NA";
-                tvRecentCall.setText("First call - " + firstCallText + "  |  Recent call - " + recentCallText);
-                llRecentCall.setVisibility(View.VISIBLE);
-            } else {
-                llRecentCall.setVisibility(View.GONE);
-            }
         }
 
         // Bind and populate Skills Match (Matching / Not Matching vs. My Interests)
@@ -374,25 +371,6 @@ public class CallerIdService extends Service {
                     }
                 }
             }
-        }
-
-        TextView tvEditBtn = overlayView.findViewById(R.id.tv_overlay_edit_button);
-        TextView tvEditBtnExp = overlayView.findViewById(R.id.tv_overlay_edit_button_expanded);
-
-        View.OnClickListener editClickListener = v -> {
-            Intent editIntent = new Intent(this, SaveContactActivity.class);
-            editIntent.putExtra("phone_number", phoneNumber);
-            editIntent.putExtra("duration", 0);
-            editIntent.putExtra("timestamp", System.currentTimeMillis());
-            editIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-            startActivity(editIntent);
-        };
-
-        if (tvEditBtn != null) {
-            tvEditBtn.setOnClickListener(editClickListener);
-        }
-        if (tvEditBtnExp != null) {
-            tvEditBtnExp.setOnClickListener(editClickListener);
         }
 
         if (btnOverlayCancelNote != null && llOverlayEditPanel != null) {

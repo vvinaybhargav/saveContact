@@ -135,30 +135,14 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
-                    android:gravity="center_vertical"
+                    android:gravity="center_vertical|end"
                     android:layout_marginTop="6dp">
-
-                    <TextView
-                        android:id="@+id/tv_overlay_edit_button"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="✎ Edit Lead"
-                        android:textColor="@color/accent_indigo"
-                        android:textSize="12sp"
-                        android:textStyle="bold"
-                        android:clickable="true"
-                        android:focusable="true" />
-
-                    <View
-                        android:layout_width="0dp"
-                        android:layout_height="1dp"
-                        android:layout_weight="1" />
 
                     <TextView
                         android:id="@+id/tv_overlay_expand_button"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Expand Notes ∨"
+                        android:text="Expand Notes"
                         android:textColor="@color/accent_indigo"
                         android:textSize="12sp"
                         android:textStyle="bold"
@@ -186,73 +170,20 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
-                    android:gravity="center_vertical"
+                    android:gravity="center_vertical|end"
                     android:layout_marginTop="6dp">
-
-                    <TextView
-                        android:id="@+id/tv_overlay_edit_button_expanded"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="✎ Edit Lead"
-                        android:textColor="@color/accent_indigo"
-                        android:textSize="12sp"
-                        android:textStyle="bold"
-                        android:clickable="true"
-                        android:focusable="true" />
-
-                    <View
-                        android:layout_width="0dp"
-                        android:layout_height="1dp"
-                        android:layout_weight="1" />
 
                     <TextView
                         android:id="@+id/tv_overlay_collapse_button"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Collapse Notes ∧"
+                        android:text="Collapse Notes"
                         android:textColor="@color/accent_indigo"
                         android:textSize="12sp"
                         android:textStyle="bold"
                         android:clickable="true"
                         android:focusable="true"/>
                 </LinearLayout>
-            </LinearLayout>
-
-            <!-- Talking Points (Highlights) Section -->
-            <LinearLayout
-                android:id="@+id/ll_overlay_highlights_container"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:layout_marginTop="12dp"
-                android:visibility="gone">
-
-                <!-- Divider -->
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="@color/divider"
-                    android:layout_marginBottom="12dp" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="💡 TALKING POINTS"
-                    android:textColor="@color/text_muted"
-                    android:textSize="10sp"
-                    android:textStyle="bold"
-                    android:letterSpacing="0.05"
-                    android:layout_marginBottom="6dp" />
-
-                <TextView
-                    android:id="@+id/tv_overlay_highlights"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Key highlights to mention..."
-                    android:textColor="@color/accent_indigo"
-                    android:textSize="13sp"
-                    android:textStyle="bold"
-                    android:lineSpacingMultiplier="1.2" />
             </LinearLayout>
 
             <!-- Recent Call Info Section (first log / most recent call timestamps) -->
