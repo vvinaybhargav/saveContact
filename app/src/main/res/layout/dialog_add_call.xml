@@ -442,6 +442,17 @@
             style="@style/Widget.MaterialComponents.Button.TextButton"
             android:visibility="gone" />
 
+        <!-- Preview the in-call banner for this lead (Only for edits) -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_dialog_show_banner"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:text="Show Banner"
+            android:textAllCaps="false"
+            android:textColor="@color/accent_indigo"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:visibility="gone" />
+
         <!-- Spacer View to push cancel and save to the right -->
         <View
             android:layout_width="0dp"

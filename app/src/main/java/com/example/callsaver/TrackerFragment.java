@@ -659,6 +659,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         Button btnDelete = dialogView.findViewById(R.id.btn_dialog_delete);
         Button btnSaveContacts = dialogView.findViewById(R.id.btn_dialog_save_contacts);
         Button btnReminder = dialogView.findViewById(R.id.btn_dialog_reminder);
+        Button btnShowBanner = dialogView.findViewById(R.id.btn_dialog_show_banner);
 
         TextInputLayout tilNotes = dialogView.findViewById(R.id.til_notes);
 
@@ -725,6 +726,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             btnSave.setText(R.string.btn_update);
             btnDelete.setVisibility(View.VISIBLE);
             btnReminder.setVisibility(View.VISIBLE);
+            btnShowBanner.setVisibility(View.VISIBLE);
 
             // Show/hide 'Save to Contacts' button based on existence (disabled, always hide)
             btnSaveContacts.setVisibility(View.GONE);
@@ -740,6 +742,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             btnDelete.setVisibility(View.GONE);
             btnSaveContacts.setVisibility(View.GONE);
             btnReminder.setVisibility(View.GONE);
+            btnShowBanner.setVisibility(View.GONE);
             if (editCall != null) {
                 etPhone.setText(editCall.getPhoneNumber());
                 
@@ -789,6 +792,31 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             } catch (Exception e) {
                 Toast.makeText(requireContext(), "Could not open Calendar app", Toast.LENGTH_SHORT).show();
             }
+        });
+
+        // Preview the in-call banner using whatever is currently in the dialog's fields
+        // (not just the last-saved DB state), so edits can be checked before saving.
+        btnShowBanner.setOnClickListener(v -> {
+            if (editCall == null || editCall.getId() <= 0) return;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !android.provider.Settings.canDrawOverlays(requireContext())) {
+                Toast.makeText(requireContext(), "Overlay permission is required to show the banner. Enable it in Settings.", Toast.LENGTH_LONG).show();
+                return;
+            }
+            String previewPhone = etPhone.getText().toString().trim();
+            if (previewPhone.isEmpty()) previewPhone = editCall.getPhoneNumber();
+            Intent overlayIntent = new Intent(requireContext(), CallerIdService.class);
+            overlayIntent.putExtra("phone_number", previewPhone);
+            overlayIntent.putExtra("company_name", etCompany.getText().toString().trim());
+            overlayIntent.putExtra("round_status", spinnerRound.getSelectedItem() != null ? spinnerRound.getSelectedItem().toString() : editCall.getRoundStatus());
+            overlayIntent.putExtra("tags", etTags != null ? etTags.getText().toString().trim() : editCall.getTags());
+            overlayIntent.putExtra("job_call_id", (long) editCall.getId());
+            overlayIntent.putExtra("recruiter_name", etRecruiter.getText().toString().trim());
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                requireContext().startForegroundService(overlayIntent);
+            } else {
+                requireContext().startService(overlayIntent);
+            }
+            Toast.makeText(requireContext(), "Showing banner preview - swipe it away or tap its notification to dismiss.", Toast.LENGTH_LONG).show();
         });
 
         // Delete click action

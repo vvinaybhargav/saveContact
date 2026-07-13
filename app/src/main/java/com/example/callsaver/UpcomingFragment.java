@@ -5,6 +5,7 @@ import android.app.TimePickerDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.os.Build;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -300,6 +301,7 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
         Button btnDelete = dialogView.findViewById(R.id.btn_dialog_delete);
         Button btnSaveContacts = dialogView.findViewById(R.id.btn_dialog_save_contacts);
         Button btnReminder = dialogView.findViewById(R.id.btn_dialog_reminder);
+        Button btnShowBanner = dialogView.findViewById(R.id.btn_dialog_show_banner);
         TextInputLayout tilNotes = dialogView.findViewById(R.id.til_notes);
 
         activeDialogNotesField = etNotes;
@@ -337,6 +339,7 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
             btnDelete.setVisibility(View.VISIBLE);
             btnSaveContacts.setVisibility(View.VISIBLE);
             btnReminder.setVisibility(View.VISIBLE);
+            btnShowBanner.setVisibility(View.VISIBLE);
 
             etPhone.setText(editCall.getPhoneNumber());
             etCompany.setText(editCall.getCompanyName());
@@ -396,12 +399,35 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
                 startActivity(calendarIntent);
             });
 
+            btnShowBanner.setOnClickListener(v -> {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !android.provider.Settings.canDrawOverlays(requireContext())) {
+                    Toast.makeText(requireContext(), "Overlay permission is required to show the banner. Enable it in Settings.", Toast.LENGTH_LONG).show();
+                    return;
+                }
+                String previewPhone = etPhone.getText().toString().trim();
+                if (previewPhone.isEmpty()) previewPhone = editCall.getPhoneNumber();
+                Intent overlayIntent = new Intent(requireContext(), CallerIdService.class);
+                overlayIntent.putExtra("phone_number", previewPhone);
+                overlayIntent.putExtra("company_name", etCompany.getText().toString().trim());
+                overlayIntent.putExtra("round_status", spinnerRound.getSelectedItem() != null ? spinnerRound.getSelectedItem().toString() : editCall.getRoundStatus());
+                overlayIntent.putExtra("tags", "");
+                overlayIntent.putExtra("job_call_id", (long) editCall.getId());
+                overlayIntent.putExtra("recruiter_name", etRecruiter.getText().toString().trim());
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    requireContext().startForegroundService(overlayIntent);
+                } else {
+                    requireContext().startService(overlayIntent);
+                }
+                Toast.makeText(requireContext(), "Showing banner preview - swipe it away or tap its notification to dismiss.", Toast.LENGTH_LONG).show();
+            });
+
         } else {
             dialogTitle.setText("Add Recruiter Lead");
             btnSave.setText("Save");
             btnDelete.setVisibility(View.GONE);
             btnSaveContacts.setVisibility(View.GONE);
             btnReminder.setVisibility(View.GONE);
+            btnShowBanner.setVisibility(View.GONE);
         }
 
         AlertDialog dialog = builder.create();
