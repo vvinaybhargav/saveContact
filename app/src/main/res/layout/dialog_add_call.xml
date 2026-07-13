@@ -402,62 +402,83 @@
         android:layout_marginTop="8dp"
         android:layout_marginBottom="16dp" />
 
-    <!-- Actions Row -->
+    <!-- Utility Actions Row (scrollable so it can never push Cancel/Update off-screen) -->
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <!-- Delete (Only for edits) -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_dialog_delete"
+                android:layout_width="wrap_content"
+                android:layout_height="44dp"
+                android:text="@string/btn_delete"
+                android:textAllCaps="false"
+                android:textSize="12sp"
+                android:minWidth="0dp"
+                android:paddingHorizontal="10dp"
+                android:textColor="@color/status_error"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:visibility="gone" />
+
+            <!-- Save to Phone Contacts (Only for edits) -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_dialog_save_contacts"
+                android:layout_width="wrap_content"
+                android:layout_height="44dp"
+                android:text="Contacts"
+                android:textAllCaps="false"
+                android:textSize="12sp"
+                android:minWidth="0dp"
+                android:paddingHorizontal="10dp"
+                android:textColor="@color/accent_indigo"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:visibility="gone" />
+
+            <!-- Schedule Follow-up Reminder (Only for edits) -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_dialog_reminder"
+                android:layout_width="wrap_content"
+                android:layout_height="44dp"
+                android:text="Follow-up"
+                android:textAllCaps="false"
+                android:textSize="12sp"
+                android:minWidth="0dp"
+                android:paddingHorizontal="10dp"
+                android:textColor="@color/accent_indigo"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:visibility="gone" />
+
+            <!-- Preview the in-call banner for this lead (Only for edits) -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_dialog_show_banner"
+                android:layout_width="wrap_content"
+                android:layout_height="44dp"
+                android:text="Banner"
+                android:textAllCaps="false"
+                android:textSize="12sp"
+                android:minWidth="0dp"
+                android:paddingHorizontal="10dp"
+                android:textColor="@color/accent_indigo"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:visibility="gone" />
+        </LinearLayout>
+    </HorizontalScrollView>
+
+    <!-- Cancel / Update Row (always fully visible, own row) -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="center_vertical|end">
-
-        <!-- Delete (Only for edits) -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_dialog_delete"
-            android:layout_width="wrap_content"
-            android:layout_height="48dp"
-            android:text="@string/btn_delete"
-            android:textAllCaps="false"
-            android:textColor="@color/status_error"
-            style="@style/Widget.MaterialComponents.Button.TextButton"
-            android:visibility="gone" />
-
-        <!-- Save to Phone Contacts (Only for edits) -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_dialog_save_contacts"
-            android:layout_width="wrap_content"
-            android:layout_height="48dp"
-            android:text="Save to Contacts"
-            android:textAllCaps="false"
-            android:textColor="@color/accent_indigo"
-            style="@style/Widget.MaterialComponents.Button.TextButton"
-            android:visibility="gone" />
-
-        <!-- Schedule Follow-up Reminder (Only for edits) -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_dialog_reminder"
-            android:layout_width="wrap_content"
-            android:layout_height="48dp"
-            android:text="Schedule Follow-up"
-            android:textAllCaps="false"
-            android:textColor="@color/accent_indigo"
-            style="@style/Widget.MaterialComponents.Button.TextButton"
-            android:visibility="gone" />
-
-        <!-- Preview the in-call banner for this lead (Only for edits) -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_dialog_show_banner"
-            android:layout_width="wrap_content"
-            android:layout_height="48dp"
-            android:text="Show Banner"
-            android:textAllCaps="false"
-            android:textColor="@color/accent_indigo"
-            style="@style/Widget.MaterialComponents.Button.TextButton"
-            android:visibility="gone" />
-
-        <!-- Spacer View to push cancel and save to the right -->
-        <View
-            android:layout_width="0dp"
-            android:layout_height="0dp"
-            android:layout_weight="1" />
+        android:gravity="center_vertical|end"
+        android:layout_marginTop="8dp">
 
         <!-- Cancel -->
         <com.google.android.material.button.MaterialButton
