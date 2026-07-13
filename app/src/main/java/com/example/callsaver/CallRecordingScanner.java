@@ -27,13 +27,7 @@ public class CallRecordingScanner {
             return null;
         }
 
-        File[] candidateDirs = new File[] {
-                new File(Environment.getExternalStorageDirectory(), "Music/Recordings/Call Recordings"),
-                new File(Environment.getExternalStorageDirectory(), "Recordings/Call"),
-                new File(Environment.getExternalStorageDirectory(), "Recordings/Call Recordings"),
-                new File(Environment.getExternalStorageDirectory(), "Recordings"),
-                new File(Environment.getExternalStorageDirectory(), "Music/Recordings")
-        };
+        File[] candidateDirs = buildCandidateDirs(context);
 
         File bestFile = null;
         long closestDiff = Long.MAX_VALUE;
@@ -104,5 +98,36 @@ public class CallRecordingScanner {
         }
 
         return bestFile;
+    }
+
+    /** Same folder list as the auto-scanner, exposed for the manual "browse recordings" pickers. */
+    public static File[] getCandidateDirsForBrowsing(Context context) {
+        return buildCandidateDirs(context);
+    }
+
+    /**
+     * Builds the list of folders to scan, with the user's custom folder (Settings >
+     * Call Recording Folder), if set, checked first so it takes priority over the
+     * built-in defaults.
+     */
+    private static File[] buildCandidateDirs(Context context) {
+        java.util.List<File> dirs = new java.util.ArrayList<>();
+
+        String customPath = context.getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE)
+                .getString("custom_recording_folder", "").trim();
+        if (!customPath.isEmpty()) {
+            File customDir = customPath.startsWith("/")
+                    ? new File(customPath)
+                    : new File(Environment.getExternalStorageDirectory(), customPath);
+            dirs.add(customDir);
+        }
+
+        dirs.add(new File(Environment.getExternalStorageDirectory(), "Music/Recordings/Call Recordings"));
+        dirs.add(new File(Environment.getExternalStorageDirectory(), "Recordings/Call"));
+        dirs.add(new File(Environment.getExternalStorageDirectory(), "Recordings/Call Recordings"));
+        dirs.add(new File(Environment.getExternalStorageDirectory(), "Recordings"));
+        dirs.add(new File(Environment.getExternalStorageDirectory(), "Music/Recordings"));
+
+        return dirs.toArray(new File[0]);
     }
 }

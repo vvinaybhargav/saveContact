@@ -24,7 +24,9 @@ public class SettingsActivity extends AppCompatActivity {
     private EditText etDeepgramKey;
     private EditText etUserName;
     private EditText etUserInterests;
+    private EditText etRecordingFolder;
     private static final int REQ_CODE_INTERESTS_SPEECH = 700;
+    private static final int REQ_CODE_BROWSE_FOLDER = 701;
     private SwitchMaterial switchAutoTranscribe;
     private Button btnSave;
     private Button btnAnalytics;
@@ -55,6 +57,8 @@ public class SettingsActivity extends AppCompatActivity {
         etUserName = findViewById(R.id.settings_user_name);
         etUserInterests = findViewById(R.id.settings_user_interests);
         com.google.android.material.textfield.TextInputLayout tilInterests = findViewById(R.id.til_settings_interests);
+        etRecordingFolder = findViewById(R.id.settings_recording_folder);
+        Button btnBrowseFolder = findViewById(R.id.btn_browse_recording_folder);
         switchAutoTranscribe = findViewById(R.id.switch_auto_transcribe);
         btnSave = findViewById(R.id.btn_settings_save_keys);
         btnAnalytics = findViewById(R.id.btn_settings_analytics);
@@ -68,6 +72,7 @@ public class SettingsActivity extends AppCompatActivity {
         etDeepgramKey.setText(prefs.getString("deepgram_api_key", ""));
         etUserName.setText(prefs.getString("user_full_name", ""));
         etUserInterests.setText(prefs.getString("user_talking_points", ""));
+        etRecordingFolder.setText(prefs.getString("custom_recording_folder", ""));
         switchAutoTranscribe.setChecked(prefs.getBoolean("auto_transcribe_background", true));
 
         // Setup save action
@@ -76,6 +81,7 @@ public class SettingsActivity extends AppCompatActivity {
             String deepgram = etDeepgramKey.getText().toString().trim();
             String userName = etUserName.getText().toString().trim();
             String interests = etUserInterests.getText().toString().trim();
+            String recordingFolder = etRecordingFolder.getText().toString().trim();
             boolean autoTranscribe = switchAutoTranscribe.isChecked();
 
             prefs.edit()
@@ -83,10 +89,22 @@ public class SettingsActivity extends AppCompatActivity {
                     .putString("deepgram_api_key", deepgram)
                     .putString("user_full_name", userName)
                     .putString("user_talking_points", interests)
+                    .putString("custom_recording_folder", recordingFolder)
                     .putBoolean("auto_transcribe_background", autoTranscribe)
                     .apply();
 
             Toast.makeText(this, "Settings saved successfully!", Toast.LENGTH_SHORT).show();
+        });
+
+        // Browse for the recording folder using the system folder picker.
+        btnBrowseFolder.setOnClickListener(v -> {
+            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            try {
+                startActivityForResult(intent, REQ_CODE_BROWSE_FOLDER);
+            } catch (Exception e) {
+                Toast.makeText(this, "No file picker available on this device.", Toast.LENGTH_SHORT).show();
+            }
         });
 
         // Mic input for My Interests
@@ -172,6 +190,38 @@ public class SettingsActivity extends AppCompatActivity {
                 etUserInterests.setText(current.isEmpty() ? spoken : current + " " + spoken);
                 etUserInterests.setSelection(etUserInterests.getText().length());
             }
+        } else if (requestCode == REQ_CODE_BROWSE_FOLDER && resultCode == RESULT_OK && data != null) {
+            android.net.Uri treeUri = data.getData();
+            if (treeUri != null) {
+                String path = pathFromTreeUri(treeUri);
+                if (path != null) {
+                    etRecordingFolder.setText(path);
+                } else {
+                    Toast.makeText(this, "That folder isn't on internal storage - type the path manually instead.", Toast.LENGTH_LONG).show();
+                }
+            }
+        }
+    }
+
+    /**
+     * Converts a SAF tree Uri picked via ACTION_OPEN_DOCUMENT_TREE into a plain
+     * filesystem path, so the scanner (which reads java.io.File directly, relying on
+     * the app's All-Files-Access permission) can use it. Only works for folders on
+     * the device's primary internal storage - external SD cards aren't resolvable
+     * to a raw path this way, so the user is told to type it manually in that case.
+     */
+    private String pathFromTreeUri(android.net.Uri treeUri) {
+        try {
+            String docId = android.provider.DocumentsContract.getTreeDocumentId(treeUri);
+            String[] split = docId.split(":");
+            if (split.length == 0) return null;
+            String type = split[0];
+            if (!"primary".equalsIgnoreCase(type)) return null;
+            String relativePath = split.length > 1 ? split[1] : "";
+            String base = android.os.Environment.getExternalStorageDirectory().getAbsolutePath();
+            return relativePath.isEmpty() ? base : base + "/" + relativePath;
+        } catch (Exception e) {
+            return null;
         }
     }
 

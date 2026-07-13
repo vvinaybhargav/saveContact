@@ -513,13 +513,7 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
                                                           final TextView tvSkillsNotMatchingRef) {
         if (getContext() == null || etNotesField == null) return;
 
-        File[] candidateDirs = new File[] {
-                new File(android.os.Environment.getExternalStorageDirectory(), "Music/Recordings/Call Recordings"),
-                new File(android.os.Environment.getExternalStorageDirectory(), "Recordings/Call"),
-                new File(android.os.Environment.getExternalStorageDirectory(), "Recordings/Call Recordings"),
-                new File(android.os.Environment.getExternalStorageDirectory(), "Recordings"),
-                new File(android.os.Environment.getExternalStorageDirectory(), "Music/Recordings")
-        };
+        File[] candidateDirs = CallRecordingScanner.getCandidateDirsForBrowsing(requireContext());
 
         final List<File> audioFiles = new ArrayList<>();
         for (File dir : candidateDirs) {
