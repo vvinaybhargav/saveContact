@@ -442,20 +442,6 @@
                 style="@style/Widget.MaterialComponents.Button.TextButton"
                 android:visibility="gone" />
 
-            <!-- Schedule Follow-up Reminder (Only for edits) -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_dialog_reminder"
-                android:layout_width="wrap_content"
-                android:layout_height="44dp"
-                android:text="Follow-up"
-                android:textAllCaps="false"
-                android:textSize="12sp"
-                android:minWidth="0dp"
-                android:paddingHorizontal="10dp"
-                android:textColor="@color/accent_indigo"
-                style="@style/Widget.MaterialComponents.Button.TextButton"
-                android:visibility="gone" />
-
             <!-- Preview the in-call banner for this lead (Only for edits) -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_dialog_show_banner"

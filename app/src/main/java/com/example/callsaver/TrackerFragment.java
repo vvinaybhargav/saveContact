@@ -658,7 +658,6 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         Button btnSave = dialogView.findViewById(R.id.btn_dialog_save);
         Button btnDelete = dialogView.findViewById(R.id.btn_dialog_delete);
         Button btnSaveContacts = dialogView.findViewById(R.id.btn_dialog_save_contacts);
-        Button btnReminder = dialogView.findViewById(R.id.btn_dialog_reminder);
         Button btnShowBanner = dialogView.findViewById(R.id.btn_dialog_show_banner);
 
         TextInputLayout tilNotes = dialogView.findViewById(R.id.til_notes);
@@ -725,7 +724,6 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             populateSkillsMatch(llSkillsMatchSection, tvSkillsMatching, tvSkillsNotMatching, editCall);
             btnSave.setText(R.string.btn_update);
             btnDelete.setVisibility(View.VISIBLE);
-            btnReminder.setVisibility(View.VISIBLE);
             btnShowBanner.setVisibility(View.VISIBLE);
 
             // Show/hide 'Save to Contacts' button based on existence (disabled, always hide)
@@ -741,7 +739,6 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             btnSave.setText(R.string.btn_add);
             btnDelete.setVisibility(View.GONE);
             btnSaveContacts.setVisibility(View.GONE);
-            btnReminder.setVisibility(View.GONE);
             btnShowBanner.setVisibility(View.GONE);
             if (editCall != null) {
                 etPhone.setText(editCall.getPhoneNumber());
@@ -776,21 +773,6 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                 btnSaveContacts.setVisibility(View.GONE);
             } else {
                 Toast.makeText(requireContext(), "Failed to save contact.", Toast.LENGTH_SHORT).show();
-            }
-        });
-
-        // Schedule Follow-up Reminder click action
-        btnReminder.setOnClickListener(v -> {
-            try {
-                Intent calendarIntent = new Intent(Intent.ACTION_INSERT)
-                        .setData(Uri.parse("content://com.android.calendar/events"))
-                        .putExtra("title", "Follow up: " + (editCall != null ? editCall.getCompanyName() : ""))
-                        .putExtra("description", "Follow-up reminder reminder for " + (editCall != null ? editCall.getCompanyName() : "") + "\nStage: " + (editCall != null ? editCall.getRoundStatus() : "") + "\nNotes: " + (editCall != null ? editCall.getNotes() : ""))
-                        .putExtra("beginTime", System.currentTimeMillis() + 3 * 24 * 60 * 60 * 1000L) // Default 3 days from now
-                        .putExtra("endTime", System.currentTimeMillis() + 3 * 24 * 60 * 60 * 1000L + 30 * 60 * 1000L);
-                startActivity(calendarIntent);
-            } catch (Exception e) {
-                Toast.makeText(requireContext(), "Could not open Calendar app", Toast.LENGTH_SHORT).show();
             }
         });
 

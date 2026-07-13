@@ -32,8 +32,10 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -46,9 +48,15 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
     private List<JobCall> allUpcomingList;
     private List<JobCall> filteredList;
 
-    private String selectedStatus = "All";
+    // Multi-select: any card matching ANY selected filter is shown (union). "All"
+    // is mutually exclusive with everything else - picking a specific filter clears
+    // it, and clearing every specific filter falls back to "All".
+    private final Set<String> selectedFilters = new LinkedHashSet<>(Collections.singletonList("All"));
     private View layoutFilterChips;
-    private final String[] statuses = {"All", "Screening", "1st Round", "2nd Round", "Final Round", "HR / Salary"};
+    private final String[] statuses = {
+            "All", "Screening", "1st Round", "2nd Round", "Final Round", "HR / Salary",
+            "Needs Update", "Scheduled", "No Follow-up Needed"
+    };
     private TextView[] chips;
 
     // Sort by first-log time (ascending, oldest first) or by most recent call activity
@@ -114,13 +122,14 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
             }
         }
 
-        filterList(selectedStatus);
+        filterList();
     }
 
     private void setupFilterChips(View view) {
         int[] chipIds = {
                 R.id.chip_upcoming_all, R.id.chip_upcoming_screening, R.id.chip_upcoming_1st,
-                R.id.chip_upcoming_2nd, R.id.chip_upcoming_final, R.id.chip_upcoming_hr
+                R.id.chip_upcoming_2nd, R.id.chip_upcoming_final, R.id.chip_upcoming_hr,
+                R.id.chip_upcoming_needs_update, R.id.chip_upcoming_scheduled, R.id.chip_upcoming_no_followup
         };
 
         chips = new TextView[chipIds.length];
@@ -129,9 +138,21 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
             chips[i] = view.findViewById(chipIds[i]);
             if (chips[i] != null) {
                 chips[i].setOnClickListener(v -> {
-                    selectedStatus = statuses[index];
+                    String tapped = statuses[index];
+                    if (tapped.equals("All")) {
+                        selectedFilters.clear();
+                        selectedFilters.add("All");
+                    } else {
+                        selectedFilters.remove("All");
+                        if (!selectedFilters.remove(tapped)) {
+                            selectedFilters.add(tapped);
+                        }
+                        if (selectedFilters.isEmpty()) {
+                            selectedFilters.add("All");
+                        }
+                    }
                     updateChipsUI();
-                    filterList(selectedStatus);
+                    filterList();
                 });
             }
         }
@@ -152,7 +173,7 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
             drawable.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
             drawable.setCornerRadius(18 * density); // Pill shape
 
-            if (statuses[i].equals(selectedStatus)) {
+            if (selectedFilters.contains(statuses[i])) {
                 drawable.setColor(selectedColor);
                 chips[i].setBackground(drawable);
                 chips[i].setTextColor(android.graphics.Color.WHITE);
@@ -171,14 +192,14 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
             chipSortFirstCall.setOnClickListener(v -> {
                 sortByFirstCall = true;
                 updateSortChipsUI();
-                filterList(selectedStatus);
+                filterList();
             });
         }
         if (chipSortRecentCall != null) {
             chipSortRecentCall.setOnClickListener(v -> {
                 sortByFirstCall = false;
                 updateSortChipsUI();
-                filterList(selectedStatus);
+                filterList();
             });
         }
         updateSortChipsUI();
@@ -203,13 +224,39 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
         }
     }
 
-    private void filterList(String status) {
+    /**
+     * True if this call matches ANY of the currently selected filter chips (union),
+     * combining round-stage filters (Screening, 1st Round, ...) with computed
+     * follow-up-state filters (Needs Update / Scheduled / No Follow-up Needed).
+     */
+    private boolean matchesSelectedFilters(JobCall call) {
+        if (selectedFilters.contains("All")) return true;
+
+        for (String filter : selectedFilters) {
+            switch (filter) {
+                case "Needs Update":
+                    if (FollowUpUtils.needsFollowUp(call)) return true;
+                    break;
+                case "Scheduled": {
+                    long scheduleMillis = FollowUpUtils.parseScheduleMillis(call.getTentativeSchedule());
+                    if (scheduleMillis > System.currentTimeMillis()) return true;
+                    break;
+                }
+                case "No Follow-up Needed":
+                    if (!FollowUpUtils.needsFollowUp(call)) return true;
+                    break;
+                default:
+                    if (call.getRoundStatus() != null && call.getRoundStatus().equals(filter)) return true;
+                    break;
+            }
+        }
+        return false;
+    }
+
+    private void filterList() {
         List<JobCall> filtered = new ArrayList<>();
         for (JobCall call : allUpcomingList) {
-            boolean matchesStatus = status.equals("All") ||
-                    (call.getRoundStatus() != null && call.getRoundStatus().equals(status));
-
-            if (matchesStatus) {
+            if (matchesSelectedFilters(call)) {
                 filtered.add(call);
             }
         }
@@ -300,7 +347,6 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
         Button btnSave = dialogView.findViewById(R.id.btn_dialog_save);
         Button btnDelete = dialogView.findViewById(R.id.btn_dialog_delete);
         Button btnSaveContacts = dialogView.findViewById(R.id.btn_dialog_save_contacts);
-        Button btnReminder = dialogView.findViewById(R.id.btn_dialog_reminder);
         Button btnShowBanner = dialogView.findViewById(R.id.btn_dialog_show_banner);
         TextInputLayout tilNotes = dialogView.findViewById(R.id.til_notes);
 
@@ -338,7 +384,6 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
             btnSave.setText("Update");
             btnDelete.setVisibility(View.VISIBLE);
             btnSaveContacts.setVisibility(View.VISIBLE);
-            btnReminder.setVisibility(View.VISIBLE);
             btnShowBanner.setVisibility(View.VISIBLE);
 
             etPhone.setText(editCall.getPhoneNumber());
@@ -379,26 +424,6 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
                 startActivity(contactIntent);
             });
 
-            btnReminder.setOnClickListener(v -> {
-                String cComp = etCompany.getText().toString().trim();
-                String cRole = etAppliedRole.getText().toString().trim();
-
-                Calendar beginTime = Calendar.getInstance();
-                beginTime.add(Calendar.DAY_OF_YEAR, 3);
-                Calendar endTime = Calendar.getInstance();
-                endTime.add(Calendar.DAY_OF_YEAR, 3);
-                endTime.add(Calendar.HOUR, 1);
-
-                Intent calendarIntent = new Intent(Intent.ACTION_INSERT)
-                        .setData(android.provider.CalendarContract.Events.CONTENT_URI)
-                        .putExtra(android.provider.CalendarContract.EXTRA_EVENT_BEGIN_TIME, beginTime.getTimeInMillis())
-                        .putExtra(android.provider.CalendarContract.EXTRA_EVENT_END_TIME, endTime.getTimeInMillis())
-                        .putExtra(android.provider.CalendarContract.Events.TITLE, "Interview follow up: " + cRole + " at " + cComp)
-                        .putExtra(android.provider.CalendarContract.Events.DESCRIPTION, "Follow up call with " + cComp)
-                        .putExtra(android.provider.CalendarContract.Events.AVAILABILITY, android.provider.CalendarContract.Events.AVAILABILITY_BUSY);
-                startActivity(calendarIntent);
-            });
-
             btnShowBanner.setOnClickListener(v -> {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !android.provider.Settings.canDrawOverlays(requireContext())) {
                     Toast.makeText(requireContext(), "Overlay permission is required to show the banner. Enable it in Settings.", Toast.LENGTH_LONG).show();
@@ -426,7 +451,6 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
             btnSave.setText("Save");
             btnDelete.setVisibility(View.GONE);
             btnSaveContacts.setVisibility(View.GONE);
-            btnReminder.setVisibility(View.GONE);
             btnShowBanner.setVisibility(View.GONE);
         }
 

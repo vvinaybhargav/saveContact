@@ -69,6 +69,9 @@
                     <TextView android:id="@+id/chip_upcoming_2nd" android:text="2nd Round" style="@style/TrackerChipStyle" />
                     <TextView android:id="@+id/chip_upcoming_final" android:text="Final Round" style="@style/TrackerChipStyle" />
                     <TextView android:id="@+id/chip_upcoming_hr" android:text="HR / Salary" style="@style/TrackerChipStyle" />
+                    <TextView android:id="@+id/chip_upcoming_needs_update" android:text="Needs Update" style="@style/TrackerChipStyle" />
+                    <TextView android:id="@+id/chip_upcoming_scheduled" android:text="Scheduled" style="@style/TrackerChipStyle" />
+                    <TextView android:id="@+id/chip_upcoming_no_followup" android:text="No Follow-up Needed" style="@style/TrackerChipStyle" />
                 </LinearLayout>
             </HorizontalScrollView>
 
