@@ -538,6 +538,16 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return list;
     }
 
+    /** Replaces a note's text in place (e.g. rewriting a raw hand-typed note into an AI-cleaned version), keeping its id/timestamp/position. */
+    public void updateNoteText(long noteId, long jobCallId, String newText) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues v = new ContentValues();
+        v.put(COLUMN_NOTE_TEXT, newText);
+        db.update(TABLE_NOTES, v, COLUMN_NOTE_ID + "=?", new String[]{String.valueOf(noteId)});
+        db.close();
+        refreshNotesPreview(jobCallId);
+    }
+
     public void deleteNote(long noteId, long jobCallId) {
         SQLiteDatabase db = this.getWritableDatabase();
         db.delete(TABLE_NOTES, COLUMN_NOTE_ID + "=?", new String[]{String.valueOf(noteId)});

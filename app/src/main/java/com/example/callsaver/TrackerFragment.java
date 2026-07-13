@@ -846,8 +846,9 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                 dbHelper.updateJobCall(editCall);
                 dbHelper.linkPhoneToJob(editCall.getId(), phone, recruiter);
                 boolean noteWasFromManualUpload = activeDialogManualUploadUsed;
+                long insertedNoteId = -1;
                 if (!noteToAdd.isEmpty()) {
-                    dbHelper.insertNote(editCall.getId(), noteToAdd, System.currentTimeMillis(), noteSource);
+                    insertedNoteId = dbHelper.insertNote(editCall.getId(), noteToAdd, System.currentTimeMillis(), noteSource);
                 }
 
                 Toast.makeText(requireContext(), "Log updated!", Toast.LENGTH_SHORT).show();
@@ -862,9 +863,10 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
 
                 // A hand-typed note (not one already AI-processed via a recording
                 // upload) also gets run through the AI so the round/next-call date
-                // update automatically from what was written, same as a real call.
+                // update automatically from what was written, same as a real call -
+                // and the raw typed text itself gets rewritten into a clean AI summary.
                 if (!noteToAdd.isEmpty() && !noteWasFromManualUpload) {
-                    runAiOnManualNote(editCall.getId(), noteToAdd, spinnerRound, etTentativeSchedule,
+                    runAiOnManualNote(editCall.getId(), insertedNoteId, noteToAdd, spinnerRound, etTentativeSchedule,
                             llNotesTimeline, labelNotes, llSkillsMatchSection, tvSkillsMatching, tvSkillsNotMatching);
                 }
                 return;
@@ -1416,12 +1418,15 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
      * nothing if no OpenAI key is configured. The DB is always updated on success;
      * the on-screen spinner/date field only if the dialog is still open.
      */
-    private void runAiOnManualNote(long jobId, String noteText, Spinner spinnerRoundRef,
+    private void runAiOnManualNote(long jobId, long noteId, String noteText, Spinner spinnerRoundRef,
                                     EditText etScheduleRef, LinearLayout timelineContainer, View timelineLabel,
                                     View skillsSection, TextView tvSkillsMatchingRef, TextView tvSkillsNotMatchingRef) {
         String apiKey = requireContext().getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE)
                 .getString("openai_api_key", "").trim();
-        if (apiKey.isEmpty()) return;
+        if (apiKey.isEmpty()) {
+            Toast.makeText(requireContext(), "Note saved as-is - add an OpenAI API key in Settings to have it rewritten by AI.", Toast.LENGTH_LONG).show();
+            return;
+        }
 
         OpenAiClient.extractFields(requireContext(), noteText, new OpenAiClient.OpenAiCallback() {
             @Override
@@ -1449,6 +1454,29 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                         dbHelper.insertNote(jobId, "• " + sentimentComment, System.currentTimeMillis());
                     }
 
+                    // Rewrite the raw hand-typed note in place into a clean AI summary,
+                    // same as a real call gets bulleted key_discussion_points - instead
+                    // of leaving the rough typed text sitting there untouched forever.
+                    boolean noteRewritten = false;
+                    if (noteId > 0 && result.has("key_discussion_points")) {
+                        org.json.JSONArray points = result.optJSONArray("key_discussion_points");
+                        StringBuilder sb = new StringBuilder();
+                        if (points != null) {
+                            for (int i = 0; i < points.length(); i++) {
+                                String pt = points.optString(i, "").trim();
+                                if (!pt.isEmpty() && !pt.equalsIgnoreCase("null")) {
+                                    if (sb.length() > 0) sb.append("\n");
+                                    sb.append(pt.startsWith("•") || pt.startsWith("-") ? pt : "• " + pt);
+                                }
+                            }
+                        }
+                        String rewritten = sb.toString().trim();
+                        if (!rewritten.isEmpty()) {
+                            dbHelper.updateNoteText(noteId, jobId, rewritten);
+                            noteRewritten = true;
+                        }
+                    }
+
                     String userInterestsCsv = getContext() == null ? "" : getContext()
                             .getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE)
                             .getString("user_talking_points", "").trim();
@@ -1473,22 +1501,31 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                         if (!schedule.isEmpty() && etScheduleRef != null) {
                             etScheduleRef.setText(schedule);
                         }
-                        if (!sentimentComment.isEmpty()) {
+                        if (!sentimentComment.isEmpty() || noteRewritten) {
                             populateTimeline(timelineContainer, timelineLabel, jobId);
                         }
                         if (skillsChanged) {
                             populateSkillsMatch(skillsSection, tvSkillsMatchingRef, tvSkillsNotMatchingRef, current);
                         }
                         refreshDashboardList();
+                        if (noteRewritten) {
+                            Toast.makeText(requireContext(), "Note rewritten with AI.", Toast.LENGTH_SHORT).show();
+                        }
                     }
                 } catch (Exception e) {
                     DebugLogger.log(requireContext(), "runAiOnManualNote failed: " + e.getMessage());
+                    if (isAdded() && getContext() != null) {
+                        Toast.makeText(requireContext(), "AI rewrite failed: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    }
                 }
             }
 
             @Override
             public void onError(String error) {
                 DebugLogger.log(requireContext(), "runAiOnManualNote AI error: " + error);
+                if (isAdded() && getContext() != null) {
+                    Toast.makeText(requireContext(), "AI rewrite failed: " + error, Toast.LENGTH_LONG).show();
+                }
             }
         });
     }
