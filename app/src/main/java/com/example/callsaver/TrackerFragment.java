@@ -987,6 +987,13 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         for (CallNote n : chronological) {
             String clean = cleanNoteText(n.note);
             if (clean.trim().isEmpty()) {
+                // The filler-phrase filter (meant to declutter AI call summaries) ate
+                // the entire note - fall back to the original text instead of silently
+                // dropping a note the user can see was saved (e.g. a short hand-typed
+                // note like "very interested in this role").
+                clean = n.note == null ? "" : n.note;
+            }
+            if (clean.trim().isEmpty()) {
                 continue;
             }
 

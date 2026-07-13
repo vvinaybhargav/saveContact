@@ -228,7 +228,12 @@ public class CallerIdService extends Service {
             for (int i = 0; i < chronologicalNotes.size(); i++) {
                 CallNote note = chronologicalNotes.get(i);
                 String noteClean = cleanNoteText(note.note);
-                if (noteClean.isEmpty()) {
+                if (noteClean.trim().isEmpty()) {
+                    // Filter ate the whole note - show the original rather than
+                    // silently dropping a note the user can see was saved.
+                    noteClean = note.note == null ? "" : note.note;
+                }
+                if (noteClean.trim().isEmpty()) {
                     continue;
                 }
 
