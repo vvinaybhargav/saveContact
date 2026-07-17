@@ -27,197 +27,22 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/title_dashboard"
+            android:text="Tracker"
             android:textColor="@color/accent_indigo"
-            android:textSize="26sp"
+            android:textSize="20sp"
             android:textStyle="bold"
             android:letterSpacing="0.01" />
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:text="@string/desc_dashboard"
+            android:layout_marginTop="4dp"
+            android:text="Manage and log recent call logs."
             android:textColor="@color/text_muted"
-            android:textSize="13sp"
-            android:lineSpacingMultiplier="1.1" />
+            android:textSize="11sp" />
     </LinearLayout>
 
-        <!-- Analytics Stats Dashboard Card (pinned below the collapsing header) -->
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/card_stats_dashboard"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            app:layout_scrollFlags="scroll"
-            android:layout_marginHorizontal="16dp"
-            android:layout_marginTop="16dp"
-            app:cardCornerRadius="16dp"
-            app:cardElevation="0dp"
-            app:strokeWidth="1dp"
-            app:strokeColor="@color/divider"
-            app:cardBackgroundColor="@color/white">
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:padding="16dp"
-                android:baselineAligned="false">
-
-                <!-- Leads Column -->
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical"
-                    android:gravity="center">
-                    <TextView
-                        android:id="@+id/tv_stat_leads"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="0"
-                        android:textSize="20sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/accent_indigo" />
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Leads"
-                        android:textSize="11sp"
-                        android:textColor="@color/text_secondary"
-                        android:layout_marginTop="2dp" />
-                </LinearLayout>
-
-                <!-- Separator -->
-                <View
-                    android:layout_width="1dp"
-                    android:layout_height="28dp"
-                    android:background="@color/divider"
-                    android:layout_gravity="center_vertical"/>
-
-                <!-- Screenings Column -->
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical"
-                    android:gravity="center">
-                    <TextView
-                        android:id="@+id/tv_stat_screenings"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="0"
-                        android:textSize="20sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/status_blue" />
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="First time"
-                        android:textSize="11sp"
-                        android:textColor="@color/text_secondary"
-                        android:layout_marginTop="2dp" />
-                </LinearLayout>
-
-                <!-- Separator -->
-                <View
-                    android:layout_width="1dp"
-                    android:layout_height="28dp"
-                    android:background="@color/divider"
-                    android:layout_gravity="center_vertical"/>
-
-                <!-- Interviews Column -->
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical"
-                    android:gravity="center">
-                    <TextView
-                        android:id="@+id/tv_stat_interviews"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="0"
-                        android:textSize="20sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/status_purple" />
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Interview"
-                        android:textSize="11sp"
-                        android:textColor="@color/text_secondary"
-                        android:layout_marginTop="2dp" />
-                </LinearLayout>
-
-                <!-- Separator -->
-                <View
-                    android:layout_width="1dp"
-                    android:layout_height="28dp"
-                    android:background="@color/divider"
-                    android:layout_gravity="center_vertical"/>
-
-                <!-- Offers Column -->
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical"
-                    android:gravity="center">
-                    <TextView
-                        android:id="@+id/tv_stat_offers"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="0"
-                        android:textSize="20sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/status_green" />
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Offers"
-                        android:textSize="11sp"
-                        android:textColor="@color/text_secondary"
-                        android:layout_marginTop="2dp" />
-                </LinearLayout>
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- Tap-through to full analytics -->
-        <TextView
-            android:id="@+id/tv_view_analytics"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            app:layout_scrollFlags="scroll"
-            android:layout_gravity="end"
-            android:layout_marginHorizontal="16dp"
-            android:layout_marginTop="8dp"
-            android:paddingVertical="4dp"
-            android:text="View detailed analytics ›"
-            android:textColor="@color/accent_indigo"
-            android:textSize="13sp"
-            android:textStyle="bold"
-            android:clickable="true"
-            android:focusable="true"
-            android:background="?android:attr/selectableItemBackground" />
-
-        <!-- Proactive AI-assisted duplicate-company suggestions -->
-        <TextView
-            android:id="@+id/tv_check_duplicates"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            app:layout_scrollFlags="scroll"
-            android:layout_gravity="end"
-            android:layout_marginHorizontal="16dp"
-            android:paddingVertical="4dp"
-            android:text="Check for duplicate companies ›"
-            android:textColor="@color/accent_indigo"
-            android:textSize="13sp"
-            android:textStyle="bold"
-            android:clickable="true"
-            android:focusable="true"
-            android:background="?android:attr/selectableItemBackground"
-            android:visibility="gone" />
 
 
 

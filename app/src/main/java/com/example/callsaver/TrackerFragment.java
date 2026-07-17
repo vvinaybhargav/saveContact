@@ -178,18 +178,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         // Log call manually FAB click
         fabAddCall.setOnClickListener(v -> showAddEditCallDialog(null));
 
-        // Open the full analytics dashboard from the stats card or the hint link
-        View.OnClickListener openAnalytics = v ->
-                startActivity(new Intent(requireContext(), AnalyticsActivity.class));
-        View cardStats = view.findViewById(R.id.card_stats_dashboard);
-        View tvAnalytics = view.findViewById(R.id.tv_view_analytics);
-        if (cardStats != null) cardStats.setOnClickListener(openAnalytics);
-        if (tvAnalytics != null) tvAnalytics.setOnClickListener(openAnalytics);
-
-        tvCheckDuplicates = view.findViewById(R.id.tv_check_duplicates);
-        if (tvCheckDuplicates != null) {
-            tvCheckDuplicates.setOnClickListener(v -> showDuplicateReviewDialog());
-        }
+        tvCheckDuplicates = null;
 
 
         // Setup filter chips
@@ -450,7 +439,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
 
                     if (!isLogged) {
                         // Check if dismissed
-                        String key = number + "_" + date;
+                        String key = number + "_" + endTime;
                         if (!dismissed.contains(key)) {
                             String badgeType = "Incoming";
                             String notesDesc = "Call";
@@ -508,22 +497,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         return unlogged;
     }
 
-    /**
-     * Refreshes the calls displayed on the RecyclerView from the SQLite DB.
-     */
-    public void refreshDashboardList() {
-        if (dbHelper == null) return;
-        List<JobCall> updatedCalls = dbHelper.getAllJobCallsSortedByRecentActivity();
-        
-        List<JobCall> unloggedCalls = getUnloggedCallLogs();
-        
-        allCallsList.clear();
-        allCallsList.addAll(updatedCalls);
-        allCallsList.addAll(unloggedCalls);
-
-        // Sort allCallsList by timestamp DESC
-        java.util.Collections.sort(allCallsList, (a, b) -> Long.compare(b.getTimestamp(), a.getTimestamp()));
-
+    private void updateStatsAndFilter() {
         // Calculate Statistics using only tracked calls (positive ID)
         int leads = 0;
         int screenings = 0;
@@ -551,6 +525,31 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         refreshDuplicateSuggestionVisibility();
 
         filterList(searchQuery, selectedStatus);
+    }
+
+    /**
+     * Refreshes the calls displayed on the RecyclerView from the SQLite DB.
+     */
+    public void refreshDashboardList() {
+        if (dbHelper == null) return;
+        List<JobCall> updatedCalls = dbHelper.getAllJobCallsSortedByRecentActivity();
+        
+        allCallsList.clear();
+        allCallsList.addAll(updatedCalls);
+        updateStatsAndFilter();
+
+        new Thread(() -> {
+            List<JobCall> unloggedCalls = getUnloggedCallLogs();
+            if (getActivity() != null) {
+                getActivity().runOnUiThread(() -> {
+                    allCallsList.clear();
+                    allCallsList.addAll(updatedCalls);
+                    allCallsList.addAll(unloggedCalls);
+                    java.util.Collections.sort(allCallsList, (a, b) -> Long.compare(b.getTimestamp(), a.getTimestamp()));
+                    updateStatsAndFilter();
+                });
+            }
+        }).start();
     }
 
     /**

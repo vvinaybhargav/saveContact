@@ -153,6 +153,16 @@ public class SettingsActivity extends AppCompatActivity {
             loadDiagnosticLogs();
             Toast.makeText(this, "Logs cleared.", Toast.LENGTH_SHORT).show();
         });
+
+        // Setup duplicates check button
+        Button btnCheckDuplicates = findViewById(R.id.btn_settings_check_duplicates);
+        if (btnCheckDuplicates != null) {
+            btnCheckDuplicates.setOnClickListener(v -> showDuplicateReviewDialog(btnCheckDuplicates));
+            checkDuplicateSuggestions(btnCheckDuplicates);
+        }
+
+        // Setup stats counts
+        loadAnalyticsSummary();
     }
 
     private void updateCacheSizeButton() {
@@ -232,5 +242,135 @@ public class SettingsActivity extends AppCompatActivity {
         } else {
             tvLogs.setText(logContent);
         }
+    }
+
+    private void checkDuplicateSuggestions(Button btnCheckDuplicates) {
+        if (btnCheckDuplicates == null) return;
+        DatabaseHelper dbHelper = new DatabaseHelper(this);
+        new Thread(() -> {
+            java.util.List<JobCall> allCalls = dbHelper.getAllJobCalls();
+            java.util.Set<String> dismissed = getDismissedDuplicatePairs();
+            java.util.List<DuplicateDetector.Candidate> found = DuplicateDetector.findDuplicates(allCalls, dismissed);
+            runOnUiThread(() -> {
+                if (btnCheckDuplicates != null) {
+                    btnCheckDuplicates.setVisibility(found.isEmpty() ? View.GONE : View.VISIBLE);
+                }
+            });
+        }).start();
+    }
+
+    private java.util.Set<String> getDismissedDuplicatePairs() {
+        String raw = getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE)
+                .getString("dismissed_duplicate_pairs", "");
+        java.util.Set<String> set = new java.util.HashSet<>();
+        if (!raw.trim().isEmpty()) {
+            for (String key : raw.split(",")) {
+                if (!key.trim().isEmpty()) set.add(key.trim());
+            }
+        }
+        return set;
+    }
+
+    private void addDismissedDuplicatePair(String pairKey) {
+        java.util.Set<String> set = getDismissedDuplicatePairs();
+        set.add(pairKey);
+        String joined = android.text.TextUtils.join(",", set);
+        getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE)
+                .edit().putString("dismissed_duplicate_pairs", joined).apply();
+    }
+
+    private void showDuplicateReviewDialog(Button btnCheckDuplicates) {
+        DatabaseHelper dbHelper = new DatabaseHelper(this);
+        java.util.List<JobCall> allCalls = dbHelper.getAllJobCalls();
+        java.util.List<DuplicateDetector.Candidate> candidates =
+                DuplicateDetector.findDuplicates(allCalls, getDismissedDuplicatePairs());
+        if (candidates.isEmpty()) {
+            Toast.makeText(this, "No duplicate companies found.", Toast.LENGTH_SHORT).show();
+            if (btnCheckDuplicates != null) btnCheckDuplicates.setVisibility(View.GONE);
+            return;
+        }
+
+        android.widget.LinearLayout container = new android.widget.LinearLayout(this);
+        container.setOrientation(android.widget.LinearLayout.VERTICAL);
+        int pad = (int) (16 * getResources().getDisplayMetrics().density);
+        container.setPadding(pad, pad, pad, pad);
+        android.widget.ScrollView scroll = new android.widget.ScrollView(this);
+        scroll.addView(container);
+
+        androidx.appcompat.app.AlertDialog dialog = new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("Possible duplicate companies")
+                .setView(scroll)
+                .setNegativeButton("Close", null)
+                .create();
+
+        android.view.LayoutInflater inflater = getLayoutInflater();
+        for (DuplicateDetector.Candidate cand : candidates) {
+            View row = inflater.inflate(R.layout.item_duplicate_pair, container, false);
+            ((TextView) row.findViewById(R.id.tv_dup_score)).setText(cand.scorePercent + "% similar");
+            ((TextView) row.findViewById(R.id.tv_dup_name_a)).setText(cand.a.getCompanyName());
+            ((TextView) row.findViewById(R.id.tv_dup_name_b)).setText(cand.b.getCompanyName());
+
+            row.findViewById(R.id.btn_dup_dismiss).setOnClickListener(v -> {
+                addDismissedDuplicatePair(DuplicateDetector.pairKey(cand.a.getId(), cand.b.getId()));
+                container.removeView(row);
+                if (container.getChildCount() == 0) {
+                    dialog.dismiss();
+                    checkDuplicateSuggestions(btnCheckDuplicates);
+                }
+            });
+
+            row.findViewById(R.id.btn_dup_merge).setOnClickListener(v -> {
+                new androidx.appcompat.app.AlertDialog.Builder(this)
+                        .setTitle("Confirm Consolidation")
+                        .setMessage("Consolidate logs for " + cand.b.getCompanyName() + " into " + cand.a.getCompanyName() + "?")
+                        .setPositiveButton("Merge", (dSub, w) -> {
+                            dbHelper.mergeJobCalls(this, cand.a.getId(), cand.b.getId());
+                            Toast.makeText(this, "Companies consolidated.", Toast.LENGTH_SHORT).show();
+                            container.removeView(row);
+                            checkDuplicateSuggestions(btnCheckDuplicates);
+                            loadAnalyticsSummary();
+                            if (container.getChildCount() == 0) {
+                                dialog.dismiss();
+                            }
+                        })
+                        .setNegativeButton("Cancel", null)
+                        .show();
+            });
+
+            container.addView(row);
+        }
+
+        dialog.show();
+    }
+
+    private void loadAnalyticsSummary() {
+        DatabaseHelper dbHelper = new DatabaseHelper(this);
+        java.util.List<JobCall> allCalls = dbHelper.getAllJobCalls();
+        int leads = 0;
+        int screenings = 0;
+        int interviews = 0;
+        int offers = 0;
+        for (JobCall c : allCalls) {
+            leads++;
+            String st = c.getRoundStatus();
+            if (st == null) continue;
+            if (st.equals("First time") || st.equals("HR / Salary")) {
+                screenings++;
+            } else if (st.equals("1st Round") || st.equals("2nd Round") || st.equals("Final Round")) {
+                interviews++;
+            } else if (st.equals("Offered")) {
+                offers++;
+            }
+        }
+        
+        TextView tvStatLeads = findViewById(R.id.tv_settings_stat_leads);
+        TextView tvStatScreenings = findViewById(R.id.tv_settings_stat_screenings);
+        TextView tvStatInterviews = findViewById(R.id.tv_settings_stat_interviews);
+        TextView tvStatOffers = findViewById(R.id.tv_settings_stat_offers);
+        
+        if (tvStatLeads != null) tvStatLeads.setText(String.valueOf(leads));
+        if (tvStatScreenings != null) tvStatScreenings.setText(String.valueOf(screenings));
+        if (tvStatInterviews != null) tvStatInterviews.setText(String.valueOf(interviews));
+        if (tvStatOffers != null) tvStatOffers.setText(String.valueOf(offers));
     }
 }
