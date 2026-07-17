@@ -49,7 +49,11 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
 
         if (call.getId() <= 0) {
             // Unlogged Call Design
-            holder.tvCompanyName.setText("Unlogged Call");
+            String displayName = call.getCompanyName();
+            if (displayName == null || displayName.trim().isEmpty()) {
+                displayName = "Unlogged Call";
+            }
+            holder.tvCompanyName.setText(displayName);
             holder.tvPhoneNumber.setText(call.getPhoneNumber());
 
             int duration = call.getDuration();
@@ -70,9 +74,9 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
             holder.tvAvatarText.setText("?");
             holder.cardAvatar.setCardBackgroundColor(0xFF708090); // Slate gray
 
-            holder.parentCard.setCardBackgroundColor(context.getResources().getColor(R.color.bg_light));
-            holder.parentCard.setStrokeColor(0xFFFF8C00); // Orange border
-            holder.parentCard.setStrokeWidth(2);
+            holder.parentCard.setCardBackgroundColor(context.getResources().getColor(R.color.white));
+            holder.parentCard.setStrokeColor(context.getResources().getColor(R.color.divider));
+            holder.parentCard.setStrokeWidth(1);
 
             if (holder.btnActionFollowup != null) {
                 holder.btnActionFollowup.setVisibility(View.GONE);
@@ -158,9 +162,9 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
 
     private void setupStatusBadge(TextView tv, JobCall call) {
         if (call.getId() <= 0) {
-            tv.setText("Unlogged");
-            int textColor = context.getResources().getColor(R.color.status_error);
-            int bgColor = context.getResources().getColor(R.color.status_red_bg);
+            tv.setText(call.getRoundStatus());
+            int textColor = context.getResources().getColor(R.color.status_warning);
+            int bgColor = context.getResources().getColor(R.color.status_warning_bg);
             GradientDrawable gd = new GradientDrawable();
             gd.setColor(bgColor);
             float density = context.getResources().getDisplayMetrics().density;

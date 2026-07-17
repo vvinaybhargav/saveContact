@@ -367,6 +367,28 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         }
     }
 
+    public static String getContactNameByNumber(Context context, String phoneNumber) {
+        if (context == null || phoneNumber == null || phoneNumber.isEmpty()) {
+            return null;
+        }
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+            return null;
+        }
+        Uri uri = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(phoneNumber));
+        String[] projection = new String[]{ContactsContract.PhoneLookup.DISPLAY_NAME};
+        try (Cursor cursor = context.getContentResolver().query(uri, projection, null, null, null)) {
+            if (cursor != null && cursor.moveToFirst()) {
+                int nameIndex = cursor.getColumnIndex(ContactsContract.PhoneLookup.DISPLAY_NAME);
+                if (nameIndex >= 0) {
+                    return cursor.getString(nameIndex);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
     private List<JobCall> getUnloggedCallLogs() {
         List<JobCall> unlogged = new ArrayList<>();
         if (getContext() == null) return unlogged;
@@ -410,12 +432,28 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                         // Check if dismissed
                         String key = number + "_" + date;
                         if (!dismissed.contains(key)) {
-                            String typeStr = "Call";
-                            if (type == CallLog.Calls.INCOMING_TYPE) typeStr = "Incoming Call";
-                            else if (type == CallLog.Calls.OUTGOING_TYPE) typeStr = "Outgoing Call";
-                            else if (type == CallLog.Calls.MISSED_TYPE) typeStr = "Missed Call";
+                            String badgeType = "Answered";
+                            String notesDesc = "Call";
+                            if (type == CallLog.Calls.MISSED_TYPE) {
+                                badgeType = "Missed Call";
+                                notesDesc = "Missed Call";
+                            } else if (type == CallLog.Calls.REJECTED_TYPE) {
+                                badgeType = "Rejected";
+                                notesDesc = "Rejected Call";
+                            } else if (type == CallLog.Calls.INCOMING_TYPE) {
+                                badgeType = "Answered";
+                                notesDesc = "Incoming Call";
+                            } else if (type == CallLog.Calls.OUTGOING_TYPE) {
+                                badgeType = "Answered";
+                                notesDesc = "Outgoing Call";
+                            }
 
-                            JobCall unloggedCall = new JobCall(number, "Unlogged Call", "Unlogged", "", typeStr, duration, date);
+                            String displayName = getContactNameByNumber(requireContext(), number);
+                            if (displayName == null || displayName.trim().isEmpty()) {
+                                displayName = "Unlogged Call";
+                            }
+
+                            JobCall unloggedCall = new JobCall(number, displayName, badgeType, "", notesDesc, duration, date);
                             unloggedCall.setId((int) (-1 * (Math.abs(key.hashCode()) % 1000000 + 1)));
                             unlogged.add(unloggedCall);
                         }
