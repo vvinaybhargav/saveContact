@@ -15,8 +15,11 @@ import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.Spinner;
+import android.widget.SpinnerAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
@@ -69,6 +72,7 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
     private static final int REQ_CODE_PICK_JD_SCREENSHOT = 800;
     private String currentJdImagePath = null;
     private FrameLayout activeFlJdPreviewContainer;
+    private ImageView activeIvJdPreview;
     private com.google.android.material.tabs.TabLayout tabLayoutDates;
     private int selectedTabPosition = 0; // Default to Today
     private boolean isUpdatingTabs = false;
