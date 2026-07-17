@@ -534,7 +534,7 @@ public class CallReceiver extends BroadcastReceiver {
                                         }
                                         String role = optClean(result, "applied_role", "");
                                         String round = OpenAiClient.normalizeRoundStatus(
-                                                optClean(result, "present_round", ""), "Screening");
+                                                optClean(result, "present_round", ""), "First time");
                                         String schedule = optClean(result, "tentative_schedule", "");
                                         String notice = optClean(result, "notice_period", "");
                                         String agenda = optClean(result, "main_agenda", "");

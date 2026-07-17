@@ -154,7 +154,7 @@ public class CallerIdService extends Service {
         tvCallerName.setText(title);
 
         // Set Status: Round - Role role
-        String statusText = (roundStatus != null && !roundStatus.isEmpty()) ? roundStatus : "Screening";
+        String statusText = (roundStatus != null && !roundStatus.isEmpty()) ? roundStatus : "First time";
         if (appliedRole != null && !appliedRole.trim().isEmpty()) {
             statusText += " - " + appliedRole.trim() + " role";
         }
@@ -358,7 +358,7 @@ public class CallerIdService extends Service {
         if (spinnerOverlayRound != null) {
             ArrayAdapter<String> roundAdapter = new ArrayAdapter<>(this,
                     android.R.layout.simple_spinner_item,
-                    new String[]{"Screening", "1st Round", "2nd Round", "Final Round", "HR / Salary", "Offered", "Not Interested", "Negative"});
+                    new String[]{"First time", "1st Round", "2nd Round", "Final Round", "HR / Salary", "Offered", "Not Interested", "Negative"});
             roundAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
             spinnerOverlayRound.setAdapter(roundAdapter);
             
@@ -391,7 +391,7 @@ public class CallerIdService extends Service {
         if (btnOverlaySaveNote != null && llOverlayEditPanel != null && etOverlayNoteInput != null) {
             btnOverlaySaveNote.setOnClickListener(v -> {
                 String noteText = etOverlayNoteInput.getText().toString().trim();
-                String selectedRound = spinnerOverlayRound != null ? spinnerOverlayRound.getSelectedItem().toString() : "Screening";
+                String selectedRound = spinnerOverlayRound != null ? spinnerOverlayRound.getSelectedItem().toString() : "First time";
 
                 if (!noteText.isEmpty()) {
                     DatabaseHelper db = new DatabaseHelper(this);
@@ -616,7 +616,7 @@ public class CallerIdService extends Service {
                     targetJobId = call.getId();
                     db.insertNote(targetJobId, "[Auto-Transcribed Call Notes]\n" + text, System.currentTimeMillis());
                 } else {
-                    JobCall newLead = new JobCall(number, "Unknown Recruiter", "Screening", "", "[Auto-Transcribed Call Notes]\n" + text, 0, System.currentTimeMillis());
+                    JobCall newLead = new JobCall(number, "Unknown Recruiter", "First time", "", "[Auto-Transcribed Call Notes]\n" + text, 0, System.currentTimeMillis());
                     targetJobId = db.insertJobCall(newLead);
                 }
 

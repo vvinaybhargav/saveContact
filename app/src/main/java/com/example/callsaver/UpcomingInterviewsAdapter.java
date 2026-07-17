@@ -23,6 +23,7 @@ public class UpcomingInterviewsAdapter extends RecyclerView.Adapter<UpcomingInte
 
     public interface OnInterviewClickListener {
         void onInterviewClick(JobCall call);
+        void onFollowUpClick(JobCall call);
     }
 
     public UpcomingInterviewsAdapter(Context context, List<JobCall> interviewList, OnInterviewClickListener listener) {
@@ -45,7 +46,7 @@ public class UpcomingInterviewsAdapter extends RecyclerView.Adapter<UpcomingInte
         
         holder.tvCompany.setText(call.getCompanyName() != null && !call.getCompanyName().isEmpty() ? call.getCompanyName() : "Unknown Company");
         holder.tvRole.setText(call.getAppliedRole() != null && !call.getAppliedRole().isEmpty() ? call.getAppliedRole() : "Job Position");
-        holder.tvRound.setText(call.getRoundStatus() != null && !call.getRoundStatus().isEmpty() ? call.getRoundStatus() : "Screening");
+        holder.tvRound.setText(call.getRoundStatus() != null && !call.getRoundStatus().isEmpty() ? call.getRoundStatus() : "First time");
 
         String schedule = call.getTentativeSchedule();
         if (schedule != null && !schedule.trim().isEmpty()) {
@@ -60,7 +61,17 @@ public class UpcomingInterviewsAdapter extends RecyclerView.Adapter<UpcomingInte
         holder.tvFirstCall.setText("First call - " + firstCallText);
         holder.tvRecentCall.setText("Recent call - " + recentCallText);
 
-        holder.tvFollowUp.setVisibility(FollowUpUtils.needsFollowUp(call) ? View.VISIBLE : View.GONE);
+        if (FollowUpUtils.needsFollowUp(call)) {
+            holder.tvFollowUp.setVisibility(View.VISIBLE);
+            holder.tvFollowUp.setText("⚠ Interview complete - yet to get an update");
+            holder.tvFollowUp.setOnClickListener(v -> {
+                if (listener != null) {
+                    listener.onFollowUpClick(call);
+                }
+            });
+        } else {
+            holder.tvFollowUp.setVisibility(View.GONE);
+        }
 
         holder.itemView.setOnClickListener(v -> {
             if (listener != null) {

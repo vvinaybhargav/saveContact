@@ -13,7 +13,7 @@ import java.util.List;
 public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "JobTracker.db";
-    private static final int DATABASE_VERSION = 10; // V10: add matching_skills / not_matching_skills
+    private static final int DATABASE_VERSION = 11; // V11: add jd_link / jd_image_path
 
     public static final String TABLE_NAME = "job_calls";
     public static final String COLUMN_ID = "id";
@@ -38,6 +38,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     // user's stated interests (Settings > My Interests).
     public static final String COLUMN_MATCHING_SKILLS = "matching_skills";
     public static final String COLUMN_NOT_MATCHING_SKILLS = "not_matching_skills";
+
+    // V11 columns
+    public static final String COLUMN_JD_LINK = "jd_link";
+    public static final String COLUMN_JD_IMAGE_PATH = "jd_image_path";
 
     // V4: individual timestamped notes, one row per note, linked to a job call.
     public static final String TABLE_NOTES = "call_notes";
@@ -88,7 +92,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 + COLUMN_KEY_DISCUSSION_POINTS + " TEXT,"
                 + COLUMN_NEXT_STEPS + " TEXT,"
                 + COLUMN_MATCHING_SKILLS + " TEXT,"
-                + COLUMN_NOT_MATCHING_SKILLS + " TEXT"
+                + COLUMN_NOT_MATCHING_SKILLS + " TEXT,"
+                + COLUMN_JD_LINK + " TEXT,"
+                + COLUMN_JD_IMAGE_PATH + " TEXT"
                 + ")";
         db.execSQL(CREATE_TABLE);
         db.execSQL(createNotesTableSql());
@@ -141,6 +147,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         if (oldVersion < 10) {
             db.execSQL("ALTER TABLE " + TABLE_NAME + " ADD COLUMN " + COLUMN_MATCHING_SKILLS + " TEXT");
             db.execSQL("ALTER TABLE " + TABLE_NAME + " ADD COLUMN " + COLUMN_NOT_MATCHING_SKILLS + " TEXT");
+        }
+        if (oldVersion < 11) {
+            db.execSQL("ALTER TABLE " + TABLE_NAME + " ADD COLUMN " + COLUMN_JD_LINK + " TEXT");
+            db.execSQL("ALTER TABLE " + TABLE_NAME + " ADD COLUMN " + COLUMN_JD_IMAGE_PATH + " TEXT");
         }
     }
 
@@ -241,6 +251,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         values.put(COLUMN_NEXT_STEPS, jobCall.getNextSteps());
         values.put(COLUMN_MATCHING_SKILLS, jobCall.getMatchingSkills());
         values.put(COLUMN_NOT_MATCHING_SKILLS, jobCall.getNotMatchingSkills());
+        values.put(COLUMN_JD_LINK, jobCall.getJdLink());
+        values.put(COLUMN_JD_IMAGE_PATH, jobCall.getJdImagePath());
 
         long id = db.insert(TABLE_NAME, null, values);
         if (id != -1) {
@@ -285,6 +297,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 call.setNextSteps(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_NEXT_STEPS)));
                 call.setMatchingSkills(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_MATCHING_SKILLS)));
                 call.setNotMatchingSkills(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_NOT_MATCHING_SKILLS)));
+                call.setJdLink(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_JD_LINK)));
+                call.setJdImagePath(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_JD_IMAGE_PATH)));
                 callsList.add(call);
             } while (cursor.moveToNext());
         }
@@ -333,6 +347,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 call.setNextSteps(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_NEXT_STEPS)));
                 call.setMatchingSkills(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_MATCHING_SKILLS)));
                 call.setNotMatchingSkills(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_NOT_MATCHING_SKILLS)));
+                call.setJdLink(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_JD_LINK)));
+                call.setJdImagePath(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_JD_IMAGE_PATH)));
                 callsList.add(call);
             } while (cursor.moveToNext());
         }
@@ -396,6 +412,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         values.put(COLUMN_NEXT_STEPS, jobCall.getNextSteps());
         values.put(COLUMN_MATCHING_SKILLS, jobCall.getMatchingSkills());
         values.put(COLUMN_NOT_MATCHING_SKILLS, jobCall.getNotMatchingSkills());
+        values.put(COLUMN_JD_LINK, jobCall.getJdLink());
+        values.put(COLUMN_JD_IMAGE_PATH, jobCall.getJdImagePath());
 
         int count = db.update(TABLE_NAME, values, COLUMN_ID + " = ?",
                 new String[]{String.valueOf(jobCall.getId())});
@@ -663,6 +681,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                     call.setNextSteps(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_NEXT_STEPS)));
                 call.setMatchingSkills(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_MATCHING_SKILLS)));
                 call.setNotMatchingSkills(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_NOT_MATCHING_SKILLS)));
+                call.setJdLink(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_JD_LINK)));
+                call.setJdImagePath(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_JD_IMAGE_PATH)));
                     cursor.close();
                     db.close();
                     return call;
@@ -713,6 +733,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 call.setNextSteps(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_NEXT_STEPS)));
                 call.setMatchingSkills(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_MATCHING_SKILLS)));
                 call.setNotMatchingSkills(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_NOT_MATCHING_SKILLS)));
+                call.setJdLink(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_JD_LINK)));
+                call.setJdImagePath(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_JD_IMAGE_PATH)));
             }
             cursor.close();
         }

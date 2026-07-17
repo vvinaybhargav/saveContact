@@ -126,7 +126,7 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
         int bgColor;
         
         if (status == null) {
-            status = "Screening";
+            status = "First time";
         }
         
         switch (status) {
@@ -149,7 +149,7 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
                 textColor = context.getResources().getColor(R.color.status_green);
                 bgColor = context.getResources().getColor(R.color.status_green_bg);
                 break;
-            case "Screening":
+            case "First time":
             default:
                 textColor = context.getResources().getColor(R.color.status_blue);
                 bgColor = context.getResources().getColor(R.color.status_blue_bg);

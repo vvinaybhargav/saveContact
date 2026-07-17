@@ -82,6 +82,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
     // True once the user manually uploads/transcribes a recording during this dialog
     // session; the note saved on this Save click is tagged "manual" (shown as "MCall").
     private boolean activeDialogManualUploadUsed;
+    private boolean activeDialogManualUploadAIFailed;
     private TextView tvCheckDuplicates;
     private MaterialCardView cardPermissionsBanner;
     private FloatingActionButton fabAddCall;
@@ -96,6 +97,11 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
 
     private DatabaseHelper dbHelper;
     private static final int REQ_CODE_SPEECH_INPUT = 1001;
+    private static final int REQ_CODE_PICK_JD_SCREENSHOT = 800;
+    private String currentJdImagePath = null;
+    private FrameLayout activeFlJdPreviewContainer;
+    private ImageView activeIvJdPreview;
+
     private EditText activeDialogNotesField;
     private TextInputLayout activeDialogTilNotes;
     private JobCallAdapter adapter;
@@ -108,7 +114,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
     private android.content.SharedPreferences.OnSharedPreferenceChangeListener prefsListener;
     private String selectedStatus = "All";
     private TextView[] chips;
-    private final String[] statuses = {"All", "Screening", "1st Round", "2nd Round", "Final Round", "HR / Salary", "Offered", "Not Interested", "Negative"};
+    private final String[] statuses = {"All", "First time", "1st Round", "2nd Round", "Final Round", "HR / Salary", "Offered", "Not Interested", "Negative"};
 
     private final String[] requiredPermissions = {
             Manifest.permission.READ_PHONE_STATE,
@@ -376,7 +382,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         for (JobCall c : allCallsList) {
             String st = c.getRoundStatus();
             if (st == null) continue;
-            if (st.equals("Screening") || st.equals("HR / Salary")) {
+            if (st.equals("First time") || st.equals("HR / Salary")) {
                 screenings++;
             } else if (st.equals("1st Round") || st.equals("2nd Round") || st.equals("Final Round")) {
                 interviews++;
@@ -609,6 +615,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         if (getContext() == null) return;
 
         activeDialogManualUploadUsed = false;
+        activeDialogManualUploadAIFailed = false;
 
         AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
         LayoutInflater inflater = getLayoutInflater();
@@ -684,6 +691,47 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             }
         });
 
+        // JD fields binding
+        EditText etJdLink = dialogView.findViewById(R.id.et_jd_link);
+        Button btnUploadJd = dialogView.findViewById(R.id.btn_upload_jd_screenshot);
+        FrameLayout flJdPreviewContainer = dialogView.findViewById(R.id.fl_jd_screenshot_container);
+        ImageView ivJdPreview = dialogView.findViewById(R.id.iv_jd_screenshot_preview);
+        View btnRemoveJd = dialogView.findViewById(R.id.btn_remove_jd_screenshot);
+
+        activeFlJdPreviewContainer = flJdPreviewContainer;
+        activeIvJdPreview = ivJdPreview;
+
+        if (editCall != null) {
+            etJdLink.setText(editCall.getJdLink());
+            currentJdImagePath = editCall.getJdImagePath();
+            if (currentJdImagePath != null && !currentJdImagePath.isEmpty()) {
+                ivJdPreview.setImageURI(android.net.Uri.fromFile(new java.io.File(currentJdImagePath)));
+                flJdPreviewContainer.setVisibility(View.VISIBLE);
+            } else {
+                flJdPreviewContainer.setVisibility(View.GONE);
+            }
+        } else {
+            currentJdImagePath = null;
+            flJdPreviewContainer.setVisibility(View.GONE);
+        }
+
+        btnUploadJd.setOnClickListener(v -> {
+            Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+            intent.setType("image/*");
+            startActivityForResult(intent, REQ_CODE_PICK_JD_SCREENSHOT);
+        });
+
+        btnRemoveJd.setOnClickListener(v -> {
+            currentJdImagePath = "";
+            flJdPreviewContainer.setVisibility(View.GONE);
+        });
+
+        ivJdPreview.setOnClickListener(v -> {
+            if (currentJdImagePath != null && !currentJdImagePath.isEmpty()) {
+                showFullScreenImage(currentJdImagePath);
+            }
+        });
+
         // Bind Spinner choices
         ArrayAdapter<CharSequence> spinnerAdapter = ArrayAdapter.createFromResource(requireContext(),
                 R.array.round_statuses, android.R.layout.simple_spinner_item);
@@ -692,6 +740,8 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
 
         final AlertDialog alertDialog = builder.create();
         alertDialog.setOnDismissListener(dialog -> {
+            activeFlJdPreviewContainer = null;
+            activeIvJdPreview = null;
             activeDialogNotesField = null;
             activeDialogTilNotes = null;
             activeEtCandidateName = null;
@@ -842,10 +892,13 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                 editCall.setCandidateName(candidate);
                 editCall.setAppliedRole(role);
                 editCall.setTentativeSchedule(schedule);
+                editCall.setJdLink(etJdLink.getText().toString().trim());
+                editCall.setJdImagePath(currentJdImagePath != null ? currentJdImagePath : "");
 
                 dbHelper.updateJobCall(editCall);
                 dbHelper.linkPhoneToJob(editCall.getId(), phone, recruiter);
                 boolean noteWasFromManualUpload = activeDialogManualUploadUsed;
+                boolean noteFailedAI = activeDialogManualUploadAIFailed;
                 long insertedNoteId = -1;
                 if (!noteToAdd.isEmpty()) {
                     insertedNoteId = dbHelper.insertNote(editCall.getId(), noteToAdd, System.currentTimeMillis(), noteSource);
@@ -857,6 +910,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                 // clear the note field (it's now saved) and refresh the call-history
                 // timeline and the list behind the dialog.
                 activeDialogManualUploadUsed = false;
+                activeDialogManualUploadAIFailed = false;
                 if (etNotes != null) etNotes.setText("");
                 populateTimeline(llNotesTimeline, labelNotes, editCall.getId());
                 refreshDashboardList();
@@ -865,7 +919,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                 // upload) also gets run through the AI so the round/next-call date
                 // update automatically from what was written, same as a real call -
                 // and the raw typed text itself gets rewritten into a clean AI summary.
-                if (!noteToAdd.isEmpty() && !noteWasFromManualUpload) {
+                if (!noteToAdd.isEmpty() && (!noteWasFromManualUpload || noteFailedAI)) {
                     runAiOnManualNote(editCall.getId(), insertedNoteId, noteToAdd, spinnerRound, etTentativeSchedule,
                             llNotesTimeline, labelNotes, llSkillsMatchSection, tvSkillsMatching, tvSkillsNotMatching);
                 }
@@ -893,6 +947,8 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                     if (!recruiter.isEmpty()) {
                         existingCall.setRecruiterName(recruiter);
                     }
+                    existingCall.setJdLink(etJdLink.getText().toString().trim());
+                    existingCall.setJdImagePath(currentJdImagePath != null ? currentJdImagePath : "");
                     dbHelper.updateJobCall(existingCall);
                     
                     Toast.makeText(requireContext(), "Linked to existing company " + existingCall.getCompanyName(), Toast.LENGTH_LONG).show();
@@ -904,6 +960,8 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                     newCall.setAppliedRole(role);
                     newCall.setTentativeSchedule(schedule);
                     newCall.setKeyDiscussionPoints(noteToAdd);
+                    newCall.setJdLink(etJdLink.getText().toString().trim());
+                    newCall.setJdImagePath(currentJdImagePath != null ? currentJdImagePath : "");
 
                     long newId = dbHelper.insertJobCall(newCall);
                     if (newId != -1 && !noteToAdd.isEmpty()) {
@@ -1164,6 +1222,11 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                 }
                 activeDialogNotesField.setSelection(activeDialogNotesField.getText().length());
             }
+        } else if (requestCode == REQ_CODE_PICK_JD_SCREENSHOT && resultCode == android.app.Activity.RESULT_OK && data != null) {
+            android.net.Uri selectedUri = data.getData();
+            if (selectedUri != null) {
+                handleJdScreenshotSelected(selectedUri);
+            }
         }
     }
 
@@ -1242,6 +1305,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                             String openAiKey = requireContext().getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE).getString("openai_api_key", "").trim();
                             if (openAiKey.isEmpty()) {
                                 // Fallback: No OpenAI key -> Save transcription raw
+                                activeDialogManualUploadAIFailed = true;
                                 if (activeLlTranscriptionProgress != null) {
                                     activeLlTranscriptionProgress.setVisibility(View.GONE);
                                 }
@@ -1375,6 +1439,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                                         }
                                     } catch (Exception e) {
                                         DebugLogger.log(requireContext(), "Failed to parse OpenAI fields in dialog: " + e.getMessage());
+                                        activeDialogManualUploadAIFailed = true;
                                         etNotesField.setText(text);
                                         Toast.makeText(requireContext(), "AI analysis failed. Pre-filled raw transcription.", Toast.LENGTH_LONG).show();
                                     } finally {
@@ -1386,6 +1451,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
 
                                 @Override
                                 public void onError(String error) {
+                                    activeDialogManualUploadAIFailed = true;
                                     if (activeLlTranscriptionProgress != null) {
                                         activeLlTranscriptionProgress.setVisibility(View.GONE);
                                     }
@@ -1567,5 +1633,50 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         String val = json.optString(key, fallback).trim();
         if (val.equalsIgnoreCase("null")) return fallback;
         return val;
+    }
+
+    private String copyUriToInternalStorage(android.net.Uri uri) {
+        try {
+            java.io.InputStream is = requireContext().getContentResolver().openInputStream(uri);
+            if (is == null) return null;
+            java.io.File dir = new java.io.File(requireContext().getFilesDir(), "jd_screenshots");
+            if (!dir.exists()) dir.mkdirs();
+            java.io.File file = new java.io.File(dir, "jd_" + System.currentTimeMillis() + ".png");
+            java.io.FileOutputStream os = new java.io.FileOutputStream(file);
+            byte[] buffer = new byte[1024];
+            int bytesRead;
+            while ((bytesRead = is.read(buffer)) != -1) {
+                os.write(buffer, 0, bytesRead);
+            }
+            os.close();
+            is.close();
+            return file.getAbsolutePath();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private void showFullScreenImage(String path) {
+        if (getContext() == null || path == null || path.isEmpty()) return;
+        android.app.Dialog dialog = new android.app.Dialog(requireContext(), android.R.style.Theme_Black_NoTitleBar_Fullscreen);
+        dialog.setContentView(R.layout.dialog_full_screen_image);
+        ImageView iv = dialog.findViewById(R.id.iv_full_screen);
+        iv.setImageURI(android.net.Uri.fromFile(new java.io.File(path)));
+        iv.setOnClickListener(v -> dialog.dismiss());
+        dialog.show();
+    }
+
+    private void handleJdScreenshotSelected(android.net.Uri uri) {
+        String path = copyUriToInternalStorage(uri);
+        if (path != null) {
+            currentJdImagePath = path;
+            if (activeFlJdPreviewContainer != null && activeIvJdPreview != null) {
+                activeIvJdPreview.setImageURI(android.net.Uri.fromFile(new java.io.File(path)));
+                activeFlJdPreviewContainer.setVisibility(View.VISIBLE);
+            }
+        } else {
+            Toast.makeText(requireContext(), "Failed to process selected image.", Toast.LENGTH_SHORT).show();
+        }
     }
 }

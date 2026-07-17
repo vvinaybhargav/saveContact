@@ -54,7 +54,7 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
     private final Set<String> selectedFilters = new LinkedHashSet<>(Collections.singletonList("All"));
     private View layoutFilterChips;
     private final String[] statuses = {
-            "All", "Screening", "1st Round", "2nd Round", "Final Round", "HR / Salary",
+            "All", "First time", "1st Round", "2nd Round", "Final Round", "HR / Salary",
             "Needs Update", "Scheduled", "No Follow-up Needed"
     };
     private TextView[] chips;
@@ -64,6 +64,16 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
     private boolean sortByFirstCall = false;
     private TextView chipSortFirstCall;
     private TextView chipSortRecentCall;
+
+    private static final int REQ_CODE_SPEECH_INPUT = 1001;
+    private static final int REQ_CODE_PICK_JD_SCREENSHOT = 800;
+    private String currentJdImagePath = null;
+    private FrameLayout activeFlJdPreviewContainer;
+    private com.google.android.material.tabs.TabLayout tabLayoutDates;
+    private int selectedTabPosition = 0; // Default to Today
+    private boolean isUpdatingTabs = false;
+    private boolean activeDialogManualUploadUsed = false;
+    private boolean activeDialogManualUploadAIFailed = false;
 
     private EditText activeDialogNotesField;
     private TextInputLayout activeDialogTilNotes;
@@ -94,7 +104,32 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
 
         setupFilterChips(view);
         setupSortChips(view);
+        tabLayoutDates = view.findViewById(R.id.tab_layout_upcoming_dates);
+        setupDateTabs();
         loadUpcomingInterviews();
+    }
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQ_CODE_SPEECH_INPUT && resultCode == android.app.Activity.RESULT_OK && data != null) {
+            ArrayList<String> result = data.getStringArrayListExtra(android.speech.RecognizerIntent.EXTRA_RESULTS);
+            if (result != null && !result.isEmpty() && activeDialogNotesField != null) {
+                String spokenText = result.get(0);
+                String currentText = activeDialogNotesField.getText().toString();
+                if (currentText.trim().isEmpty()) {
+                    activeDialogNotesField.setText(spokenText);
+                } else {
+                    activeDialogNotesField.setText(currentText + " " + spokenText);
+                }
+                activeDialogNotesField.setSelection(activeDialogNotesField.getText().length());
+            }
+        } else if (requestCode == REQ_CODE_PICK_JD_SCREENSHOT && resultCode == android.app.Activity.RESULT_OK && data != null) {
+            android.net.Uri selectedUri = data.getData();
+            if (selectedUri != null) {
+                handleJdScreenshotSelected(selectedUri);
+            }
+        }
     }
 
     @Override
@@ -117,7 +152,7 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
             String schedule = c.getTentativeSchedule();
             if (schedule != null && !schedule.trim().isEmpty()) {
                 allUpcomingList.add(c);
-            } else if (status != null && (status.equals("Screening") || status.equals("1st Round") || status.equals("2nd Round") || status.equals("Final Round") || status.equals("HR / Salary"))) {
+            } else if (status != null && (status.equals("First time") || status.equals("1st Round") || status.equals("2nd Round") || status.equals("Final Round") || status.equals("HR / Salary"))) {
                 allUpcomingList.add(c);
             }
         }
@@ -253,31 +288,203 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
         return false;
     }
 
-    private void filterList() {
-        List<JobCall> filtered = new ArrayList<>();
-        for (JobCall call : allUpcomingList) {
-            if (matchesSelectedFilters(call)) {
-                filtered.add(call);
+    private void setupDateTabs() {
+        if (tabLayoutDates == null) return;
+        tabLayoutDates.addOnTabSelectedListener(new com.google.android.material.tabs.TabLayout.OnTabSelectedListener() {
+            @Override
+            public void onTabSelected(com.google.android.material.tabs.TabLayout.Tab tab) {
+                if (isUpdatingTabs) return;
+                selectedTabPosition = tab.getPosition();
+                filterList();
+            }
+            @Override
+            public void onTabUnselected(com.google.android.material.tabs.TabLayout.Tab tab) {}
+            @Override
+            public void onTabReselected(com.google.android.material.tabs.TabLayout.Tab tab) {}
+        });
+    }
+
+    private String getOrdinal(int n) {
+        if (n >= 11 && n <= 13) {
+            return n + "th";
+        }
+        switch (n % 10) {
+            case 1:  return n + "st";
+            case 2:  return n + "nd";
+            case 3:  return n + "rd";
+            default: return n + "th";
+        }
+    }
+
+    private String[] getTabTitles(int[] counts) {
+        String[] titles = new String[9];
+        java.util.Calendar cal = java.util.Calendar.getInstance();
+        
+        // Tab 0: Today
+        int day0 = cal.get(java.util.Calendar.DAY_OF_MONTH);
+        titles[0] = getOrdinal(day0) + " (Today) (" + counts[0] + ")";
+        
+        // Tab 1: Tomorrow
+        cal.add(java.util.Calendar.DAY_OF_YEAR, 1);
+        int day1 = cal.get(java.util.Calendar.DAY_OF_MONTH);
+        titles[1] = getOrdinal(day1) + " (Tomorrow) (" + counts[1] + ")";
+        
+        // Tab 2 to 6: Day of week
+        java.text.SimpleDateFormat dayFormat = new java.text.SimpleDateFormat("EEEE", java.util.Locale.getDefault());
+        for (int i = 2; i <= 6; i++) {
+            cal.add(java.util.Calendar.DAY_OF_YEAR, 1);
+            int day = cal.get(java.util.Calendar.DAY_OF_MONTH);
+            String dayOfWeek = dayFormat.format(cal.getTime());
+            titles[i] = getOrdinal(day) + " (" + dayOfWeek + ") (" + counts[i] + ")";
+        }
+        
+        // Tab 7: Later
+        titles[7] = "Later (" + counts[7] + ")";
+        
+        // Tab 8: All
+        titles[8] = "All (" + counts[8] + ")";
+        
+        return titles;
+    }
+
+    private void updateDateTabs(List<JobCall> chipFilteredList) {
+        if (tabLayoutDates == null) return;
+
+        int[] counts = new int[9];
+        
+        // Date boundaries
+        java.util.Calendar cal = java.util.Calendar.getInstance();
+        cal.set(java.util.Calendar.HOUR_OF_DAY, 0);
+        cal.set(java.util.Calendar.MINUTE, 0);
+        cal.set(java.util.Calendar.SECOND, 0);
+        cal.set(java.util.Calendar.MILLISECOND, 0);
+        long startOfToday = cal.getTimeInMillis();
+        
+        cal.add(java.util.Calendar.DAY_OF_YEAR, 1);
+        long startOfTomorrow = cal.getTimeInMillis();
+        
+        long[] startOfDays = new long[7];
+        startOfDays[0] = startOfToday;
+        startOfDays[1] = startOfTomorrow;
+        for (int i = 2; i < 7; i++) {
+            cal.add(java.util.Calendar.DAY_OF_YEAR, 1);
+            startOfDays[i] = cal.getTimeInMillis();
+        }
+        cal.add(java.util.Calendar.DAY_OF_YEAR, 1);
+        long startOfLater = cal.getTimeInMillis();
+        
+        for (JobCall call : chipFilteredList) {
+            long scheduleMillis = FollowUpUtils.parseScheduleMillis(call.getTentativeSchedule());
+            counts[8]++; // All
+            
+            if (scheduleMillis < 0) {
+                counts[7]++; // Tentative / no schedule goes to Later
+            } else if (scheduleMillis < startOfTomorrow) {
+                counts[0]++; // Today (including past/overdue)
+            } else if (scheduleMillis >= startOfTomorrow && scheduleMillis < startOfDays[2]) {
+                counts[1]++; // Tomorrow
+            } else if (scheduleMillis >= startOfDays[2] && scheduleMillis < startOfDays[3]) {
+                counts[2]++;
+            } else if (scheduleMillis >= startOfDays[3] && scheduleMillis < startOfDays[4]) {
+                counts[3]++;
+            } else if (scheduleMillis >= startOfDays[4] && scheduleMillis < startOfDays[5]) {
+                counts[4]++;
+            } else if (scheduleMillis >= startOfDays[5] && scheduleMillis < startOfDays[6]) {
+                counts[5]++;
+            } else if (scheduleMillis >= startOfDays[6] && scheduleMillis < startOfLater) {
+                counts[6]++;
+            } else {
+                counts[7]++; // Later
             }
         }
 
-        // Sort by first-log time (oldest first) or by most recent call activity
-        // (newest first), per the selected sort chip. Calls whose interview time has
-        // already passed without an update always float to the top regardless of sort.
+        isUpdatingTabs = true;
+        tabLayoutDates.removeAllTabs();
+        String[] titles = getTabTitles(counts);
+        for (int i = 0; i < 9; i++) {
+            com.google.android.material.tabs.TabLayout.Tab tab = tabLayoutDates.newTab().setText(titles[i]);
+            tabLayoutDates.addTab(tab);
+        }
+        com.google.android.material.tabs.TabLayout.Tab currentTab = tabLayoutDates.getTabAt(selectedTabPosition);
+        if (currentTab != null) {
+            currentTab.select();
+        }
+        isUpdatingTabs = false;
+    }
+
+    private void filterList() {
+        List<JobCall> chipFiltered = new ArrayList<>();
+        for (JobCall call : allUpcomingList) {
+            if (matchesSelectedFilters(call)) {
+                chipFiltered.add(call);
+            }
+        }
+
+        updateDateTabs(chipFiltered);
+
+        List<JobCall> filtered = new ArrayList<>();
+        
+        // Date boundaries
+        java.util.Calendar cal = java.util.Calendar.getInstance();
+        cal.set(java.util.Calendar.HOUR_OF_DAY, 0);
+        cal.set(java.util.Calendar.MINUTE, 0);
+        cal.set(java.util.Calendar.SECOND, 0);
+        cal.set(java.util.Calendar.MILLISECOND, 0);
+        long startOfToday = cal.getTimeInMillis();
+        
+        cal.add(java.util.Calendar.DAY_OF_YEAR, 1);
+        long startOfTomorrow = cal.getTimeInMillis();
+        
+        long[] startOfDays = new long[7];
+        startOfDays[0] = startOfToday;
+        startOfDays[1] = startOfTomorrow;
+        for (int i = 2; i < 7; i++) {
+            cal.add(java.util.Calendar.DAY_OF_YEAR, 1);
+            startOfDays[i] = cal.getTimeInMillis();
+        }
+        cal.add(java.util.Calendar.DAY_OF_YEAR, 1);
+        long startOfLater = cal.getTimeInMillis();
+
+        for (JobCall call : chipFiltered) {
+            long scheduleMillis = FollowUpUtils.parseScheduleMillis(call.getTentativeSchedule());
+            
+            if (selectedTabPosition == 8) { // All
+                filtered.add(call);
+            } else if (selectedTabPosition == 0) { // Today
+                if (scheduleMillis >= 0 && scheduleMillis < startOfTomorrow) {
+                    filtered.add(call);
+                }
+            } else if (selectedTabPosition == 1) { // Tomorrow
+                if (scheduleMillis >= startOfTomorrow && scheduleMillis < startOfDays[2]) {
+                    filtered.add(call);
+                }
+            } else if (selectedTabPosition >= 2 && selectedTabPosition <= 6) { // Days 2 to 6
+                int idx = selectedTabPosition;
+                if (scheduleMillis >= startOfDays[idx] && scheduleMillis < (idx + 1 < 7 ? startOfDays[idx + 1] : startOfLater)) {
+                    filtered.add(call);
+                }
+            } else if (selectedTabPosition == 7) { // Later / Tentative
+                if (scheduleMillis < 0 || scheduleMillis >= startOfLater) {
+                    filtered.add(call);
+                }
+            }
+        }
+
+        // Sort chronologically by scheduled time, overdue first
         Collections.sort(filtered, (a, b) -> {
             boolean followUpA = FollowUpUtils.needsFollowUp(a);
             boolean followUpB = FollowUpUtils.needsFollowUp(b);
             if (followUpA != followUpB) {
                 return followUpA ? -1 : 1;
             }
-            if (sortByFirstCall) {
+            long ta = FollowUpUtils.parseScheduleMillis(a.getTentativeSchedule());
+            long tb = FollowUpUtils.parseScheduleMillis(b.getTentativeSchedule());
+            if (ta < 0 && tb < 0) {
                 return Long.compare(a.getTimestamp(), b.getTimestamp());
             }
-            long[] ta = dbHelper.getFirstAndRecentCallTimes(a.getId());
-            long[] tb = dbHelper.getFirstAndRecentCallTimes(b.getId());
-            long recentA = ta[1] > 0 ? ta[1] : ta[0];
-            long recentB = tb[1] > 0 ? tb[1] : tb[0];
-            return Long.compare(recentB, recentA);
+            if (ta < 0) return 1;
+            if (tb < 0) return -1;
+            return Long.compare(ta, tb);
         });
 
         filteredList.clear();
@@ -298,8 +505,117 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
         showAddEditCallDialog(call);
     }
 
+    @Override
+    public void onFollowUpClick(final JobCall call) {
+        showQuickUpdateDialog(call);
+    }
+
+    private void showQuickUpdateDialog(final JobCall call) {
+        if (getContext() == null) return;
+        
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+        builder.setTitle("Quick Status Update");
+        
+        LinearLayout layout = new LinearLayout(requireContext());
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(50, 40, 50, 40);
+        
+        // Status Spinner Label
+        TextView lblStatus = new TextView(requireContext());
+        lblStatus.setText("Interview Round / Status:");
+        lblStatus.setTextColor(androidx.core.content.ContextCompat.getColor(requireContext(), R.color.text_primary));
+        lblStatus.setPadding(0, 0, 0, 15);
+        layout.addView(lblStatus);
+        
+        // Status Spinner
+        final Spinner spinner = new Spinner(requireContext());
+        String[] spinnerStatuses = {"First time", "1st Round", "2nd Round", "Final Round", "HR / Salary", "Offered", "Not Interested", "Negative"};
+        ArrayAdapter<String> spinnerAdapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_spinner_item, spinnerStatuses);
+        spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinner.setAdapter(spinnerAdapter);
+        
+        // Pre-select current status
+        if (call.getRoundStatus() != null) {
+            String currentStatus = call.getRoundStatus();
+            if (currentStatus.equals("Screening")) currentStatus = "First time";
+            int pos = spinnerAdapter.getPosition(currentStatus);
+            spinner.setSelection(pos >= 0 ? pos : 0);
+        }
+        layout.addView(spinner);
+        
+        // Spacing
+        View spacing1 = new View(requireContext());
+        spacing1.setMinimumHeight(30);
+        layout.addView(spacing1);
+        
+        // "Yet to get an update" Checkbox
+        final com.google.android.material.checkbox.MaterialCheckBox cbYetToUpdate = new com.google.android.material.checkbox.MaterialCheckBox(requireContext());
+        cbYetToUpdate.setText("Yet to get an update (clears schedule)");
+        cbYetToUpdate.setChecked(false);
+        layout.addView(cbYetToUpdate);
+        
+        // Spacing
+        View spacing2 = new View(requireContext());
+        spacing2.setMinimumHeight(30);
+        layout.addView(spacing2);
+        
+        // Note Label
+        TextView lblNote = new TextView(requireContext());
+        lblNote.setText("Log a note:");
+        lblNote.setTextColor(androidx.core.content.ContextCompat.getColor(requireContext(), R.color.text_primary));
+        lblNote.setPadding(0, 0, 0, 15);
+        layout.addView(lblNote);
+        
+        // Note EditText
+        final EditText etNote = new EditText(requireContext());
+        etNote.setHint("Write what happened (optional)...");
+        etNote.setMinLines(2);
+        layout.addView(etNote);
+        
+        builder.setView(layout);
+        
+        builder.setPositiveButton("Save", (d, w) -> {
+            String selectedStatus = spinner.getSelectedItem().toString();
+            String noteText = etNote.getText().toString().trim();
+            boolean isYetToUpdate = cbYetToUpdate.isChecked();
+            
+            // Check if status changed to terminal, or if 'Yet to get an update' checked
+            boolean isTerminal = selectedStatus.equals("Negative") || selectedStatus.equals("Not Interested") || selectedStatus.equals("Offered");
+            
+            call.setRoundStatus(selectedStatus);
+            if (isYetToUpdate || isTerminal) {
+                call.setTentativeSchedule(""); // Clear schedule date/time
+            }
+            
+            dbHelper.updateJobCall(call);
+            
+            String finalNote = "";
+            if (isYetToUpdate) {
+                finalNote = "• Yet to get an update";
+                if (!noteText.isEmpty()) {
+                    finalNote += "\n• " + noteText;
+                }
+            } else if (!noteText.isEmpty()) {
+                finalNote = "• " + noteText;
+            }
+            
+            if (!finalNote.isEmpty()) {
+                dbHelper.insertNote(call.getId(), finalNote, System.currentTimeMillis(), DatabaseHelper.NOTE_SOURCE_MANUAL);
+            }
+            
+            Toast.makeText(requireContext(), "Status updated successfully!", Toast.LENGTH_SHORT).show();
+            loadUpcomingInterviews();
+        });
+        
+        builder.setNegativeButton("Cancel", null);
+        builder.show();
+    }
+
     private void showAddEditCallDialog(final JobCall editCall) {
         if (getContext() == null) return;
+
+        activeDialogManualUploadUsed = false;
+        activeDialogManualUploadAIFailed = false;
 
         AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
         LayoutInflater inflater = getLayoutInflater();
@@ -371,6 +687,47 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
                 startActivityForResult(intent, 200);
             } catch (Exception e) {
                 Toast.makeText(requireContext(), "Speech recognition is not supported.", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        // JD fields binding
+        EditText etJdLink = dialogView.findViewById(R.id.et_jd_link);
+        Button btnUploadJd = dialogView.findViewById(R.id.btn_upload_jd_screenshot);
+        FrameLayout flJdPreviewContainer = dialogView.findViewById(R.id.fl_jd_screenshot_container);
+        ImageView ivJdPreview = dialogView.findViewById(R.id.iv_jd_screenshot_preview);
+        View btnRemoveJd = dialogView.findViewById(R.id.btn_remove_jd_screenshot);
+
+        activeFlJdPreviewContainer = flJdPreviewContainer;
+        activeIvJdPreview = ivJdPreview;
+
+        if (editCall != null) {
+            etJdLink.setText(editCall.getJdLink());
+            currentJdImagePath = editCall.getJdImagePath();
+            if (currentJdImagePath != null && !currentJdImagePath.isEmpty()) {
+                ivJdPreview.setImageURI(android.net.Uri.fromFile(new java.io.File(currentJdImagePath)));
+                flJdPreviewContainer.setVisibility(View.VISIBLE);
+            } else {
+                flJdPreviewContainer.setVisibility(View.GONE);
+            }
+        } else {
+            currentJdImagePath = null;
+            flJdPreviewContainer.setVisibility(View.GONE);
+        }
+
+        btnUploadJd.setOnClickListener(v -> {
+            Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+            intent.setType("image/*");
+            startActivityForResult(intent, REQ_CODE_PICK_JD_SCREENSHOT);
+        });
+
+        btnRemoveJd.setOnClickListener(v -> {
+            currentJdImagePath = "";
+            flJdPreviewContainer.setVisibility(View.GONE);
+        });
+
+        ivJdPreview.setOnClickListener(v -> {
+            if (currentJdImagePath != null && !currentJdImagePath.isEmpty()) {
+                showFullScreenImage(currentJdImagePath);
             }
         });
 
@@ -491,14 +848,24 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
                 editCall.setNoticePeriod(notice);
                 editCall.setMainAgenda(agenda);
                 editCall.setNextSteps(nextStepsVal);
+                editCall.setJdLink(etJdLink.getText().toString().trim());
+                editCall.setJdImagePath(currentJdImagePath != null ? currentJdImagePath : "");
 
                 dbHelper.updateJobCall(editCall);
 
+                boolean noteWasFromManualUpload = activeDialogManualUploadUsed;
+                boolean noteFailedAI = activeDialogManualUploadAIFailed;
+                long insertedNoteId = -1;
                 if (!notesVal.isEmpty()) {
-                    dbHelper.insertNote(editCall.getId(), notesVal, System.currentTimeMillis());
+                    insertedNoteId = dbHelper.insertNote(editCall.getId(), notesVal, System.currentTimeMillis());
                 }
 
                 Toast.makeText(requireContext(), "Lead updated successfully", Toast.LENGTH_SHORT).show();
+
+                if (!notesVal.isEmpty() && (!noteWasFromManualUpload || noteFailedAI)) {
+                    runAiOnManualNote(editCall.getId(), insertedNoteId, notesVal, spinnerRound, etTentativeSchedule,
+                            llNotesTimeline, labelNotes, llSkillsMatchSection, tvSkillsMatching, tvSkillsNotMatching);
+                }
             } else {
                 JobCall newCall = new JobCall(phone, comp, roundVal, tagsVal, notesVal, 0, System.currentTimeMillis());
                 newCall.setCandidateName(candidate);
@@ -508,12 +875,21 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
                 newCall.setNoticePeriod(notice);
                 newCall.setMainAgenda(agenda);
                 newCall.setNextSteps(nextStepsVal);
+                newCall.setJdLink(etJdLink.getText().toString().trim());
+                newCall.setJdImagePath(currentJdImagePath != null ? currentJdImagePath : "");
 
                 long newId = dbHelper.insertJobCall(newCall);
+                boolean noteWasFromManualUpload = activeDialogManualUploadUsed;
+                boolean noteFailedAI = activeDialogManualUploadAIFailed;
+                long insertedNoteId = -1;
                 if (newId > 0 && !notesVal.isEmpty()) {
-                    dbHelper.insertNote(newId, notesVal, System.currentTimeMillis());
+                    insertedNoteId = dbHelper.insertNote(newId, notesVal, System.currentTimeMillis());
                 }
                 Toast.makeText(requireContext(), "Lead saved successfully", Toast.LENGTH_SHORT).show();
+
+                if (newId > 0 && !notesVal.isEmpty() && (!noteWasFromManualUpload || noteFailedAI)) {
+                    runAiOnManualNote(newId, insertedNoteId, notesVal, null, null, null, null, null, null, null);
+                }
             }
 
             loadUpcomingInterviews();
@@ -521,6 +897,8 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
         });
 
         dialog.setOnDismissListener(d -> {
+            activeFlJdPreviewContainer = null;
+            activeIvJdPreview = null;
             activeDialogNotesField = null;
             activeDialogTilNotes = null;
             activeLlTranscriptionProgress = null;
@@ -620,8 +998,10 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
                         public void onSuccess(String text) {
                             if (!isAdded() || text == null || text.trim().isEmpty()) return;
 
+                            activeDialogManualUploadUsed = true;
                             String openAiKey = requireContext().getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE).getString("openai_api_key", "").trim();
                             if (openAiKey.isEmpty()) {
+                                activeDialogManualUploadAIFailed = true;
                                 if (activeLlTranscriptionProgress != null) {
                                     activeLlTranscriptionProgress.setVisibility(View.GONE);
                                 }
@@ -758,6 +1138,7 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
                                             Toast.makeText(requireContext(), "AI fields updated successfully!", Toast.LENGTH_SHORT).show();
                                         }
                                     } catch (Exception e) {
+                                        activeDialogManualUploadAIFailed = true;
                                         etNotesField.setText(text);
                                         Toast.makeText(requireContext(), "AI analysis failed. Pre-filled raw transcription.", Toast.LENGTH_LONG).show();
                                     } finally {
@@ -769,6 +1150,7 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
 
                                 @Override
                                 public void onError(String error) {
+                                    activeDialogManualUploadAIFailed = true;
                                     if (activeLlTranscriptionProgress != null) {
                                         activeLlTranscriptionProgress.setVisibility(View.GONE);
                                     }
@@ -867,5 +1249,164 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
         String val = json.optString(key, fallback).trim();
         if (val.equalsIgnoreCase("null")) return fallback;
         return val;
+    }
+
+    private String copyUriToInternalStorage(android.net.Uri uri) {
+        try {
+            java.io.InputStream is = requireContext().getContentResolver().openInputStream(uri);
+            if (is == null) return null;
+            java.io.File dir = new java.io.File(requireContext().getFilesDir(), "jd_screenshots");
+            if (!dir.exists()) dir.mkdirs();
+            java.io.File file = new java.io.File(dir, "jd_" + System.currentTimeMillis() + ".png");
+            java.io.FileOutputStream os = new java.io.FileOutputStream(file);
+            byte[] buffer = new byte[1024];
+            int bytesRead;
+            while ((bytesRead = is.read(buffer)) != -1) {
+                os.write(buffer, 0, bytesRead);
+            }
+            os.close();
+            is.close();
+            return file.getAbsolutePath();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private void showFullScreenImage(String path) {
+        if (getContext() == null || path == null || path.isEmpty()) return;
+        android.app.Dialog dialog = new android.app.Dialog(requireContext(), android.R.style.Theme_Black_NoTitleBar_Fullscreen);
+        dialog.setContentView(R.layout.dialog_full_screen_image);
+        ImageView iv = dialog.findViewById(R.id.iv_full_screen);
+        iv.setImageURI(android.net.Uri.fromFile(new java.io.File(path)));
+        iv.setOnClickListener(v -> dialog.dismiss());
+        dialog.show();
+    }
+
+    private void handleJdScreenshotSelected(android.net.Uri uri) {
+        String path = copyUriToInternalStorage(uri);
+        if (path != null) {
+            currentJdImagePath = path;
+            if (activeFlJdPreviewContainer != null && activeIvJdPreview != null) {
+                activeIvJdPreview.setImageURI(android.net.Uri.fromFile(new java.io.File(path)));
+                activeFlJdPreviewContainer.setVisibility(View.VISIBLE);
+            }
+        } else {
+            Toast.makeText(requireContext(), "Failed to process selected image.", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void runAiOnManualNote(long jobId, long noteId, String noteText, Spinner spinnerRoundRef,
+                                    EditText etScheduleRef, LinearLayout timelineContainer, View timelineLabel,
+                                    View skillsSection, TextView tvSkillsMatchingRef, TextView tvSkillsNotMatchingRef) {
+        String apiKey = requireContext().getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE)
+                .getString("openai_api_key", "").trim();
+        if (apiKey.isEmpty()) {
+            Toast.makeText(requireContext(), "Note saved as-is - add an OpenAI API key in Settings to have it rewritten by AI.", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        OpenAiClient.extractFields(requireContext(), noteText, new OpenAiClient.OpenAiCallback() {
+            @Override
+            public void onSuccess(JSONObject result) {
+                if (dbHelper == null) return;
+                try {
+                    JobCall current = dbHelper.getJobCallById(jobId);
+                    if (current == null) return;
+
+                    String round = OpenAiClient.normalizeRoundStatus(
+                            optClean(result, "present_round", ""), current.getRoundStatus());
+                    boolean roundChanged = OpenAiClient.shouldUpdateRoundStatus(current.getRoundStatus(), round);
+                    if (roundChanged) {
+                        dbHelper.updateRoundStatus(jobId, round);
+                    }
+
+                    String schedule = optClean(result, "tentative_schedule", "");
+                    if (!schedule.isEmpty()) {
+                        current.setTentativeSchedule(schedule);
+                        dbHelper.updateJobCall(current);
+                    }
+
+                    String sentimentComment = optClean(result, "sentiment_comment", "");
+                    if (!sentimentComment.isEmpty()) {
+                        dbHelper.insertNote(jobId, "• " + sentimentComment, System.currentTimeMillis());
+                    }
+
+                    boolean noteRewritten = false;
+                    if (noteId > 0 && result.has("key_discussion_points")) {
+                        org.json.JSONArray points = result.optJSONArray("key_discussion_points");
+                        StringBuilder sb = new StringBuilder();
+                        if (points != null) {
+                            for (int i = 0; i < points.length(); i++) {
+                                String pt = points.optString(i, "").trim();
+                                if (!pt.isEmpty() && !pt.equalsIgnoreCase("null")) {
+                                    if (sb.length() > 0) sb.append("\n");
+                                    sb.append(pt.startsWith("•") || pt.startsWith("-") ? pt : "• " + pt);
+                                }
+                            }
+                        }
+                        String rewritten = sb.toString().trim();
+                        if (!rewritten.isEmpty()) {
+                            dbHelper.updateNoteText(noteId, jobId, rewritten);
+                            noteRewritten = true;
+                        }
+                    }
+
+                    String userInterestsCsv = getContext() == null ? "" : getContext()
+                            .getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE)
+                            .getString("user_talking_points", "").trim();
+                    String[] reconciledSkills = SkillMatchUtils.reconcileWithInterests(userInterestsCsv,
+                            OpenAiClient.jsonArrayToCsv(result, "matching_skills"),
+                            OpenAiClient.jsonArrayToCsv(result, "not_matching_skills"));
+                    String matchingSkills = reconciledSkills[0];
+                    String notMatchingSkills = reconciledSkills[1];
+                    boolean skillsChanged = !matchingSkills.isEmpty() || !notMatchingSkills.isEmpty();
+                    if (skillsChanged) {
+                        current.setMatchingSkills(SkillMatchUtils.mergeSkillListExcluding(
+                                current.getMatchingSkills(), matchingSkills, notMatchingSkills));
+                        current.setNotMatchingSkills(SkillMatchUtils.mergeSkillListExcluding(
+                                current.getNotMatchingSkills(), notMatchingSkills, current.getMatchingSkills()));
+                        dbHelper.updateJobCall(current);
+                    }
+
+                    if (isAdded() && getContext() != null) {
+                        if (roundChanged && spinnerRoundRef != null) {
+                            setSpinnerSelection(spinnerRoundRef, round);
+                        }
+                        if (!schedule.isEmpty() && etScheduleRef != null) {
+                            etScheduleRef.setText(schedule);
+                        }
+                        if (!sentimentComment.isEmpty() || noteRewritten) {
+                            populateTimeline(timelineContainer, timelineLabel, jobId);
+                        }
+                        if (skillsChanged) {
+                            populateSkillsMatch(skillsSection, tvSkillsMatchingRef, tvSkillsNotMatchingRef, current);
+                        }
+                        loadUpcomingInterviews();
+                    }
+                } catch (Exception e) {
+                    DebugLogger.log(requireContext(), "runAiOnManualNote failed: " + e.getMessage());
+                }
+            }
+
+            @Override
+            public void onError(String error) {
+                DebugLogger.log(requireContext(), "runAiOnManualNote AI error: " + error);
+            }
+        });
+    }
+
+    private void setSpinnerSelection(Spinner spinner, String value) {
+        if (value == null || value.trim().isEmpty()) return;
+        SpinnerAdapter adapter = spinner.getAdapter();
+        if (adapter == null) return;
+        String lowerVal = value.toLowerCase().trim();
+        for (int i = 0; i < adapter.getCount(); i++) {
+            String item = adapter.getItem(i).toString().toLowerCase();
+            if (item.contains(lowerVal) || lowerVal.contains(item)) {
+                spinner.setSelection(i);
+                return;
+            }
+        }
     }
 }

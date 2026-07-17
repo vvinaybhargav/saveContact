@@ -74,7 +74,7 @@
                     android:layout_height="wrap_content"
                     android:paddingHorizontal="10dp"
                     android:paddingVertical="4dp"
-                    android:text="Screening"
+                    android:text="First time"
                     android:textSize="11sp"
                     android:textStyle="bold"
                     android:background="@android:color/transparent" />

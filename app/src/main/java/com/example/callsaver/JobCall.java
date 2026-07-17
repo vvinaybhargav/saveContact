@@ -21,6 +21,8 @@ public class JobCall {
     private String nextSteps = "";
     private String matchingSkills = "";
     private String notMatchingSkills = "";
+    private String jdLink = "";
+    private String jdImagePath = "";
 
     private static String clean(String val) {
         if (val == null || val.trim().equalsIgnoreCase("null")) {
@@ -194,5 +196,21 @@ public class JobCall {
 
     public void setNotMatchingSkills(String notMatchingSkills) {
         this.notMatchingSkills = clean(notMatchingSkills);
+    }
+
+    public String getJdLink() {
+        return jdLink;
+    }
+
+    public void setJdLink(String jdLink) {
+        this.jdLink = clean(jdLink);
+    }
+
+    public String getJdImagePath() {
+        return jdImagePath;
+    }
+
+    public void setJdImagePath(String jdImagePath) {
+        this.jdImagePath = clean(jdImagePath);
     }
 }

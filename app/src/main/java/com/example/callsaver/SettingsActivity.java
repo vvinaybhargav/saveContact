@@ -39,6 +39,7 @@ public class SettingsActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        ThemeUtils.applyTheme(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_settings);
 
@@ -60,6 +61,7 @@ public class SettingsActivity extends AppCompatActivity {
         etRecordingFolder = findViewById(R.id.settings_recording_folder);
         Button btnBrowseFolder = findViewById(R.id.btn_browse_recording_folder);
         switchAutoTranscribe = findViewById(R.id.switch_auto_transcribe);
+        SwitchMaterial switchLightTheme = findViewById(R.id.switch_light_theme);
         btnSave = findViewById(R.id.btn_settings_save_keys);
         btnAnalytics = findViewById(R.id.btn_settings_analytics);
         btnClearCache = findViewById(R.id.btn_settings_clear_cache);
@@ -74,6 +76,12 @@ public class SettingsActivity extends AppCompatActivity {
         etUserInterests.setText(prefs.getString("user_talking_points", ""));
         etRecordingFolder.setText(prefs.getString("custom_recording_folder", ""));
         switchAutoTranscribe.setChecked(prefs.getBoolean("auto_transcribe_background", true));
+        
+        switchLightTheme.setChecked(ThemeUtils.isLightTheme(this));
+        switchLightTheme.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            ThemeUtils.setLightTheme(SettingsActivity.this, isChecked);
+            recreate();
+        });
 
         // Setup save action
         btnSave.setOnClickListener(v -> {

@@ -55,6 +55,7 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        ThemeUtils.applyTheme(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
@@ -178,7 +179,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void run() {
                 if (trackerFragment != null && trackerFragment.isAdded()) {
-                    JobCall prefilledCall = new JobCall(phoneNumber, "", "Screening", "", "", 0, System.currentTimeMillis());
+                    JobCall prefilledCall = new JobCall(phoneNumber, "", "First time", "", "", 0, System.currentTimeMillis());
                     trackerFragment.showAddEditCallDialog(prefilledCall);
                 }
             }

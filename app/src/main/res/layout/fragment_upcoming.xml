@@ -64,7 +64,7 @@
                     android:paddingBottom="4dp">
 
                     <TextView android:id="@+id/chip_upcoming_all" android:text="All" style="@style/TrackerChipStyle" android:tag="selected" />
-                    <TextView android:id="@+id/chip_upcoming_screening" android:text="Screening" style="@style/TrackerChipStyle" />
+                    <TextView android:id="@+id/chip_upcoming_screening" android:text="First time" style="@style/TrackerChipStyle" />
                     <TextView android:id="@+id/chip_upcoming_1st" android:text="1st Round" style="@style/TrackerChipStyle" />
                     <TextView android:id="@+id/chip_upcoming_2nd" android:text="2nd Round" style="@style/TrackerChipStyle" />
                     <TextView android:id="@+id/chip_upcoming_final" android:text="Final Round" style="@style/TrackerChipStyle" />
@@ -92,6 +92,19 @@
                     android:text="Sort: Recent Call"
                     style="@style/TrackerChipStyle" />
             </LinearLayout>
+
+            <!-- Dynamic Date Tabs -->
+            <com.google.android.material.tabs.TabLayout
+                android:id="@+id/tab_layout_upcoming_dates"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="8dp"
+                app:tabMode="scrollable"
+                app:tabGravity="fill"
+                app:tabSelectedTextColor="@color/accent_indigo"
+                app:tabIndicatorColor="@color/accent_indigo"
+                app:tabTextColor="@color/text_secondary"
+                android:background="@color/bg_light" />
         </LinearLayout>
     </com.google.android.material.appbar.AppBarLayout>
 

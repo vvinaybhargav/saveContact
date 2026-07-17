@@ -62,15 +62,14 @@ public class OpenAiClient {
 
             JSONObject systemMsg = new JSONObject();
             systemMsg.put("role", "system");
-            systemMsg.put("content", "You are an expert recruitment assistant tool built into a call logging app. Your job is to parse messy, multi-speaker conversational call transcripts (which mix the recruiter and candidate's voices) and extract clean, professional hiring data.\n" +
+            systemMsg.put("content", "You are an expert recruitment assistant tool built into a call logging app. Your job is to parse conversational call transcripts or notes (representing a recruiter and candidate's discussion) and extract clean, professional hiring data.\n" +
                     "\n" +
-                    "Filter out all filler words, irrelevant small talk, or technical chatter. Focus purely on job details.\n" +
-                    "CRITICAL: Do NOT generate generic points like 'Candidate is interested in the position' or 'Candidate is interested in the role' in key_discussion_points. Only extract actual requirements, action items, or skills discussed.\n" +
+                     "For \"key_discussion_points\", rewrite the discussion between the recruiter and candidate of what went on (what was discussed, what went okay, schedule details, etc.) in clean, simple English. DO NOT shorten or truncate them excessively; write a descriptive narrative/bullet points showing the discussion flow. This must always be populated with at least one descriptive item rewriting the input conversation/note text in simple English.\n" +
                     "\n" +
                     "\"recruiter_name\" must be the OTHER person on the call (the recruiter/interviewer), never the candidate. If a speaker says 'this is <name> speaking' and that is clearly the candidate introducing themselves, do not use that as recruiter_name.\n" +
                     "\n" +
                     "\"present_round\" MUST be exactly one of these values, chosen by what the call indicates about the CURRENT/NEXT stage of the pipeline (not a free-form label):\n" +
-                    "  \"Screening\" - initial/HR screening call, no technical round scheduled yet.\n" +
+                    "  \"First time\" - initial/HR screening call, first call, or no technical round scheduled yet.\n" +
                     "  \"1st Round\" - the call mentions 'L1', 'first round', 'first technical round', or schedules/discusses the first interview round.\n" +
                     "  \"2nd Round\" - the call mentions 'L2', 'second round', or schedules/discusses the second interview round.\n" +
                     "  \"Final Round\" - mentions 'final round', 'last round', or similar.\n" +
@@ -78,7 +77,7 @@ public class OpenAiClient {
                     "  \"Offered\" - an offer was clearly extended.\n" +
                     "  \"Not Interested\" - the CANDIDATE said they are not interested / want to withdraw.\n" +
                     "  \"Negative\" - the recruiter/company clearly rejected the candidate or said the profile doesn't match, i.e. a negative outcome from their side.\n" +
-                    "  If nothing about the stage changed in this call, keep it as \"Screening\" only if you have no other information; otherwise infer the most advanced stage explicitly mentioned.\n" +
+                    "  If nothing about the stage changed in this call, keep it as \"First time\" only if you have no other information; otherwise infer the most advanced stage explicitly mentioned.\n" +
                     "  Example: 'You've been shortlisted, we'd like to schedule your slot' with no round number = keep the current/likely stage (usually \"1st Round\" if this is the first scheduled interview) and put the date/time in tentative_schedule.\n" +
                     "\n" +
                     "\"sentiment_comment\": string or null - ONLY when the call had a clearly POSITIVE outcome (shortlisted, moving forward, offer) or clearly NEGATIVE outcome (rejected, profile doesn't match, withdrawing). One short sentence describing it, e.g. \"Shortlisted for L1, recruiter said profile matches well.\" or \"Rejected - recruiter said experience doesn't match requirement.\". null if the call was neutral/inconclusive.\n" +
@@ -187,7 +186,7 @@ public class OpenAiClient {
     }
 
     private static final java.util.Set<String> VALID_ROUND_STATUSES = new java.util.HashSet<>(java.util.Arrays.asList(
-            "Screening", "1st Round", "2nd Round", "Final Round", "HR / Salary", "Offered", "Not Interested", "Negative"));
+            "First time", "1st Round", "2nd Round", "Final Round", "HR / Salary", "Offered", "Not Interested", "Negative"));
 
     /**
      * Maps the AI's present_round value onto our exact enum, tolerating close variants
@@ -207,7 +206,7 @@ public class OpenAiClient {
         if (s.contains("final")) return "Final Round";
         if (s.contains("l2") || s.contains("second") || s.contains("2nd")) return "2nd Round";
         if (s.contains("l1") || s.contains("first") || s.contains("1st") || s.contains("technical")) return "1st Round";
-        if (s.contains("screen")) return "Screening";
+        if (s.contains("screen") || s.contains("first time")) return "First time";
         return fallback;
     }
 
@@ -215,7 +214,7 @@ public class OpenAiClient {
      * True if the incoming round status should replace the existing one. Terminal
      * outcomes (Negative, Not Interested, Offered) always win. Otherwise only update
      * when the new stage is strictly more advanced, so a vague/short follow-up call
-     * that the AI defaults to "Screening" never regresses an already-later stage.
+     * that the AI defaults to "First time" never regresses an already-later stage.
      */
     public static boolean shouldUpdateRoundStatus(String existing, String incoming) {
         if (existing == null || existing.trim().isEmpty()) return true;
@@ -227,7 +226,7 @@ public class OpenAiClient {
     private static int roundRank(String status) {
         if (status == null) return 1;
         switch (status) {
-            case "Screening": return 1;
+            case "First time": return 1;
             case "1st Round": return 2;
             case "2nd Round": return 3;
             case "Final Round": return 4;

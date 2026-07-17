@@ -395,6 +395,100 @@
             android:textStyle="bold" />
     </LinearLayout>
 
+    <!-- SECTION 4: JOB DESCRIPTION (JD) -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginTop="12dp"
+        android:layout_marginBottom="10dp">
+
+        <View
+            android:layout_width="3dp"
+            android:layout_height="14dp"
+            android:background="@color/accent_indigo"
+            android:layout_marginEnd="8dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="JOB DESCRIPTION (JD)"
+            android:textColor="@color/accent_indigo"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.08" />
+    </LinearLayout>
+
+    <!-- JD Link / Email Link Input -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/til_jd_link"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="12dp"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        app:boxCornerRadiusTopStart="14dp"
+        app:boxCornerRadiusTopEnd="14dp"
+        app:boxCornerRadiusBottomStart="14dp"
+        app:boxCornerRadiusBottomEnd="14dp"
+        app:boxStrokeColor="@color/accent_indigo"
+        app:hintTextColor="@color/accent_indigo"
+        app:startIconDrawable="@android:drawable/ic_menu_share"
+        app:startIconTint="@color/text_muted">
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/et_jd_link"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="JD Link or Email Web Link"
+            android:inputType="textUri"
+            android:textColor="@color/text_primary" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <!-- JD Screenshot Layout -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="16dp">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_upload_jd_screenshot"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Add JD Screenshot"
+            android:textAllCaps="false"
+            android:textColor="@color/accent_indigo"
+            app:strokeColor="@color/accent_indigo"
+            app:cornerRadius="12dp"
+            android:layout_marginEnd="12dp" />
+
+        <FrameLayout
+            android:id="@+id/fl_jd_screenshot_container"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:visibility="gone">
+
+            <ImageView
+                android:id="@+id/iv_jd_screenshot_preview"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"
+                android:background="@color/divider" />
+
+            <ImageButton
+                android:id="@+id/btn_remove_jd_screenshot"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_gravity="top|end"
+                android:src="@android:drawable/ic_menu_close_clear_cancel"
+                android:background="#80000000"
+                app:tint="@color/white"
+                android:contentDescription="Remove screenshot" />
+        </FrameLayout>
+    </LinearLayout>
+
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"

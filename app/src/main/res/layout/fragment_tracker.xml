@@ -113,7 +113,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Screening"
+                        android:text="First time"
                         android:textSize="11sp"
                         android:textColor="@color/text_secondary"
                         android:layout_marginTop="2dp" />
@@ -315,7 +315,7 @@
                     android:paddingBottom="4dp">
 
                     <TextView android:id="@+id/chip_all" android:text="All" style="@style/TrackerChipStyle" android:tag="selected" />
-                    <TextView android:id="@+id/chip_screening" android:text="Screening" style="@style/TrackerChipStyle" />
+                    <TextView android:id="@+id/chip_screening" android:text="First time" style="@style/TrackerChipStyle" />
                     <TextView android:id="@+id/chip_1st_round" android:text="1st Round" style="@style/TrackerChipStyle" />
                     <TextView android:id="@+id/chip_2nd_round" android:text="2nd Round" style="@style/TrackerChipStyle" />
                     <TextView android:id="@+id/chip_final" android:text="Final Round" style="@style/TrackerChipStyle" />

@@ -4,16 +4,16 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/primary_dark">
+    android:background="@color/bg_light">
 
     <!-- Custom Toolbar -->
     <androidx.appcompat.widget.Toolbar
         android:id="@+id/toolbar_settings"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
-        android:background="@color/primary_dark"
+        android:background="@color/bg_light"
         app:title="Settings &amp; Logs"
-        app:titleTextColor="@color/white_constant"
+        app:titleTextColor="@color/text_primary"
         app:navigationIcon="?attr/homeAsUpIndicator"
         app:navigationContentDescription="Back" />
 
@@ -38,7 +38,7 @@
                 app:cardElevation="2dp"
                 app:strokeWidth="1dp"
                 app:strokeColor="@color/divider"
-                app:cardBackgroundColor="@color/card_bg_dark">
+                app:cardBackgroundColor="@color/white">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -140,7 +140,7 @@
                 app:cardElevation="2dp"
                 app:strokeWidth="1dp"
                 app:strokeColor="@color/divider"
-                app:cardBackgroundColor="@color/card_bg_dark">
+                app:cardBackgroundColor="@color/white">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -226,7 +226,7 @@
                 app:cardElevation="2dp"
                 app:strokeWidth="1dp"
                 app:strokeColor="@color/divider"
-                app:cardBackgroundColor="@color/card_bg_dark">
+                app:cardBackgroundColor="@color/white">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -302,7 +302,7 @@
                 app:cardElevation="2dp"
                 app:strokeWidth="1dp"
                 app:strokeColor="@color/divider"
-                app:cardBackgroundColor="@color/card_bg_dark">
+                app:cardBackgroundColor="@color/white">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -360,6 +360,73 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
+            <!-- Section 2.5: Appearance Settings -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="2dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="@color/divider"
+                app:cardBackgroundColor="@color/white">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="🎨 Appearance Settings"
+                        android:textColor="@color/accent_indigo"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="12dp"/>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:layout_marginEnd="12dp">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Light Theme"
+                                android:textColor="@color/text_primary"
+                                android:textSize="14sp"
+                                android:textStyle="bold"/>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Enable light theme for the application"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="11sp"
+                                android:layout_marginTop="2dp"/>
+                        </LinearLayout>
+
+                        <com.google.android.material.switchmaterial.SwitchMaterial
+                            android:id="@+id/switch_light_theme"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:checked="false"
+                            app:thumbTint="@color/accent_indigo"
+                            app:trackTint="@color/divider"/>
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
             <!-- Section 3: Utilities & Cache -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
@@ -369,7 +436,7 @@
                 app:cardElevation="2dp"
                 app:strokeWidth="1dp"
                 app:strokeColor="@color/divider"
-                app:cardBackgroundColor="@color/card_bg_dark">
+                app:cardBackgroundColor="@color/white">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -429,7 +496,7 @@
                 app:cardElevation="2dp"
                 app:strokeWidth="1dp"
                 app:strokeColor="@color/divider"
-                app:cardBackgroundColor="@color/card_bg_dark">
+                app:cardBackgroundColor="@color/white">
 
                 <LinearLayout
                     android:layout_width="match_parent"

@@ -108,7 +108,7 @@ public class CallActionReceiver extends BroadcastReceiver {
                             String candidate = result.optString("candidate_name", "").trim();
                             String role = result.optString("applied_role", "").trim();
                             String round = OpenAiClient.normalizeRoundStatus(
-                                    result.optString("present_round", "").trim(), "Screening");
+                                    result.optString("present_round", "").trim(), "First time");
                             String schedule = result.optString("tentative_schedule", "").trim();
                             String notice = result.optString("notice_period", "").trim();
                             String agenda = result.optString("main_agenda", "").trim();
@@ -223,7 +223,7 @@ public class CallActionReceiver extends BroadcastReceiver {
             if (existing != null) {
                 db.insertNote(existing.getId(), notes, System.currentTimeMillis());
             } else {
-                JobCall newCall = new JobCall(phoneNumber, "Unknown Company", "Screening", "Auto-Saved", notes, duration, timestamp);
+                JobCall newCall = new JobCall(phoneNumber, "Unknown Company", "First time", "Auto-Saved", notes, duration, timestamp);
                 long newId = db.insertJobCall(newCall);
                 if (newId > 0) {
                     db.insertNote(newId, notes, System.currentTimeMillis());

@@ -186,7 +186,7 @@ public class CombinedAdapter extends RecyclerView.Adapter<CombinedAdapter.ViewHo
 
     private void setupStatusBadge(TextView tv, String status) {
         if (status == null) {
-            status = "Screening";
+            status = "First time";
         }
         tv.setText(status);
         
@@ -213,7 +213,7 @@ public class CombinedAdapter extends RecyclerView.Adapter<CombinedAdapter.ViewHo
                 textColor = context.getResources().getColor(R.color.status_green);
                 bgColor = context.getResources().getColor(R.color.status_green_bg);
                 break;
-            case "Screening":
+            case "First time":
             default:
                 textColor = context.getResources().getColor(R.color.status_blue);
                 bgColor = context.getResources().getColor(R.color.status_blue_bg);

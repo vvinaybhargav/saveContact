@@ -55,7 +55,7 @@
     
     <!-- Spinner Array -->
     <string-array name="round_statuses">
-        <item>Screening</item>
+        <item>First time</item>
         <item>1st Round</item>
         <item>2nd Round</item>
         <item>Final Round</item>

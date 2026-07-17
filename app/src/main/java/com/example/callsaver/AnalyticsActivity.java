@@ -27,6 +27,7 @@ public class AnalyticsActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        ThemeUtils.applyTheme(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_analytics);
 
@@ -58,7 +59,8 @@ public class AnalyticsActivity extends AppCompatActivity {
     private int stageRank(String status) {
         if (status == null) return 1;
         switch (status) {
-            case "Screening": return 1;
+            case "Screening":
+            case "First time": return 1;
             case "1st Round": return 2;
             case "2nd Round": return 3;
             case "Final Round": return 4;
