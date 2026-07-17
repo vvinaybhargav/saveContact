@@ -47,55 +47,92 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         JobCall call = callList.get(position);
 
-        String company = call.getCompanyName();
-        String recruiter = call.getRecruiterName();
-        String displayCompany;
-        if (company != null && !company.trim().isEmpty() && recruiter != null && !recruiter.trim().isEmpty()) {
-            displayCompany = recruiter.trim() + " @ " + company.trim();
-        } else if (company != null && !company.trim().isEmpty()) {
-            displayCompany = company.trim();
-        } else if (recruiter != null && !recruiter.trim().isEmpty()) {
-            displayCompany = recruiter.trim();
-        } else {
-            displayCompany = call.getPhoneNumber();
-        }
-        holder.tvCompanyName.setText(displayCompany);
-        holder.tvPhoneNumber.setText(call.getPhoneNumber());
+        if (call.getId() <= 0) {
+            // Unlogged Call Design
+            holder.tvCompanyName.setText("Unlogged Call");
+            holder.tvPhoneNumber.setText(call.getPhoneNumber());
 
-        // Set tags
-        String tags = call.getTags();
-        if (tags == null || tags.trim().isEmpty()) {
-            holder.tvTags.setVisibility(View.GONE);
-        } else {
+            int duration = call.getDuration();
+            String durationStr = duration + "s";
+            if (duration >= 60) {
+                durationStr = (duration / 60) + "m " + (duration % 60) + "s";
+            }
             holder.tvTags.setVisibility(View.VISIBLE);
-            holder.tvTags.setText("Tags: " + tags);
-        }
+            holder.tvTags.setText("Duration: " + durationStr);
 
-        // Set notes preview
-        String notes = call.getNotes();
-        if (notes == null || notes.trim().isEmpty()) {
-            holder.tvNotesPreview.setVisibility(View.GONE);
-        } else {
             holder.tvNotesPreview.setVisibility(View.VISIBLE);
-            holder.tvNotesPreview.setText("Notes: " + notes);
+            holder.tvNotesPreview.setText(call.getNotes()); // e.g. "Incoming Call" / "Outgoing Call"
+
+            SimpleDateFormat sdf = new SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault());
+            String formattedDate = sdf.format(new Date(call.getTimestamp()));
+            holder.tvCallTime.setText(formattedDate);
+
+            holder.tvAvatarText.setText("?");
+            holder.cardAvatar.setCardBackgroundColor(0xFF708090); // Slate gray
+
+            holder.parentCard.setCardBackgroundColor(context.getResources().getColor(R.color.bg_light));
+            holder.parentCard.setStrokeColor(0xFFFF8C00); // Orange border
+            holder.parentCard.setStrokeWidth(2);
+
+            if (holder.btnActionFollowup != null) {
+                holder.btnActionFollowup.setVisibility(View.GONE);
+            }
+
+            setupStatusBadge(holder.tvStatusBadge, call);
+        } else {
+            // Tracked Call Design
+            holder.parentCard.setCardBackgroundColor(context.getResources().getColor(R.color.white));
+            holder.parentCard.setStrokeColor(context.getResources().getColor(R.color.divider));
+            holder.parentCard.setStrokeWidth(1);
+            if (holder.btnActionFollowup != null) {
+                holder.btnActionFollowup.setVisibility(View.VISIBLE);
+            }
+
+            String company = call.getCompanyName();
+            String recruiter = call.getRecruiterName();
+            String displayCompany;
+            if (company != null && !company.trim().isEmpty() && recruiter != null && !recruiter.trim().isEmpty()) {
+                displayCompany = recruiter.trim() + " @ " + company.trim();
+            } else if (company != null && !company.trim().isEmpty()) {
+                displayCompany = company.trim();
+            } else if (recruiter != null && !recruiter.trim().isEmpty()) {
+                displayCompany = recruiter.trim();
+            } else {
+                displayCompany = call.getPhoneNumber();
+            }
+            holder.tvCompanyName.setText(displayCompany);
+            holder.tvPhoneNumber.setText(call.getPhoneNumber());
+
+            String tags = call.getTags();
+            if (tags == null || tags.trim().isEmpty()) {
+                holder.tvTags.setVisibility(View.GONE);
+            } else {
+                holder.tvTags.setVisibility(View.VISIBLE);
+                holder.tvTags.setText("Tags: " + tags);
+            }
+
+            String notes = call.getNotes();
+            if (notes == null || notes.trim().isEmpty()) {
+                holder.tvNotesPreview.setVisibility(View.GONE);
+            } else {
+                holder.tvNotesPreview.setVisibility(View.VISIBLE);
+                holder.tvNotesPreview.setText("Notes: " + notes);
+            }
+
+            SimpleDateFormat sdf = new SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault());
+            String formattedDate = sdf.format(new Date(call.getTimestamp()));
+            holder.tvCallTime.setText(formattedDate);
+
+            String companyForInitial = (company == null || company.trim().isEmpty()) ? "" : company;
+            String initial = companyForInitial.isEmpty() ? "?" : String.valueOf(companyForInitial.charAt(0)).toUpperCase();
+            holder.tvAvatarText.setText(initial);
+
+            int[] avatarColors = {0xFF6366F1, 0xFF10B981, 0xFF3B82F6, 0xFF8B5CF6, 0xFFEC4899, 0xFFF59E0B, 0xFF14B8A6};
+            int colorIndex = Math.abs(displayCompany.hashCode()) % avatarColors.length;
+            holder.cardAvatar.setCardBackgroundColor(avatarColors[colorIndex]);
+
+            setupStatusBadge(holder.tvStatusBadge, call);
         }
-
-        // Format Date Time
-        SimpleDateFormat sdf = new SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault());
-        String formattedDate = sdf.format(new Date(call.getTimestamp()));
-        holder.tvCallTime.setText(formattedDate);
-
-        // Dynamic Avatar Color based on Company Name
-        String companyForInitial = (company == null || company.trim().isEmpty()) ? "" : company;
-        String initial = companyForInitial.isEmpty() ? "?" : String.valueOf(companyForInitial.charAt(0)).toUpperCase();
-        holder.tvAvatarText.setText(initial);
-
-        int[] avatarColors = {0xFF6366F1, 0xFF10B981, 0xFF3B82F6, 0xFF8B5CF6, 0xFFEC4899, 0xFFF59E0B, 0xFF14B8A6};
-        int colorIndex = Math.abs(displayCompany.hashCode()) % avatarColors.length;
-        holder.cardAvatar.setCardBackgroundColor(avatarColors[colorIndex]);
-
-        // Status Badge customization
-        setupStatusBadge(holder.tvStatusBadge, call);
 
         // Direct Call back Action
         holder.btnActionCall.setOnClickListener(v -> {
@@ -120,6 +157,19 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
     }
 
     private void setupStatusBadge(TextView tv, JobCall call) {
+        if (call.getId() <= 0) {
+            tv.setText("Unlogged");
+            int textColor = context.getResources().getColor(R.color.status_error);
+            int bgColor = context.getResources().getColor(R.color.status_red_bg);
+            GradientDrawable gd = new GradientDrawable();
+            gd.setColor(bgColor);
+            float density = context.getResources().getDisplayMetrics().density;
+            gd.setCornerRadius(10 * density);
+            tv.setBackground(gd);
+            tv.setTextColor(textColor);
+            return;
+        }
+
         String status = call.getRoundStatus();
         if (status == null) {
             status = "First time";
@@ -187,10 +237,11 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
         TextView tvCompanyName, tvPhoneNumber, tvTags, tvNotesPreview, tvCallTime, tvAvatarText, tvStatusBadge;
-        MaterialCardView cardAvatar, btnActionCall, btnActionFollowup;
+        MaterialCardView cardAvatar, btnActionCall, btnActionFollowup, parentCard;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
+            parentCard = (MaterialCardView) itemView;
             tvCompanyName = itemView.findViewById(R.id.tv_company_name);
             tvPhoneNumber = itemView.findViewById(R.id.tv_phone_number);
             tvTags = itemView.findViewById(R.id.tv_tags);

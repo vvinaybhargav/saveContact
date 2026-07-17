@@ -12,6 +12,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.ContactsContract;
+import android.provider.CallLog;
 import android.provider.Settings;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -366,23 +367,92 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         }
     }
 
+    private List<JobCall> getUnloggedCallLogs() {
+        List<JobCall> unlogged = new ArrayList<>();
+        if (getContext() == null) return unlogged;
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.READ_CALL_LOG) != PackageManager.PERMISSION_GRANTED) {
+            return unlogged;
+        }
+
+        android.content.SharedPreferences prefs = requireContext().getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE);
+        java.util.Set<String> dismissed = prefs.getStringSet("dismissed_unlogged_calls", new java.util.HashSet<>());
+
+        String[] projection = new String[]{
+                CallLog.Calls.NUMBER,
+                CallLog.Calls.TYPE,
+                CallLog.Calls.DATE,
+                CallLog.Calls.DURATION
+        };
+
+        try (Cursor cursor = requireContext().getContentResolver().query(
+                CallLog.Calls.CONTENT_URI,
+                projection,
+                null,
+                null,
+                CallLog.Calls.DATE + " DESC"
+        )) {
+            if (cursor != null && cursor.moveToFirst()) {
+                int numberIdx = cursor.getColumnIndexOrThrow(CallLog.Calls.NUMBER);
+                int typeIdx = cursor.getColumnIndexOrThrow(CallLog.Calls.TYPE);
+                int dateIdx = cursor.getColumnIndexOrThrow(CallLog.Calls.DATE);
+                int durationIdx = cursor.getColumnIndexOrThrow(CallLog.Calls.DURATION);
+
+                int count = 0;
+                do {
+                    String number = cursor.getString(numberIdx);
+                    int type = cursor.getInt(typeIdx);
+                    long date = cursor.getLong(dateIdx);
+                    int duration = cursor.getInt(durationIdx);
+
+                    // Check if already tracked in SQLite
+                    JobCall existing = dbHelper.getJobCallByNumber(requireContext(), number);
+                    if (existing == null) {
+                        // Check if dismissed
+                        String key = number + "_" + date;
+                        if (!dismissed.contains(key)) {
+                            String typeStr = "Call";
+                            if (type == CallLog.Calls.INCOMING_TYPE) typeStr = "Incoming Call";
+                            else if (type == CallLog.Calls.OUTGOING_TYPE) typeStr = "Outgoing Call";
+                            else if (type == CallLog.Calls.MISSED_TYPE) typeStr = "Missed Call";
+
+                            JobCall unloggedCall = new JobCall(number, "Unlogged Call", "Unlogged", "", typeStr, duration, date);
+                            unloggedCall.setId((int) (-1 * (Math.abs(key.hashCode()) % 1000000 + 1)));
+                            unlogged.add(unloggedCall);
+                        }
+                    }
+                    count++;
+                } while (cursor.moveToNext() && count < 40);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return unlogged;
+    }
+
     /**
      * Refreshes the calls displayed on the RecyclerView from the SQLite DB.
      */
     public void refreshDashboardList() {
         if (dbHelper == null) return;
-        // Tracker list orders by most recent activity (latest call/note), not by
-        // when the entry was first created.
         List<JobCall> updatedCalls = dbHelper.getAllJobCallsSortedByRecentActivity();
+        
+        List<JobCall> unloggedCalls = getUnloggedCallLogs();
+        
         allCallsList.clear();
         allCallsList.addAll(updatedCalls);
+        allCallsList.addAll(unloggedCalls);
 
-        // Calculate Statistics
-        int leads = allCallsList.size();
+        // Sort allCallsList by timestamp DESC
+        java.util.Collections.sort(allCallsList, (a, b) -> Long.compare(b.getTimestamp(), a.getTimestamp()));
+
+        // Calculate Statistics using only tracked calls (positive ID)
+        int leads = 0;
         int screenings = 0;
         int interviews = 0;
         int offers = 0;
         for (JobCall c : allCallsList) {
+            if (c.getId() <= 0) continue; // skip unlogged calls for stats
+            leads++;
             String st = c.getRoundStatus();
             if (st == null) continue;
             if (st.equals("First time") || st.equals("HR / Salary")) {
@@ -800,6 +870,17 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             if (editCall != null) {
                 etPhone.setText(editCall.getPhoneNumber());
                 
+                if (editCall.getId() <= 0) {
+                    SimpleDateFormat sdfNotes = new SimpleDateFormat("yyyy-MM-dd hh:mm a", Locale.getDefault());
+                    String formattedDate = sdfNotes.format(new java.util.Date(editCall.getTimestamp()));
+                    int durSec = editCall.getDuration();
+                    String formattedDuration = durSec + "s";
+                    if (durSec >= 60) {
+                        formattedDuration = (durSec / 60) + "m " + (durSec % 60) + "s";
+                    }
+                    etNotes.setText("[Unlogged Call: End Time " + formattedDate + ", Duration: " + formattedDuration + "]\n");
+                }
+                
                 // Auto pre-fill if call is already tracked in SQLite
                 JobCall existingCall = dbHelper.getJobCallByNumber(requireContext(), editCall.getPhoneNumber());
                 if (existingCall != null) {
@@ -965,7 +1046,13 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                     Toast.makeText(requireContext(), "Linked to existing company " + existingCall.getCompanyName(), Toast.LENGTH_LONG).show();
                 } else {
                     // Create new entry
-                    JobCall newCall = new JobCall(phone, company, round, tags, "", 0, System.currentTimeMillis());
+                    long callTime = System.currentTimeMillis();
+                    int callDuration = 0;
+                    if (editCall != null && editCall.getId() <= 0) {
+                        callTime = editCall.getTimestamp();
+                        callDuration = editCall.getDuration();
+                    }
+                    JobCall newCall = new JobCall(phone, company, round, tags, "", callDuration, callTime);
                     newCall.setRecruiterName(recruiter);
                     newCall.setCandidateName(candidate);
                     newCall.setAppliedRole(role);
@@ -1195,22 +1282,32 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                     showAddEditCallDialog(jobCall);
                     adapter.notifyItemChanged(position);
                 } else if (direction == ItemTouchHelper.RIGHT) {
-                    // Swipe Right: Delete
-                    new AlertDialog.Builder(requireContext())
-                            .setTitle("Delete Call Log")
-                            .setMessage("Are you sure you want to delete the log for " + jobCall.getCompanyName() + "?")
-                            .setPositiveButton("Delete", (dialog, which) -> {
-                                dbHelper.deleteJobCall(jobCall.getId());
-                                Toast.makeText(requireContext(), "Log deleted", Toast.LENGTH_SHORT).show();
-                                refreshDashboardList();
-                            })
-                            .setNegativeButton("Cancel", (dialog, which) -> {
-                                adapter.notifyItemChanged(position);
-                            })
-                            .setOnCancelListener(dialog -> {
-                                adapter.notifyItemChanged(position);
-                            })
-                            .show();
+                    // Swipe Right: Delete / Dismiss
+                    if (jobCall.getId() <= 0) {
+                        String key = jobCall.getPhoneNumber() + "_" + jobCall.getTimestamp();
+                        android.content.SharedPreferences prefs = requireContext().getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE);
+                        java.util.Set<String> dismissed = new java.util.HashSet<>(prefs.getStringSet("dismissed_unlogged_calls", new java.util.HashSet<>()));
+                        dismissed.add(key);
+                        prefs.edit().putStringSet("dismissed_unlogged_calls", dismissed).apply();
+                        Toast.makeText(requireContext(), "Call ignored", Toast.LENGTH_SHORT).show();
+                        refreshDashboardList();
+                    } else {
+                        new AlertDialog.Builder(requireContext())
+                                .setTitle("Delete Call Log")
+                                .setMessage("Are you sure you want to delete the log for " + jobCall.getCompanyName() + "?")
+                                .setPositiveButton("Delete", (dialog, which) -> {
+                                    dbHelper.deleteJobCall(jobCall.getId());
+                                    Toast.makeText(requireContext(), "Log deleted", Toast.LENGTH_SHORT).show();
+                                    refreshDashboardList();
+                                })
+                                .setNegativeButton("Cancel", (dialog, which) -> {
+                                    adapter.notifyItemChanged(position);
+                                })
+                                .setOnCancelListener(dialog -> {
+                                    adapter.notifyItemChanged(position);
+                                })
+                                .show();
+                    }
                 }
             }
         };
