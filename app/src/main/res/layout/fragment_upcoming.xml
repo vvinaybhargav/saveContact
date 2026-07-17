@@ -64,11 +64,6 @@
                     android:paddingBottom="4dp">
 
                     <TextView android:id="@+id/chip_upcoming_all" android:text="All" style="@style/TrackerChipStyle" android:tag="selected" />
-                    <TextView android:id="@+id/chip_upcoming_screening" android:text="First time" style="@style/TrackerChipStyle" />
-                    <TextView android:id="@+id/chip_upcoming_1st" android:text="1st Round" style="@style/TrackerChipStyle" />
-                    <TextView android:id="@+id/chip_upcoming_2nd" android:text="2nd Round" style="@style/TrackerChipStyle" />
-                    <TextView android:id="@+id/chip_upcoming_final" android:text="Final Round" style="@style/TrackerChipStyle" />
-                    <TextView android:id="@+id/chip_upcoming_hr" android:text="HR / Salary" style="@style/TrackerChipStyle" />
                     <TextView android:id="@+id/chip_upcoming_needs_update" android:text="Needs Update" style="@style/TrackerChipStyle" />
                     <TextView android:id="@+id/chip_upcoming_scheduled" android:text="Scheduled" style="@style/TrackerChipStyle" />
                     <TextView android:id="@+id/chip_upcoming_no_followup" android:text="No Follow-up Needed" style="@style/TrackerChipStyle" />

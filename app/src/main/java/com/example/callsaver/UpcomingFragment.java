@@ -57,8 +57,7 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
     private final Set<String> selectedFilters = new LinkedHashSet<>(Collections.singletonList("All"));
     private View layoutFilterChips;
     private final String[] statuses = {
-            "All", "First time", "1st Round", "2nd Round", "Final Round", "HR / Salary",
-            "Needs Update", "Scheduled", "No Follow-up Needed"
+            "All", "Needs Update", "Scheduled", "No Follow-up Needed"
     };
     private TextView[] chips;
 
@@ -74,10 +73,11 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
     private FrameLayout activeFlJdPreviewContainer;
     private ImageView activeIvJdPreview;
     private com.google.android.material.tabs.TabLayout tabLayoutDates;
-    private int selectedTabPosition = 0; // Default to Today
+    private String selectedTabKey = null;
     private boolean isUpdatingTabs = false;
     private boolean activeDialogManualUploadUsed = false;
     private boolean activeDialogManualUploadAIFailed = false;
+    private EditText activeEtInterestRating;
 
     private EditText activeDialogNotesField;
     private TextInputLayout activeDialogTilNotes;
@@ -166,8 +166,7 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
 
     private void setupFilterChips(View view) {
         int[] chipIds = {
-                R.id.chip_upcoming_all, R.id.chip_upcoming_screening, R.id.chip_upcoming_1st,
-                R.id.chip_upcoming_2nd, R.id.chip_upcoming_final, R.id.chip_upcoming_hr,
+                R.id.chip_upcoming_all,
                 R.id.chip_upcoming_needs_update, R.id.chip_upcoming_scheduled, R.id.chip_upcoming_no_followup
         };
 
@@ -298,7 +297,9 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
             @Override
             public void onTabSelected(com.google.android.material.tabs.TabLayout.Tab tab) {
                 if (isUpdatingTabs) return;
-                selectedTabPosition = tab.getPosition();
+                if (tab.getTag() != null) {
+                    selectedTabKey = (String) tab.getTag();
+                }
                 filterList();
             }
             @Override
@@ -320,98 +321,128 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
         }
     }
 
-    private String[] getTabTitles(int[] counts) {
-        String[] titles = new String[9];
+    private long getStartOfDay(long timeMs) {
         java.util.Calendar cal = java.util.Calendar.getInstance();
-        
-        // Tab 0: Today
-        int day0 = cal.get(java.util.Calendar.DAY_OF_MONTH);
-        titles[0] = getOrdinal(day0) + " (Today) (" + counts[0] + ")";
-        
-        // Tab 1: Tomorrow
-        cal.add(java.util.Calendar.DAY_OF_YEAR, 1);
-        int day1 = cal.get(java.util.Calendar.DAY_OF_MONTH);
-        titles[1] = getOrdinal(day1) + " (Tomorrow) (" + counts[1] + ")";
-        
-        // Tab 2 to 6: Day of week
-        java.text.SimpleDateFormat dayFormat = new java.text.SimpleDateFormat("EEEE", java.util.Locale.getDefault());
-        for (int i = 2; i <= 6; i++) {
-            cal.add(java.util.Calendar.DAY_OF_YEAR, 1);
-            int day = cal.get(java.util.Calendar.DAY_OF_MONTH);
-            String dayOfWeek = dayFormat.format(cal.getTime());
-            titles[i] = getOrdinal(day) + " (" + dayOfWeek + ") (" + counts[i] + ")";
+        cal.setTimeInMillis(timeMs);
+        cal.set(java.util.Calendar.HOUR_OF_DAY, 0);
+        cal.set(java.util.Calendar.MINUTE, 0);
+        cal.set(java.util.Calendar.SECOND, 0);
+        cal.set(java.util.Calendar.MILLISECOND, 0);
+        return cal.getTimeInMillis();
+    }
+
+    private String getTabDateKey(long millis) {
+        if (millis < 0) {
+            return "Past";
         }
-        
-        // Tab 7: Later
-        titles[7] = "Later (" + counts[7] + ")";
-        
-        // Tab 8: All
-        titles[8] = "All (" + counts[8] + ")";
-        
-        return titles;
+        java.util.Calendar cal = java.util.Calendar.getInstance();
+        long startOfToday = getStartOfDay(cal.getTimeInMillis());
+        if (millis < startOfToday) {
+            return "Past";
+        }
+        java.text.SimpleDateFormat sdfGroup = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault());
+        return sdfGroup.format(new java.util.Date(millis));
+    }
+
+    private String getTabLabel(String key, int count) {
+        if (key.equals("Past")) {
+            return "Past (" + count + ")";
+        }
+        if (key.equals("All")) {
+            return "All (" + count + ")";
+        }
+        try {
+            java.text.SimpleDateFormat sdfGroup = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault());
+            java.util.Date date = sdfGroup.parse(key);
+            
+            java.util.Calendar cal = java.util.Calendar.getInstance();
+            long todayStart = getStartOfDay(cal.getTimeInMillis());
+            cal.add(java.util.Calendar.DAY_OF_YEAR, 1);
+            long tomorrowStart = getStartOfDay(cal.getTimeInMillis());
+            cal.add(java.util.Calendar.DAY_OF_YEAR, 1);
+            long dayAfterStart = getStartOfDay(cal.getTimeInMillis());
+            
+            long targetTime = date.getTime();
+            
+            java.util.Calendar targetCal = java.util.Calendar.getInstance();
+            targetCal.setTime(date);
+            int dayNum = targetCal.get(java.util.Calendar.DAY_OF_MONTH);
+            String ordinalDay = getOrdinal(dayNum);
+            
+            if (targetTime >= todayStart && targetTime < tomorrowStart) {
+                return ordinalDay + " (Today) (" + count + ")";
+            } else if (targetTime >= tomorrowStart && targetTime < dayAfterStart) {
+                return ordinalDay + " (Tomorrow) (" + count + ")";
+            } else {
+                java.text.SimpleDateFormat dayFormat = new java.text.SimpleDateFormat("EEEE", java.util.Locale.getDefault());
+                String dayOfWeek = dayFormat.format(date);
+                return ordinalDay + " (" + dayOfWeek + ") (" + count + ")";
+            }
+        } catch (Exception e) {
+            return key + " (" + count + ")";
+        }
     }
 
     private void updateDateTabs(List<JobCall> chipFilteredList) {
         if (tabLayoutDates == null) return;
 
-        int[] counts = new int[9];
+        java.util.Map<String, Integer> countsMap = new java.util.HashMap<>();
+        countsMap.put("Past", 0);
+        countsMap.put("All", chipFilteredList.size());
         
-        // Date boundaries
+        java.util.List<String> futureDates = new java.util.ArrayList<>();
+        
         java.util.Calendar cal = java.util.Calendar.getInstance();
-        cal.set(java.util.Calendar.HOUR_OF_DAY, 0);
-        cal.set(java.util.Calendar.MINUTE, 0);
-        cal.set(java.util.Calendar.SECOND, 0);
-        cal.set(java.util.Calendar.MILLISECOND, 0);
-        long startOfToday = cal.getTimeInMillis();
-        
-        cal.add(java.util.Calendar.DAY_OF_YEAR, 1);
-        long startOfTomorrow = cal.getTimeInMillis();
-        
-        long[] startOfDays = new long[7];
-        startOfDays[0] = startOfToday;
-        startOfDays[1] = startOfTomorrow;
-        for (int i = 2; i < 7; i++) {
-            cal.add(java.util.Calendar.DAY_OF_YEAR, 1);
-            startOfDays[i] = cal.getTimeInMillis();
-        }
-        cal.add(java.util.Calendar.DAY_OF_YEAR, 1);
-        long startOfLater = cal.getTimeInMillis();
-        
+        java.text.SimpleDateFormat sdfGroup = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault());
+        String todayKey = sdfGroup.format(cal.getTime());
+
         for (JobCall call : chipFilteredList) {
             long scheduleMillis = FollowUpUtils.parseScheduleMillis(call.getTentativeSchedule());
-            counts[8]++; // All
-            
-            if (scheduleMillis < 0) {
-                counts[7]++; // Tentative / no schedule goes to Later
-            } else if (scheduleMillis < startOfTomorrow) {
-                counts[0]++; // Today (including past/overdue)
-            } else if (scheduleMillis >= startOfTomorrow && scheduleMillis < startOfDays[2]) {
-                counts[1]++; // Tomorrow
-            } else if (scheduleMillis >= startOfDays[2] && scheduleMillis < startOfDays[3]) {
-                counts[2]++;
-            } else if (scheduleMillis >= startOfDays[3] && scheduleMillis < startOfDays[4]) {
-                counts[3]++;
-            } else if (scheduleMillis >= startOfDays[4] && scheduleMillis < startOfDays[5]) {
-                counts[4]++;
-            } else if (scheduleMillis >= startOfDays[5] && scheduleMillis < startOfDays[6]) {
-                counts[5]++;
-            } else if (scheduleMillis >= startOfDays[6] && scheduleMillis < startOfLater) {
-                counts[6]++;
+            String key = getTabDateKey(scheduleMillis);
+            if (!key.equals("Past")) {
+                if (!countsMap.containsKey(key)) {
+                    countsMap.put(key, 0);
+                    futureDates.add(key);
+                }
+            }
+            countsMap.put(key, countsMap.get(key) + 1);
+        }
+        
+        java.util.Collections.sort(futureDates);
+
+        java.util.List<String> tabKeys = new java.util.ArrayList<>();
+        tabKeys.add("Past");
+        tabKeys.add("All");
+        tabKeys.addAll(futureDates);
+
+        if (selectedTabKey == null || !tabKeys.contains(selectedTabKey)) {
+            if (tabKeys.contains(todayKey)) {
+                selectedTabKey = todayKey;
+            } else if (!futureDates.isEmpty()) {
+                selectedTabKey = futureDates.get(0);
             } else {
-                counts[7]++; // Later
+                selectedTabKey = "Past";
             }
         }
 
         isUpdatingTabs = true;
         tabLayoutDates.removeAllTabs();
-        String[] titles = getTabTitles(counts);
-        for (int i = 0; i < 9; i++) {
-            com.google.android.material.tabs.TabLayout.Tab tab = tabLayoutDates.newTab().setText(titles[i]);
+        
+        int selectIndex = 0;
+        for (int i = 0; i < tabKeys.size(); i++) {
+            String key = tabKeys.get(i);
+            String label = getTabLabel(key, countsMap.containsKey(key) ? countsMap.get(key) : 0);
+            com.google.android.material.tabs.TabLayout.Tab tab = tabLayoutDates.newTab().setText(label);
+            tab.setTag(key);
             tabLayoutDates.addTab(tab);
+            if (key.equals(selectedTabKey)) {
+                selectIndex = i;
+            }
         }
-        com.google.android.material.tabs.TabLayout.Tab currentTab = tabLayoutDates.getTabAt(selectedTabPosition);
-        if (currentTab != null) {
-            currentTab.select();
+        
+        com.google.android.material.tabs.TabLayout.Tab tabToSelect = tabLayoutDates.getTabAt(selectIndex);
+        if (tabToSelect != null) {
+            tabToSelect.select();
         }
         isUpdatingTabs = false;
     }
@@ -428,53 +459,23 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
 
         List<JobCall> filtered = new ArrayList<>();
         
-        // Date boundaries
-        java.util.Calendar cal = java.util.Calendar.getInstance();
-        cal.set(java.util.Calendar.HOUR_OF_DAY, 0);
-        cal.set(java.util.Calendar.MINUTE, 0);
-        cal.set(java.util.Calendar.SECOND, 0);
-        cal.set(java.util.Calendar.MILLISECOND, 0);
-        long startOfToday = cal.getTimeInMillis();
-        
-        cal.add(java.util.Calendar.DAY_OF_YEAR, 1);
-        long startOfTomorrow = cal.getTimeInMillis();
-        
-        long[] startOfDays = new long[7];
-        startOfDays[0] = startOfToday;
-        startOfDays[1] = startOfTomorrow;
-        for (int i = 2; i < 7; i++) {
-            cal.add(java.util.Calendar.DAY_OF_YEAR, 1);
-            startOfDays[i] = cal.getTimeInMillis();
-        }
-        cal.add(java.util.Calendar.DAY_OF_YEAR, 1);
-        long startOfLater = cal.getTimeInMillis();
-
         for (JobCall call : chipFiltered) {
             long scheduleMillis = FollowUpUtils.parseScheduleMillis(call.getTentativeSchedule());
+            String key = getTabDateKey(scheduleMillis);
             
-            if (selectedTabPosition == 8) { // All
+            if (selectedTabKey == null || selectedTabKey.equals("All")) {
                 filtered.add(call);
-            } else if (selectedTabPosition == 0) { // Today
-                if (scheduleMillis >= 0 && scheduleMillis < startOfTomorrow) {
+            } else if (selectedTabKey.equals("Past")) {
+                if (key.equals("Past")) {
                     filtered.add(call);
                 }
-            } else if (selectedTabPosition == 1) { // Tomorrow
-                if (scheduleMillis >= startOfTomorrow && scheduleMillis < startOfDays[2]) {
-                    filtered.add(call);
-                }
-            } else if (selectedTabPosition >= 2 && selectedTabPosition <= 6) { // Days 2 to 6
-                int idx = selectedTabPosition;
-                if (scheduleMillis >= startOfDays[idx] && scheduleMillis < (idx + 1 < 7 ? startOfDays[idx + 1] : startOfLater)) {
-                    filtered.add(call);
-                }
-            } else if (selectedTabPosition == 7) { // Later / Tentative
-                if (scheduleMillis < 0 || scheduleMillis >= startOfLater) {
+            } else {
+                if (key.equals(selectedTabKey)) {
                     filtered.add(call);
                 }
             }
         }
 
-        // Sort chronologically by scheduled time, overdue first
         Collections.sort(filtered, (a, b) -> {
             boolean followUpA = FollowUpUtils.needsFollowUp(a);
             boolean followUpB = FollowUpUtils.needsFollowUp(b);
@@ -700,12 +701,15 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
         FrameLayout flJdPreviewContainer = dialogView.findViewById(R.id.fl_jd_screenshot_container);
         ImageView ivJdPreview = dialogView.findViewById(R.id.iv_jd_screenshot_preview);
         View btnRemoveJd = dialogView.findViewById(R.id.btn_remove_jd_screenshot);
+        EditText etInterestRating = dialogView.findViewById(R.id.et_interest_rating);
 
         activeFlJdPreviewContainer = flJdPreviewContainer;
         activeIvJdPreview = ivJdPreview;
+        activeEtInterestRating = etInterestRating;
 
         if (editCall != null) {
             etJdLink.setText(editCall.getJdLink());
+            etInterestRating.setText(editCall.getInterestRating());
             currentJdImagePath = editCall.getJdImagePath();
             if (currentJdImagePath != null && !currentJdImagePath.isEmpty()) {
                 ivJdPreview.setImageURI(android.net.Uri.fromFile(new java.io.File(currentJdImagePath)));
@@ -830,6 +834,7 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
             String candidate = etCandidateName != null ? etCandidateName.getText().toString().trim() : "";
             String role = etAppliedRole.getText().toString().trim();
             String schedule = etTentativeSchedule.getText().toString().trim();
+            String interestRatingVal = etInterestRating != null ? etInterestRating.getText().toString().trim() : "";
             String notice = editCall != null ? editCall.getNoticePeriod() : "";
             String agenda = editCall != null ? editCall.getMainAgenda() : "";
             String nextStepsVal = editCall != null ? editCall.getNextSteps() : "";
@@ -854,6 +859,7 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
                 editCall.setNextSteps(nextStepsVal);
                 editCall.setJdLink(etJdLink.getText().toString().trim());
                 editCall.setJdImagePath(currentJdImagePath != null ? currentJdImagePath : "");
+                editCall.setInterestRating(interestRatingVal);
 
                 dbHelper.updateJobCall(editCall);
 
@@ -881,6 +887,7 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
                 newCall.setNextSteps(nextStepsVal);
                 newCall.setJdLink(etJdLink.getText().toString().trim());
                 newCall.setJdImagePath(currentJdImagePath != null ? currentJdImagePath : "");
+                newCall.setInterestRating(interestRatingVal);
 
                 long newId = dbHelper.insertJobCall(newCall);
                 boolean noteWasFromManualUpload = activeDialogManualUploadUsed;
@@ -905,6 +912,7 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
             activeIvJdPreview = null;
             activeDialogNotesField = null;
             activeDialogTilNotes = null;
+            activeEtInterestRating = null;
             activeLlTranscriptionProgress = null;
             activeTvTranscriptionStatus = null;
         });
@@ -1331,6 +1339,12 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
                         dbHelper.updateJobCall(current);
                     }
 
+                    String rating = optClean(result, "interest_rating", "");
+                    if (!rating.isEmpty()) {
+                        current.setInterestRating(rating);
+                        dbHelper.updateJobCall(current);
+                    }
+
                     String sentimentComment = optClean(result, "sentiment_comment", "");
                     if (!sentimentComment.isEmpty()) {
                         dbHelper.insertNote(jobId, "• " + sentimentComment, System.currentTimeMillis());
@@ -1379,6 +1393,9 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
                         }
                         if (!schedule.isEmpty() && etScheduleRef != null) {
                             etScheduleRef.setText(schedule);
+                        }
+                        if (!rating.isEmpty() && activeEtInterestRating != null) {
+                            activeEtInterestRating.setText(rating);
                         }
                         if (!sentimentComment.isEmpty() || noteRewritten) {
                             populateTimeline(timelineContainer, timelineLabel, jobId);

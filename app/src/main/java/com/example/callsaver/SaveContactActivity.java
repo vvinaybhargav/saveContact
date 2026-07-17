@@ -91,7 +91,6 @@ public class SaveContactActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        ThemeUtils.applyTheme(this);
         super.onCreate(savedInstanceState);
         
         // Show over lockscreen if device is locked

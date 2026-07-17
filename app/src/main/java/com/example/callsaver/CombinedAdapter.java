@@ -112,7 +112,7 @@ public class CombinedAdapter extends RecyclerView.Adapter<CombinedAdapter.ViewHo
             
             // Round status badge
             holder.tvStatusBadge.setVisibility(View.VISIBLE);
-            setupStatusBadge(holder.tvStatusBadge, item.jobCall.getRoundStatus());
+            setupStatusBadge(holder.tvStatusBadge, item.jobCall);
 
             // Tags
             String tags = item.jobCall.getTags();
@@ -184,11 +184,16 @@ public class CombinedAdapter extends RecyclerView.Adapter<CombinedAdapter.ViewHo
         holder.imgCallTypeIcon.setImageTintList(ColorStateList.valueOf(fg));
     }
 
-    private void setupStatusBadge(TextView tv, String status) {
+    private void setupStatusBadge(TextView tv, JobCall call) {
+        String status = call.getRoundStatus();
         if (status == null) {
             status = "First time";
         }
-        tv.setText(status);
+        String badgeText = status;
+        if (call.getInterestRating() != null && !call.getInterestRating().isEmpty()) {
+            badgeText += " (" + call.getInterestRating() + "/10)";
+        }
+        tv.setText(badgeText);
         
         int textColor;
         int bgColor;

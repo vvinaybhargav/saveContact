@@ -78,6 +78,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
     private EditText activeEtMainAgenda;
     private EditText activeEtNotes;
     private EditText activeEtNextSteps;
+    private EditText activeEtInterestRating;
     private Spinner activeSpinnerRound;
     private View activeLlTranscriptionProgress;
     private TextView activeTvTranscriptionStatus;
@@ -644,6 +645,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         // Main Agenda / Next Steps removed from the UI; preserved in DB if already set.
         EditText etMainAgenda = null;
         EditText etNextSteps = null;
+        EditText etInterestRating = dialogView.findViewById(R.id.et_interest_rating);
 
         activeEtCandidateName = etCandidateName;
         activeEtCompany = etCompany;
@@ -653,6 +655,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         activeEtMainAgenda = etMainAgenda;
         activeEtNotes = etNotes;
         activeEtNextSteps = etNextSteps;
+        activeEtInterestRating = etInterestRating;
         activeSpinnerRound = spinnerRound;
         activeLlTranscriptionProgress = dialogView.findViewById(R.id.ll_dialog_transcription_progress);
         activeTvTranscriptionStatus = dialogView.findViewById(R.id.tv_dialog_transcription_status);
@@ -754,6 +757,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             activeEtMainAgenda = null;
             activeEtNotes = null;
             activeEtNextSteps = null;
+            activeEtInterestRating = null;
             activeSpinnerRound = null;
             activeLlTranscriptionProgress = null;
             activeTvTranscriptionStatus = null;
@@ -770,6 +774,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             if (etCandidateName != null) etCandidateName.setText(editCall.getCandidateName());
             etAppliedRole.setText(editCall.getAppliedRole());
             etTentativeSchedule.setText(editCall.getTentativeSchedule());
+            etInterestRating.setText(editCall.getInterestRating());
 
             // Calls + notes are shown as a merged timeline below; the field adds a new note.
             populateTimeline(llNotesTimeline, labelNotes, editCall.getId());
@@ -807,6 +812,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                     if (etCandidateName != null) etCandidateName.setText(existingCall.getCandidateName());
                     etAppliedRole.setText(existingCall.getAppliedRole());
                     etTentativeSchedule.setText(existingCall.getTentativeSchedule());
+                    etInterestRating.setText(existingCall.getInterestRating());
                 }
             }
         }
@@ -875,6 +881,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             String candidate = etCandidateName != null ? etCandidateName.getText().toString().trim() : "";
             String role = etAppliedRole.getText().toString().trim();
             String schedule = etTentativeSchedule.getText().toString().trim();
+            String interestRatingVal = etInterestRating != null ? etInterestRating.getText().toString().trim() : "";
             String noteSource = activeDialogManualUploadUsed
                     ? DatabaseHelper.NOTE_SOURCE_MANUAL : DatabaseHelper.NOTE_SOURCE_CALL;
 
@@ -896,6 +903,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                 editCall.setTentativeSchedule(schedule);
                 editCall.setJdLink(etJdLink.getText().toString().trim());
                 editCall.setJdImagePath(currentJdImagePath != null ? currentJdImagePath : "");
+                editCall.setInterestRating(interestRatingVal);
 
                 dbHelper.updateJobCall(editCall);
                 dbHelper.linkPhoneToJob(editCall.getId(), phone, recruiter);
@@ -951,6 +959,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                     }
                     existingCall.setJdLink(etJdLink.getText().toString().trim());
                     existingCall.setJdImagePath(currentJdImagePath != null ? currentJdImagePath : "");
+                    existingCall.setInterestRating(interestRatingVal);
                     dbHelper.updateJobCall(existingCall);
                     
                     Toast.makeText(requireContext(), "Linked to existing company " + existingCall.getCompanyName(), Toast.LENGTH_LONG).show();
@@ -964,6 +973,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                     newCall.setKeyDiscussionPoints(noteToAdd);
                     newCall.setJdLink(etJdLink.getText().toString().trim());
                     newCall.setJdImagePath(currentJdImagePath != null ? currentJdImagePath : "");
+                    newCall.setInterestRating(interestRatingVal);
 
                     long newId = dbHelper.insertJobCall(newCall);
                     if (newId != -1 && !noteToAdd.isEmpty()) {
@@ -1517,6 +1527,12 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                         dbHelper.updateJobCall(current);
                     }
 
+                    String rating = optClean(result, "interest_rating", "");
+                    if (!rating.isEmpty()) {
+                        current.setInterestRating(rating);
+                        dbHelper.updateJobCall(current);
+                    }
+
                     String sentimentComment = optClean(result, "sentiment_comment", "");
                     if (!sentimentComment.isEmpty()) {
                         dbHelper.insertNote(jobId, "• " + sentimentComment, System.currentTimeMillis());
@@ -1568,6 +1584,9 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                         }
                         if (!schedule.isEmpty() && etScheduleRef != null) {
                             etScheduleRef.setText(schedule);
+                        }
+                        if (!rating.isEmpty() && activeEtInterestRating != null) {
+                            activeEtInterestRating.setText(rating);
                         }
                         if (!sentimentComment.isEmpty() || noteRewritten) {
                             populateTimeline(timelineContainer, timelineLabel, jobId);

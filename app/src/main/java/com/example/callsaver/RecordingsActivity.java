@@ -31,7 +31,6 @@ public class RecordingsActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        ThemeUtils.applyTheme(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_recordings);
         findViewById(R.id.btn_back).setOnClickListener(v -> finish());

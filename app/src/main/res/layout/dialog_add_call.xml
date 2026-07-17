@@ -489,6 +489,30 @@
         </FrameLayout>
     </LinearLayout>
 
+    <!-- Interest Rating (0-10) -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/til_interest_rating"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"
+        app:boxCornerRadiusTopStart="14dp"
+        app:boxCornerRadiusTopEnd="14dp"
+        app:boxCornerRadiusBottomStart="14dp"
+        app:boxCornerRadiusBottomEnd="14dp"
+        app:boxStrokeColor="@color/accent_indigo"
+        app:hintTextColor="@color/accent_indigo"
+        app:startIconDrawable="@android:drawable/btn_star"
+        app:startIconTint="@color/text_muted">
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/et_interest_rating"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Interest Rating (0-10)"
+            android:inputType="number"
+            android:textColor="@color/text_primary" />
+    </com.google.android.material.textfield.TextInputLayout>
+
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"

@@ -95,7 +95,7 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
         holder.cardAvatar.setCardBackgroundColor(avatarColors[colorIndex]);
 
         // Status Badge customization
-        setupStatusBadge(holder.tvStatusBadge, call.getRoundStatus());
+        setupStatusBadge(holder.tvStatusBadge, call);
 
         // Direct Call back Action
         holder.btnActionCall.setOnClickListener(v -> {
@@ -119,15 +119,19 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
         });
     }
 
-    private void setupStatusBadge(TextView tv, String status) {
-        tv.setText(status);
-        
-        int textColor;
-        int bgColor;
-        
+    private void setupStatusBadge(TextView tv, JobCall call) {
+        String status = call.getRoundStatus();
         if (status == null) {
             status = "First time";
         }
+        String badgeText = status;
+        if (call.getInterestRating() != null && !call.getInterestRating().isEmpty()) {
+            badgeText += " (" + call.getInterestRating() + "/10)";
+        }
+        tv.setText(badgeText);
+        
+        int textColor;
+        int bgColor;
         
         switch (status) {
             case "Negative":

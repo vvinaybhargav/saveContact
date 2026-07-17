@@ -23,6 +23,7 @@ public class JobCall {
     private String notMatchingSkills = "";
     private String jdLink = "";
     private String jdImagePath = "";
+    private String interestRating = "";
 
     private static String clean(String val) {
         if (val == null || val.trim().equalsIgnoreCase("null")) {
@@ -212,5 +213,13 @@ public class JobCall {
 
     public void setJdImagePath(String jdImagePath) {
         this.jdImagePath = clean(jdImagePath);
+    }
+
+    public String getInterestRating() {
+        return interestRating != null ? interestRating : "";
+    }
+
+    public void setInterestRating(String interestRating) {
+        this.interestRating = clean(interestRating);
     }
 }

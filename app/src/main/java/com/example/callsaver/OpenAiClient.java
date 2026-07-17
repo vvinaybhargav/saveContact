@@ -104,7 +104,8 @@ public class OpenAiClient {
                     "  \"key_discussion_points\": [string],\n" +
                     "  \"next_steps\": string,\n" +
                     "  \"matching_skills\": [string],\n" +
-                    "  \"not_matching_skills\": [string]\n" +
+                    "  \"not_matching_skills\": [string],\n" +
+                    "  \"interest_rating\": string or null (An integer score from 0 to 10 based on discussion positive/negative signals, or null if cannot be inferred)\n" +
                     "}");
             messages.put(systemMsg);
 
