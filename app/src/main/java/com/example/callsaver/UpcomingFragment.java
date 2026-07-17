@@ -98,7 +98,6 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
 
         rvUpcomingList = view.findViewById(R.id.rv_upcoming_list);
         emptyStateLayout = view.findViewById(R.id.upcoming_empty_state);
-        layoutFilterChips = view.findViewById(R.id.layout_upcoming_chips);
 
         rvUpcomingList.setLayoutManager(new LinearLayoutManager(requireContext()));
         allUpcomingList = new ArrayList<>();
@@ -106,8 +105,7 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
         adapter = new UpcomingInterviewsAdapter(requireContext(), filteredList, this);
         rvUpcomingList.setAdapter(adapter);
 
-        setupFilterChips(view);
-        setupSortChips(view);
+        setupFilterSpinner(view);
         tabLayoutDates = view.findViewById(R.id.tab_layout_upcoming_dates);
         setupDateTabs();
         loadUpcomingInterviews();
@@ -164,101 +162,25 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
         filterList();
     }
 
-    private void setupFilterChips(View view) {
-        int[] chipIds = {
-                R.id.chip_upcoming_all,
-                R.id.chip_upcoming_needs_update, R.id.chip_upcoming_scheduled, R.id.chip_upcoming_no_followup
-        };
-
-        chips = new TextView[chipIds.length];
-        for (int i = 0; i < chipIds.length; i++) {
-            final int index = i;
-            chips[i] = view.findViewById(chipIds[i]);
-            if (chips[i] != null) {
-                chips[i].setOnClickListener(v -> {
-                    String tapped = statuses[index];
-                    if (tapped.equals("All")) {
-                        selectedFilters.clear();
-                        selectedFilters.add("All");
-                    } else {
-                        selectedFilters.remove("All");
-                        if (!selectedFilters.remove(tapped)) {
-                            selectedFilters.add(tapped);
-                        }
-                        if (selectedFilters.isEmpty()) {
-                            selectedFilters.add("All");
-                        }
-                    }
-                    updateChipsUI();
+    private void setupFilterSpinner(View view) {
+        Spinner spinnerFilter = view.findViewById(R.id.spinner_upcoming_filter);
+        if (spinnerFilter != null && getContext() != null) {
+            ArrayAdapter<String> spinnerAdapter = new ArrayAdapter<>(requireContext(),
+                    android.R.layout.simple_spinner_item, statuses);
+            spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+            spinnerFilter.setAdapter(spinnerAdapter);
+            spinnerFilter.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+                @Override
+                public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                    String selected = statuses[position];
+                    selectedFilters.clear();
+                    selectedFilters.add(selected);
                     filterList();
-                });
-            }
-        }
-        updateChipsUI();
-    }
+                }
 
-    private void updateChipsUI() {
-        if (chips == null || getContext() == null) return;
-        float density = getResources().getDisplayMetrics().density;
-        int selectedColor = androidx.core.content.ContextCompat.getColor(requireContext(), R.color.accent_indigo);
-        int unselectedBg = androidx.core.content.ContextCompat.getColor(requireContext(), R.color.divider);
-        int unselectedText = androidx.core.content.ContextCompat.getColor(requireContext(), R.color.text_secondary);
-
-        for (int i = 0; i < chips.length; i++) {
-            if (chips[i] == null) continue;
-
-            android.graphics.drawable.GradientDrawable drawable = new android.graphics.drawable.GradientDrawable();
-            drawable.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
-            drawable.setCornerRadius(18 * density); // Pill shape
-
-            if (selectedFilters.contains(statuses[i])) {
-                drawable.setColor(selectedColor);
-                chips[i].setBackground(drawable);
-                chips[i].setTextColor(android.graphics.Color.WHITE);
-            } else {
-                drawable.setColor(unselectedBg);
-                chips[i].setBackground(drawable);
-                chips[i].setTextColor(unselectedText);
-            }
-        }
-    }
-
-    private void setupSortChips(View view) {
-        chipSortFirstCall = view.findViewById(R.id.chip_sort_first_call);
-        chipSortRecentCall = view.findViewById(R.id.chip_sort_recent_call);
-        if (chipSortFirstCall != null) {
-            chipSortFirstCall.setOnClickListener(v -> {
-                sortByFirstCall = true;
-                updateSortChipsUI();
-                filterList();
+                @Override
+                public void onNothingSelected(android.widget.AdapterView<?> parent) {}
             });
-        }
-        if (chipSortRecentCall != null) {
-            chipSortRecentCall.setOnClickListener(v -> {
-                sortByFirstCall = false;
-                updateSortChipsUI();
-                filterList();
-            });
-        }
-        updateSortChipsUI();
-    }
-
-    private void updateSortChipsUI() {
-        if (chipSortFirstCall == null || chipSortRecentCall == null || getContext() == null) return;
-        float density = getResources().getDisplayMetrics().density;
-        int selectedColor = androidx.core.content.ContextCompat.getColor(requireContext(), R.color.accent_indigo);
-        int unselectedBg = androidx.core.content.ContextCompat.getColor(requireContext(), R.color.divider);
-        int unselectedText = androidx.core.content.ContextCompat.getColor(requireContext(), R.color.text_secondary);
-
-        TextView[] sortChips = {chipSortFirstCall, chipSortRecentCall};
-        for (int i = 0; i < sortChips.length; i++) {
-            boolean selected = (i == 0) == sortByFirstCall;
-            android.graphics.drawable.GradientDrawable drawable = new android.graphics.drawable.GradientDrawable();
-            drawable.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
-            drawable.setCornerRadius(18 * density);
-            drawable.setColor(selected ? selectedColor : unselectedBg);
-            sortChips[i].setBackground(drawable);
-            sortChips[i].setTextColor(selected ? android.graphics.Color.WHITE : unselectedText);
         }
     }
 
@@ -346,40 +268,22 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
 
     private String getTabLabel(String key, int count) {
         if (key.equals("Past")) {
-            return "Past (" + count + ")";
+            return "Past\n(" + count + ")";
         }
         if (key.equals("All")) {
-            return "All (" + count + ")";
+            return "All\n(" + count + ")";
         }
         try {
             java.text.SimpleDateFormat sdfGroup = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault());
             java.util.Date date = sdfGroup.parse(key);
             
-            java.util.Calendar cal = java.util.Calendar.getInstance();
-            long todayStart = getStartOfDay(cal.getTimeInMillis());
-            cal.add(java.util.Calendar.DAY_OF_YEAR, 1);
-            long tomorrowStart = getStartOfDay(cal.getTimeInMillis());
-            cal.add(java.util.Calendar.DAY_OF_YEAR, 1);
-            long dayAfterStart = getStartOfDay(cal.getTimeInMillis());
-            
-            long targetTime = date.getTime();
-            
             java.util.Calendar targetCal = java.util.Calendar.getInstance();
             targetCal.setTime(date);
             int dayNum = targetCal.get(java.util.Calendar.DAY_OF_MONTH);
             String ordinalDay = getOrdinal(dayNum);
-            
-            if (targetTime >= todayStart && targetTime < tomorrowStart) {
-                return ordinalDay + " (Today) (" + count + ")";
-            } else if (targetTime >= tomorrowStart && targetTime < dayAfterStart) {
-                return ordinalDay + " (Tomorrow) (" + count + ")";
-            } else {
-                java.text.SimpleDateFormat dayFormat = new java.text.SimpleDateFormat("EEEE", java.util.Locale.getDefault());
-                String dayOfWeek = dayFormat.format(date);
-                return ordinalDay + " (" + dayOfWeek + ") (" + count + ")";
-            }
+            return ordinalDay + "\n(" + count + ")";
         } catch (Exception e) {
-            return key + " (" + count + ")";
+            return key + "\n(" + count + ")";
         }
     }
 
@@ -411,17 +315,21 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
         java.util.Collections.sort(futureDates);
 
         java.util.List<String> tabKeys = new java.util.ArrayList<>();
-        tabKeys.add("Past");
-        tabKeys.add("All");
+        if (futureDates.contains(todayKey)) {
+            tabKeys.add(todayKey);
+            futureDates.remove(todayKey);
+        }
         tabKeys.addAll(futureDates);
+        tabKeys.add("All");
+        tabKeys.add("Past");
 
         if (selectedTabKey == null || !tabKeys.contains(selectedTabKey)) {
             if (tabKeys.contains(todayKey)) {
                 selectedTabKey = todayKey;
-            } else if (!futureDates.isEmpty()) {
-                selectedTabKey = futureDates.get(0);
+            } else if (!tabKeys.isEmpty() && !tabKeys.get(0).equals("All") && !tabKeys.get(0).equals("Past")) {
+                selectedTabKey = tabKeys.get(0);
             } else {
-                selectedTabKey = "Past";
+                selectedTabKey = "All";
             }
         }
 

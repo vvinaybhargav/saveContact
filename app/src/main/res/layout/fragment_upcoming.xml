@@ -25,75 +25,49 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="📅 Upcoming Interviews"
+                android:text="Interviews"
                 android:textColor="@color/accent_indigo"
-                android:textSize="26sp"
+                android:textSize="20sp"
                 android:textStyle="bold"
                 android:letterSpacing="0.01" />
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:text="Manage your scheduled and tentative interviews. Tap any card to update rounds, details, or calendar follow-ups."
+                android:layout_marginTop="4dp"
+                android:text="Manage scheduled and tentative interviews."
                 android:textColor="@color/text_muted"
-                android:textSize="13sp"
-                android:lineSpacingMultiplier="1.1" />
+                android:textSize="11sp" />
         </LinearLayout>
 
-        <!-- Horizontally Scrollable Stage Filter Chips -->
+        <!-- Filter dropdown spinner instead of horizontal chips and sort options -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:paddingHorizontal="16dp"
-            android:paddingTop="16dp"
-            android:paddingBottom="8dp"
+            android:paddingTop="12dp"
+            android:paddingBottom="4dp"
             android:background="@color/bg_light">
 
-            <HorizontalScrollView
+            <FrameLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:scrollbars="none">
-
-                <LinearLayout
-                    android:id="@+id/layout_upcoming_chips"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:paddingBottom="4dp">
-
-                    <TextView android:id="@+id/chip_upcoming_all" android:text="All" style="@style/TrackerChipStyle" android:tag="selected" />
-                    <TextView android:id="@+id/chip_upcoming_needs_update" android:text="Needs Update" style="@style/TrackerChipStyle" />
-                    <TextView android:id="@+id/chip_upcoming_scheduled" android:text="Scheduled" style="@style/TrackerChipStyle" />
-                    <TextView android:id="@+id/chip_upcoming_no_followup" android:text="No Follow-up Needed" style="@style/TrackerChipStyle" />
-                </LinearLayout>
-            </HorizontalScrollView>
-
-            <!-- Sort by First Call / Recent Call -->
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginTop="8dp">
-
-                <TextView
-                    android:id="@+id/chip_sort_first_call"
-                    android:text="Sort: First Call"
-                    style="@style/TrackerChipStyle"
-                    android:tag="selected" />
-                <TextView
-                    android:id="@+id/chip_sort_recent_call"
-                    android:text="Sort: Recent Call"
-                    style="@style/TrackerChipStyle" />
-            </LinearLayout>
+                android:layout_height="44dp"
+                android:background="@drawable/spinner_border"
+                android:paddingHorizontal="4dp">
+                <Spinner
+                    android:id="@+id/spinner_upcoming_filter"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:spinnerMode="dropdown" />
+            </FrameLayout>
 
             <!-- Dynamic Date Tabs -->
             <com.google.android.material.tabs.TabLayout
                 android:id="@+id/tab_layout_upcoming_dates"
                 android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:layout_marginTop="8dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
                 app:tabMode="scrollable"
                 app:tabGravity="fill"
                 app:tabSelectedTextColor="@color/accent_indigo"

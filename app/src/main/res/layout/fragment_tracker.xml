@@ -315,6 +315,7 @@
                     android:paddingBottom="4dp">
 
                     <TextView android:id="@+id/chip_all" android:text="All" style="@style/TrackerChipStyle" android:tag="selected" />
+                    <TextView android:id="@+id/chip_unlogged" android:text="Unlogged" style="@style/TrackerChipStyle" />
                     <TextView android:id="@+id/chip_screening" android:text="First time" style="@style/TrackerChipStyle" />
                     <TextView android:id="@+id/chip_1st_round" android:text="1st Round" style="@style/TrackerChipStyle" />
                     <TextView android:id="@+id/chip_2nd_round" android:text="2nd Round" style="@style/TrackerChipStyle" />
@@ -323,7 +324,6 @@
                     <TextView android:id="@+id/chip_offered" android:text="Offered" style="@style/TrackerChipStyle" />
                     <TextView android:id="@+id/chip_not_interested" android:text="Not Interested" style="@style/TrackerChipStyle" />
                     <TextView android:id="@+id/chip_rejected" android:text="Negative" style="@style/TrackerChipStyle" />
-                    <TextView android:id="@+id/chip_unlogged" android:text="Unlogged" style="@style/TrackerChipStyle" />
                 </LinearLayout>
             </HorizontalScrollView>
 

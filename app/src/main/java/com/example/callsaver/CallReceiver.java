@@ -189,7 +189,7 @@ public class CallReceiver extends BroadcastReceiver {
                                 } else if (entry.type == android.provider.CallLog.Calls.MISSED_TYPE || entry.type == android.provider.CallLog.Calls.REJECTED_TYPE) {
                                     typeLabel = "Missed";
                                 }
-                                db.insertCallHistory(call.getId(), typeLabel, entry.duration, entry.date);
+                                db.insertCallHistory(call.getId(), typeLabel, entry.duration, entry.date + entry.duration * 1000L);
                             }
                             
                             boolean autoTranscribe = prefs.getBoolean("auto_transcribe_background", true);
@@ -197,7 +197,7 @@ public class CallReceiver extends BroadcastReceiver {
                             if (isOutgoing || isIncomingAnswered) {
                                 if (autoTranscribe && entry.duration >= 15) {
                                     DebugLogger.log(context, "[Receiver] Auto-transcribing call for " + entry.number + " in background...");
-                                    triggerBackgroundTranscription(context, entry.number, entry.duration, entry.date);
+                                    triggerBackgroundTranscription(context, entry.number, entry.duration, entry.date + entry.duration * 1000L);
                                 } else {
                                     DebugLogger.log(context, "[Receiver] Launching SaveContactActivity popup for " + entry.number);
                                     Intent dialogIntent = new Intent(context, SaveContactActivity.class);

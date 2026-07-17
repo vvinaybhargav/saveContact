@@ -308,6 +308,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 call.setJdLink(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_JD_LINK)));
                 call.setJdImagePath(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_JD_IMAGE_PATH)));
                 call.setInterestRating(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_INTEREST_RATING)));
+                call.setRecruiterName(getRecruiterNameForJob(call.getId()));
                 callsList.add(call);
             } while (cursor.moveToNext());
         }
@@ -359,6 +360,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 call.setJdLink(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_JD_LINK)));
                 call.setJdImagePath(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_JD_IMAGE_PATH)));
                 call.setInterestRating(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_INTEREST_RATING)));
+                call.setRecruiterName(getRecruiterNameForJob(call.getId()));
                 callsList.add(call);
             } while (cursor.moveToNext());
         }
@@ -798,6 +800,134 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             c.close();
         }
         db.close();
+        return list;
+    }
+
+    public String getRecruiterNameForJob(long jobId) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        String recruiterName = "";
+        try (Cursor c = db.query(TABLE_PHONES, new String[]{COLUMN_PHONE_RECRUITER_NAME},
+                COLUMN_PHONE_JOB_ID + "=? AND " + COLUMN_PHONE_RECRUITER_NAME + " IS NOT NULL AND " + COLUMN_PHONE_RECRUITER_NAME + " != ''",
+                new String[]{String.valueOf(jobId)}, null, null, null)) {
+            if (c != null && c.moveToFirst()) {
+                recruiterName = c.getString(0);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return recruiterName;
+    }
+
+    public boolean isCallEventLogged(long timestamp) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        boolean exists = false;
+        long threshold = 5000; // 5 seconds window
+        try (Cursor c1 = db.query(TABLE_HISTORY, new String[]{COLUMN_HIST_ID}, 
+                "ABS(" + COLUMN_HIST_TIME + " - ?) < ?", new String[]{String.valueOf(timestamp), String.valueOf(threshold)}, null, null, null)) {
+            if (c1 != null && c1.getCount() > 0) {
+                exists = true;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        if (!exists) {
+            try (Cursor c2 = db.query(TABLE_NAME, new String[]{COLUMN_ID}, 
+                    "ABS(" + COLUMN_TIMESTAMP + " - ?) < ?", new String[]{String.valueOf(timestamp), String.valueOf(threshold)}, null, null, null)) {
+                if (c2 != null && c2.getCount() > 0) {
+                    exists = true;
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        return exists;
+    }
+
+    public String getLoggedNameOrCompanyForNumber(Context context, String incomingNumber) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        String result = null;
+        try (Cursor c = db.query(TABLE_PHONES, new String[]{COLUMN_PHONE_JOB_ID, COLUMN_PHONE_NUMBER, COLUMN_PHONE_RECRUITER_NAME}, null, null, null, null, null)) {
+            if (c != null) {
+                while (c.moveToNext()) {
+                    String dbPhone = c.getString(1);
+                    if (PhoneNumberUtils.compare(context, dbPhone, incomingNumber)) {
+                        long jobId = c.getLong(0);
+                        String recName = c.getString(2);
+                        if (recName != null && !recName.trim().isEmpty()) {
+                            result = recName.trim();
+                        }
+                        try (Cursor jcCursor = db.query(TABLE_NAME, new String[]{COLUMN_COMPANY_NAME}, COLUMN_ID + "=?", new String[]{String.valueOf(jobId)}, null, null, null)) {
+                            if (jcCursor != null && jcCursor.moveToFirst()) {
+                                String compName = jcCursor.getString(0);
+                                if (compName != null && !compName.trim().isEmpty()) {
+                                    if (result != null && !result.equalsIgnoreCase(compName)) {
+                                        result = result + " @ " + compName.trim();
+                                    } else {
+                                        result = compName.trim();
+                                    }
+                                }
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return result;
+    }
+
+    public static class PhoneJobMapping {
+        public String phoneNumber;
+        public String recruiterName;
+        public String companyName;
+        public long jobId;
+    }
+
+    public List<Long> getAllLoggedTimestamps() {
+        List<Long> list = new ArrayList<>();
+        SQLiteDatabase db = this.getReadableDatabase();
+        try (Cursor c = db.query(TABLE_HISTORY, new String[]{COLUMN_HIST_TIME}, null, null, null, null, null)) {
+            if (c != null) {
+                while (c.moveToNext()) {
+                    list.add(c.getLong(0));
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        try (Cursor c = db.query(TABLE_NAME, new String[]{COLUMN_TIMESTAMP}, null, null, null, null, null)) {
+            if (c != null) {
+                while (c.moveToNext()) {
+                    list.add(c.getLong(0));
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    public List<PhoneJobMapping> getAllPhoneJobMappings() {
+        List<PhoneJobMapping> list = new ArrayList<>();
+        SQLiteDatabase db = this.getReadableDatabase();
+        String query = "SELECT p." + COLUMN_PHONE_NUMBER + ", p." + COLUMN_PHONE_RECRUITER_NAME + ", j." + COLUMN_COMPANY_NAME + ", p." + COLUMN_PHONE_JOB_ID
+                + " FROM " + TABLE_PHONES + " p LEFT JOIN " + TABLE_NAME + " j ON p." + COLUMN_PHONE_JOB_ID + " = j." + COLUMN_ID;
+        try (Cursor c = db.rawQuery(query, null)) {
+            if (c != null) {
+                while (c.moveToNext()) {
+                    PhoneJobMapping m = new PhoneJobMapping();
+                    m.phoneNumber = c.getString(0);
+                    m.recruiterName = c.getString(1);
+                    m.companyName = c.getString(2);
+                    m.jobId = c.getLong(3);
+                    list.add(m);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         return list;
     }
 }

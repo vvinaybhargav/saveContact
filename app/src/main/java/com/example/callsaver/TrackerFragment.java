@@ -118,7 +118,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
     private android.content.SharedPreferences.OnSharedPreferenceChangeListener prefsListener;
     private String selectedStatus = "All";
     private TextView[] chips;
-    private final String[] statuses = {"All", "First time", "1st Round", "2nd Round", "Final Round", "HR / Salary", "Offered", "Not Interested", "Negative", "Unlogged"};
+    private final String[] statuses = {"All", "Unlogged", "First time", "1st Round", "2nd Round", "Final Round", "HR / Salary", "Offered", "Not Interested", "Negative"};
 
     private final String[] requiredPermissions = {
             Manifest.permission.READ_PHONE_STATE,
@@ -289,10 +289,9 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
 
     private void setupFilterChips(View view) {
         int[] chipIds = {
-                R.id.chip_all, R.id.chip_screening, R.id.chip_1st_round,
+                R.id.chip_all, R.id.chip_unlogged, R.id.chip_screening, R.id.chip_1st_round,
                 R.id.chip_2nd_round, R.id.chip_final, R.id.chip_hr,
-                R.id.chip_offered, R.id.chip_not_interested, R.id.chip_rejected,
-                R.id.chip_unlogged
+                R.id.chip_offered, R.id.chip_not_interested, R.id.chip_rejected
         };
 
         chips = new TextView[chipIds.length];
@@ -409,6 +408,9 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         android.content.SharedPreferences prefs = requireContext().getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE);
         java.util.Set<String> dismissed = prefs.getStringSet("dismissed_unlogged_calls", new java.util.HashSet<>());
 
+        List<Long> loggedTimestamps = dbHelper.getAllLoggedTimestamps();
+        List<DatabaseHelper.PhoneJobMapping> mappings = dbHelper.getAllPhoneJobMappings();
+
         String[] projection = new String[]{
                 CallLog.Calls.NUMBER,
                 CallLog.Calls.TYPE,
@@ -436,9 +438,17 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                     long date = cursor.getLong(dateIdx);
                     int duration = cursor.getInt(durationIdx);
 
-                    // Check if already tracked in SQLite
-                    JobCall existing = dbHelper.getJobCallByNumber(requireContext(), number);
-                    if (existing == null) {
+                    long endTime = date + duration * 1000L;
+                    // Check if this call event (by its end time) is already logged in history in memory
+                    boolean isLogged = false;
+                    for (long loggedTime : loggedTimestamps) {
+                        if (Math.abs(loggedTime - endTime) < 5000) {
+                            isLogged = true;
+                            break;
+                        }
+                    }
+
+                    if (!isLogged) {
                         // Check if dismissed
                         String key = number + "_" + date;
                         if (!dismissed.contains(key)) {
@@ -460,10 +470,31 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
 
                             String displayName = getContactNameByNumber(requireContext(), number);
                             if (displayName == null || displayName.trim().isEmpty()) {
+                                for (DatabaseHelper.PhoneJobMapping mapping : mappings) {
+                                    if (android.telephony.PhoneNumberUtils.compare(requireContext(), mapping.phoneNumber, number)) {
+                                        String recName = mapping.recruiterName;
+                                        String compName = mapping.companyName;
+                                        String result = null;
+                                        if (recName != null && !recName.trim().isEmpty()) {
+                                            result = recName.trim();
+                                        }
+                                        if (compName != null && !compName.trim().isEmpty()) {
+                                            if (result != null && !result.equalsIgnoreCase(compName)) {
+                                                result = result + " @ " + compName.trim();
+                                            } else {
+                                                result = compName.trim();
+                                            }
+                                        }
+                                        displayName = result;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (displayName == null || displayName.trim().isEmpty()) {
                                 displayName = "Unlogged Call";
                             }
 
-                            JobCall unloggedCall = new JobCall(number, displayName, badgeType, "", notesDesc, duration, date);
+                            JobCall unloggedCall = new JobCall(number, displayName, badgeType, "", notesDesc, duration, endTime);
                             unloggedCall.setId((int) (-1 * (Math.abs(key.hashCode()) % 1000000 + 1)));
                             unlogged.add(unloggedCall);
                         }

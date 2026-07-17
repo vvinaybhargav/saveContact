@@ -143,11 +143,20 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
             callDirectly(call.getPhoneNumber());
         });
 
-        // Follow Up Action
+        // WhatsApp Action
         if (holder.btnActionFollowup != null) {
             holder.btnActionFollowup.setOnClickListener(v -> {
-                if (listener != null) {
-                    listener.onFollowUpClick(call);
+                String number = call.getPhoneNumber();
+                if (number != null && !number.trim().isEmpty()) {
+                    String cleanNum = number.replaceAll("[^0-9+]", "");
+                    try {
+                        String url = "https://api.whatsapp.com/send?phone=" + cleanNum;
+                        Intent i = new Intent(Intent.ACTION_VIEW);
+                        i.setData(Uri.parse(url));
+                        context.startActivity(i);
+                    } catch (Exception e) {
+                        android.widget.Toast.makeText(context, "WhatsApp is not installed", android.widget.Toast.LENGTH_SHORT).show();
+                    }
                 }
             });
         }
