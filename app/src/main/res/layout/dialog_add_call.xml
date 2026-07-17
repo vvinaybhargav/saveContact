@@ -198,6 +198,7 @@
     </FrameLayout>
 
     <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/til_tentative_schedule"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="22dp"
@@ -209,7 +210,11 @@
         app:boxStrokeColor="@color/accent_indigo"
         app:hintTextColor="@color/accent_indigo"
         app:startIconDrawable="@android:drawable/ic_menu_my_calendar"
-        app:startIconTint="@color/text_muted">
+        app:startIconTint="@color/text_muted"
+        app:endIconMode="custom"
+        app:endIconDrawable="@android:drawable/ic_menu_close_clear_cancel"
+        app:endIconContentDescription="Clear schedule"
+        app:endIconTint="@color/text_muted">
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/et_tentative_schedule"
             android:layout_width="match_parent"

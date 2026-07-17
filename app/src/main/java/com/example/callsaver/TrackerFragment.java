@@ -118,7 +118,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
     private android.content.SharedPreferences.OnSharedPreferenceChangeListener prefsListener;
     private String selectedStatus = "All";
     private TextView[] chips;
-    private final String[] statuses = {"All", "First time", "1st Round", "2nd Round", "Final Round", "HR / Salary", "Offered", "Not Interested", "Negative"};
+    private final String[] statuses = {"All", "First time", "1st Round", "2nd Round", "Final Round", "HR / Salary", "Offered", "Not Interested", "Negative", "Unlogged"};
 
     private final String[] requiredPermissions = {
             Manifest.permission.READ_PHONE_STATE,
@@ -291,7 +291,8 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         int[] chipIds = {
                 R.id.chip_all, R.id.chip_screening, R.id.chip_1st_round,
                 R.id.chip_2nd_round, R.id.chip_final, R.id.chip_hr,
-                R.id.chip_offered, R.id.chip_not_interested, R.id.chip_rejected
+                R.id.chip_offered, R.id.chip_not_interested, R.id.chip_rejected,
+                R.id.chip_unlogged
         };
 
         chips = new TextView[chipIds.length];
@@ -346,8 +347,17 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                     (call.getPhoneNumber() != null && call.getPhoneNumber().contains(query)) ||
                     (call.getNotes() != null && call.getNotes().toLowerCase().contains(query.toLowerCase()));
             
-            boolean matchesStatus = status.equals("All") ||
-                    (call.getRoundStatus() != null && call.getRoundStatus().equals(status));
+            boolean matchesStatus;
+            if ("Unlogged".equals(status)) {
+                matchesStatus = (call.getId() <= 0);
+            } else {
+                if (call.getId() <= 0) {
+                    matchesStatus = false;
+                } else {
+                    matchesStatus = "All".equals(status) ||
+                            (call.getRoundStatus() != null && call.getRoundStatus().equals(status));
+                }
+            }
 
             if (matchesQuery && matchesStatus) {
                 filteredList.add(call);
@@ -432,19 +442,19 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                         // Check if dismissed
                         String key = number + "_" + date;
                         if (!dismissed.contains(key)) {
-                            String badgeType = "Answered";
+                            String badgeType = "Incoming";
                             String notesDesc = "Call";
                             if (type == CallLog.Calls.MISSED_TYPE) {
-                                badgeType = "Missed Call";
+                                badgeType = "Missed";
                                 notesDesc = "Missed Call";
                             } else if (type == CallLog.Calls.REJECTED_TYPE) {
                                 badgeType = "Rejected";
                                 notesDesc = "Rejected Call";
                             } else if (type == CallLog.Calls.INCOMING_TYPE) {
-                                badgeType = "Answered";
+                                badgeType = "Incoming";
                                 notesDesc = "Incoming Call";
                             } else if (type == CallLog.Calls.OUTGOING_TYPE) {
-                                badgeType = "Answered";
+                                badgeType = "Outgoing";
                                 notesDesc = "Outgoing Call";
                             }
 
@@ -749,6 +759,10 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         EditText etCandidateName = null;
         EditText etAppliedRole = dialogView.findViewById(R.id.et_applied_role);
         EditText etTentativeSchedule = dialogView.findViewById(R.id.et_tentative_schedule);
+        TextInputLayout tilTentativeSchedule = dialogView.findViewById(R.id.til_tentative_schedule);
+        if (tilTentativeSchedule != null) {
+            tilTentativeSchedule.setEndIconOnClickListener(v -> etTentativeSchedule.setText(""));
+        }
         EditText etNoticePeriod = null; // Notice Period removed from the UI; preserved in DB if already set.
         // Main Agenda / Next Steps removed from the UI; preserved in DB if already set.
         EditText etMainAgenda = null;

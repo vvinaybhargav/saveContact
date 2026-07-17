@@ -162,9 +162,20 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
 
     private void setupStatusBadge(TextView tv, JobCall call) {
         if (call.getId() <= 0) {
-            tv.setText(call.getRoundStatus());
-            int textColor = context.getResources().getColor(R.color.status_warning);
+            String status = call.getRoundStatus();
+            tv.setText(status);
+            
+            int textColor;
             int bgColor = context.getResources().getColor(R.color.status_warning_bg);
+            
+            if ("Outgoing".equalsIgnoreCase(status)) {
+                textColor = context.getResources().getColor(R.color.status_green);
+            } else if ("Missed".equalsIgnoreCase(status) || "Rejected".equalsIgnoreCase(status)) {
+                textColor = context.getResources().getColor(R.color.status_error);
+            } else {
+                textColor = context.getResources().getColor(R.color.status_warning);
+            }
+            
             GradientDrawable gd = new GradientDrawable();
             gd.setColor(bgColor);
             float density = context.getResources().getDisplayMetrics().density;

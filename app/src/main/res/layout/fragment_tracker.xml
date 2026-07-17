@@ -323,6 +323,7 @@
                     <TextView android:id="@+id/chip_offered" android:text="Offered" style="@style/TrackerChipStyle" />
                     <TextView android:id="@+id/chip_not_interested" android:text="Not Interested" style="@style/TrackerChipStyle" />
                     <TextView android:id="@+id/chip_rejected" android:text="Negative" style="@style/TrackerChipStyle" />
+                    <TextView android:id="@+id/chip_unlogged" android:text="Unlogged" style="@style/TrackerChipStyle" />
                 </LinearLayout>
             </HorizontalScrollView>
 

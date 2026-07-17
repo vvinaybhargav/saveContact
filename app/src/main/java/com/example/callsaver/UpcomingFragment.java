@@ -643,6 +643,10 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
         EditText etCandidateName = null;
         EditText etAppliedRole = dialogView.findViewById(R.id.et_applied_role);
         EditText etTentativeSchedule = dialogView.findViewById(R.id.et_tentative_schedule);
+        TextInputLayout tilTentativeSchedule = dialogView.findViewById(R.id.til_tentative_schedule);
+        if (tilTentativeSchedule != null) {
+            tilTentativeSchedule.setEndIconOnClickListener(v -> etTentativeSchedule.setText(""));
+        }
         // Notice Period / Main Agenda / Next Steps were removed from the dialog UI;
         // these ids no longer exist in dialog_add_call.xml, so findViewById would
         // return null and crash on unguarded use. Keep them null and guard everywhere.
