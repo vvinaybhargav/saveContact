@@ -158,10 +158,10 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         fabAddCall = view.findViewById(R.id.fab_add_call);
         etSearch = view.findViewById(R.id.et_search);
 
-        tvStatLeads = view.findViewById(R.id.tv_stat_leads);
-        tvStatScreenings = view.findViewById(R.id.tv_stat_screenings);
-        tvStatInterviews = view.findViewById(R.id.tv_stat_interviews);
-        tvStatOffers = view.findViewById(R.id.tv_stat_offers);
+        tvStatLeads = null;
+        tvStatScreenings = null;
+        tvStatInterviews = null;
+        tvStatOffers = null;
 
         // Setup RecyclerView
         rvJobCalls.setLayoutManager(new LinearLayoutManager(requireContext()));

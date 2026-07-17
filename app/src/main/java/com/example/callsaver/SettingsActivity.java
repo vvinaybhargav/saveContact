@@ -324,7 +324,7 @@ public class SettingsActivity extends AppCompatActivity {
                         .setTitle("Confirm Consolidation")
                         .setMessage("Consolidate logs for " + cand.b.getCompanyName() + " into " + cand.a.getCompanyName() + "?")
                         .setPositiveButton("Merge", (dSub, w) -> {
-                            dbHelper.mergeJobCalls(this, cand.a.getId(), cand.b.getId());
+                            dbHelper.mergeJobCalls(cand.a.getId(), cand.b.getId());
                             Toast.makeText(this, "Companies consolidated.", Toast.LENGTH_SHORT).show();
                             container.removeView(row);
                             checkDuplicateSuggestions(btnCheckDuplicates);
