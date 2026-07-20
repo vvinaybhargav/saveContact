@@ -792,6 +792,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                 })
                 .setNegativeButton("Cancel", null)
                 .show();
+    }
     /**
      * Opens the modal dialog to either Log a manual call (if call is null)
      * or edit/delete an existing logged call (if call is not null).
