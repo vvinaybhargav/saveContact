@@ -48,7 +48,7 @@ public class UpcomingInterviewsAdapter extends RecyclerView.Adapter<UpcomingInte
         holder.tvRole.setText(call.getAppliedRole() != null && !call.getAppliedRole().isEmpty() ? call.getAppliedRole() : "Job Position");
         String roundText = call.getRoundStatus() != null && !call.getRoundStatus().isEmpty() ? call.getRoundStatus() : "First time";
         if (call.getInterestRating() != null && !call.getInterestRating().isEmpty()) {
-            roundText += " (" + call.getInterestRating() + "/10)";
+            roundText += " (" + call.getInterestRating() + ")";
         }
         holder.tvRound.setText(roundText);
 

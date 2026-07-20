@@ -328,9 +328,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         String selectQuery = "SELECT jc.*, "
                 + "MAX(jc." + COLUMN_TIMESTAMP + ", "
                 + "COALESCE((SELECT MAX(" + COLUMN_HIST_TIME + ") FROM " + TABLE_HISTORY
-                + " WHERE " + COLUMN_HIST_JOB_ID + "=jc." + COLUMN_ID + "), 0), "
-                + "COALESCE((SELECT MAX(" + COLUMN_NOTE_TIME + ") FROM " + TABLE_NOTES
-                + " WHERE " + COLUMN_NOTE_JOB_ID + "=jc." + COLUMN_ID + "), 0)) AS last_activity "
+                + " WHERE " + COLUMN_HIST_JOB_ID + "=jc." + COLUMN_ID + "), 0)) AS last_activity "
                 + "FROM " + TABLE_NAME + " jc ORDER BY last_activity DESC";
 
         SQLiteDatabase db = this.getReadableDatabase();
@@ -380,24 +378,36 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         long firstCall = 0;
         long recentCall = 0;
         SQLiteDatabase db = this.getReadableDatabase();
-        Cursor c = db.query(TABLE_NAME, new String[]{COLUMN_TIMESTAMP}, COLUMN_ID + "=?",
-                new String[]{String.valueOf(jobId)}, null, null, null);
+        
+        // Find min and max call times from TABLE_HISTORY (phone calls)
+        Cursor c = db.rawQuery(
+                "SELECT MIN(" + COLUMN_HIST_TIME + "), MAX(" + COLUMN_HIST_TIME + ") FROM " + TABLE_HISTORY
+                        + " WHERE " + COLUMN_HIST_JOB_ID + "=?",
+                new String[]{String.valueOf(jobId)});
         if (c != null) {
-            if (c.moveToFirst()) firstCall = c.getLong(0);
+            if (c.moveToFirst()) {
+                if (!c.isNull(0)) firstCall = c.getLong(0);
+                if (!c.isNull(1)) recentCall = c.getLong(1);
+            }
             c.close();
         }
-        Cursor c2 = db.rawQuery(
-                "SELECT MAX(t) FROM (SELECT MAX(" + COLUMN_HIST_TIME + ") AS t FROM " + TABLE_HISTORY
-                        + " WHERE " + COLUMN_HIST_JOB_ID + "=? UNION SELECT MAX(" + COLUMN_NOTE_TIME + ") FROM "
-                        + TABLE_NOTES + " WHERE " + COLUMN_NOTE_JOB_ID + "=?)",
-                new String[]{String.valueOf(jobId), String.valueOf(jobId)});
-        if (c2 != null) {
-            if (c2.moveToFirst() && !c2.isNull(0)) recentCall = c2.getLong(0);
-            c2.close();
+        
+        // Fallback: If no call history exists in TABLE_HISTORY, use the job's creation timestamp as firstCall
+        if (firstCall == 0) {
+            Cursor c2 = db.query(TABLE_NAME, new String[]{COLUMN_TIMESTAMP}, COLUMN_ID + "=?",
+                    new String[]{String.valueOf(jobId)}, null, null, null);
+            if (c2 != null) {
+                if (c2.moveToFirst()) firstCall = c2.getLong(0);
+                c2.close();
+            }
         }
+        
         db.close();
-        // "Recent call" only makes sense if there was activity AFTER the first log.
-        if (recentCall <= firstCall) recentCall = 0;
+        
+        // Recent call should only show if there is a separate subsequent call.
+        if (recentCall <= firstCall) {
+            recentCall = 0;
+        }
         return new long[]{firstCall, recentCall};
     }
 
