@@ -337,6 +337,29 @@
                     android:textColor="@color/text_primary"/>
             </com.google.android.material.textfield.TextInputLayout>
 
+            <!-- Numbered call history (1st Call, 2nd Call, ...) — same layout as the caller-ID
+                 banner. Only visible/populated for existing entries. -->
+            <TextView
+                android:id="@+id/label_notes"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Call History"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.04"
+                android:layout_marginBottom="8dp"
+                android:layout_marginStart="4dp"
+                android:visibility="gone" />
+
+            <LinearLayout
+                android:id="@+id/ll_notes_timeline"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_bottom="8dp"
+                android:layout_marginBottom="8dp" />
+
             <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

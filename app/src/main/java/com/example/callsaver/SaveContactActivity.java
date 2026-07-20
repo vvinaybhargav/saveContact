@@ -95,6 +95,8 @@ public class SaveContactActivity extends AppCompatActivity {
     private EditText etPhone;
     private TextView tvPhone;
     private Spinner spinnerInterestStatus;
+    private LinearLayout llNotesTimeline;
+    private View labelNotes;
     
     private long editJobCallId = -1;
     private JobCall editJobCall = null;
@@ -197,10 +199,13 @@ public class SaveContactActivity extends AppCompatActivity {
         etPhone = findViewById(R.id.et_phone_number);
         tvPhone = findViewById(R.id.tv_phone_number);
         spinnerInterestStatus = findViewById(R.id.spinner_interest_status);
+        llNotesTimeline = findViewById(R.id.ll_notes_timeline);
+        labelNotes = findViewById(R.id.label_notes);
 
         if (editJobCall != null) {
             if (tvTitle != null) tvTitle.setText("Edit Call Log");
             if (btnSaveBoth != null) btnSaveBoth.setText("Save Changes");
+            populateTimeline(llNotesTimeline, labelNotes, editJobCall.getId());
         }
 
         if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
@@ -671,7 +676,6 @@ public class SaveContactActivity extends AppCompatActivity {
                 editJobCall.setCompanyName(company);
                 editJobCall.setRoundStatus(round);
                 editJobCall.setTags(tags);
-                editJobCall.setNotes(notes);
                 editJobCall.setRecruiterName(recruiter);
                 editJobCall.setCandidateName(candidate);
                 editJobCall.setAppliedRole(role);
@@ -684,6 +688,9 @@ public class SaveContactActivity extends AppCompatActivity {
                 editJobCall.setJdImagePath(finalPaths);
 
                 dbHelper.updateJobCall(editJobCall);
+                if (!notes.isEmpty()) {
+                    dbHelper.insertNote(editJobCall.getId(), notes, System.currentTimeMillis(), DatabaseHelper.NOTE_SOURCE_MANUAL);
+                }
                 Toast.makeText(SaveContactActivity.this, "Call log updated successfully!", Toast.LENGTH_SHORT).show();
                 finish();
                 return;
@@ -1188,5 +1195,95 @@ public class SaveContactActivity extends AppCompatActivity {
         String val = json.optString(key, fallback).trim();
         if (val.equalsIgnoreCase("null")) return fallback;
         return val;
+    }
+
+    private void populateTimeline(LinearLayout container, View label, long jobId) {
+        if (container == null) return;
+        container.removeAllViews();
+
+        List<CallNote> notes = dbHelper.getNotesForJob(jobId);
+        if (notes.isEmpty()) {
+            if (label != null) label.setVisibility(View.GONE);
+            return;
+        }
+        if (label != null) label.setVisibility(View.VISIBLE);
+
+        // Oldest first so numbering reads 1st Call, 2nd Call, ... like the banner.
+        List<CallNote> chronological = new java.util.ArrayList<>(notes);
+        java.util.Collections.reverse(chronological);
+
+        LayoutInflater inflater = getLayoutInflater();
+        SimpleDateFormat sdf = new SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault());
+        int ordinal = 1;
+        for (CallNote n : chronological) {
+            String clean = cleanNoteText(n.note);
+            if (clean.trim().isEmpty()) {
+                clean = n.note == null ? "" : n.note;
+            }
+            if (clean.trim().isEmpty()) {
+                continue;
+            }
+
+            String label2 = ordinal + getOrdinalSuffix(ordinal) + (n.isManual() ? " MCall" : " Call");
+
+            View row = inflater.inflate(R.layout.item_call_note_row, container, false);
+            ((TextView) row.findViewById(R.id.tv_call_ordinal)).setText(label2);
+            ((TextView) row.findViewById(R.id.tv_call_date)).setText(sdf.format(new java.util.Date(n.timestamp)));
+            ((TextView) row.findViewById(R.id.tv_call_points)).setText(bulletize(clean));
+
+            long noteId = n.id;
+            View delete = row.findViewById(R.id.btn_delete_call_note);
+            delete.setOnClickListener(v -> {
+                dbHelper.deleteNote(noteId, jobId);
+                populateTimeline(container, label, jobId);
+            });
+
+            container.addView(row);
+            ordinal++;
+        }
+
+        if (container.getChildCount() == 0 && label != null) {
+            label.setVisibility(View.GONE);
+        }
+    }
+
+    private String cleanNoteText(String rawText) {
+        if (rawText == null) return "";
+        String[] lines = rawText.split("\n");
+        StringBuilder sb = new StringBuilder();
+        for (String line : lines) {
+            String trimmed = line.trim().toLowerCase(Locale.getDefault());
+            if (trimmed.contains("interested in") || trimmed.contains("is interested")
+                    || trimmed.contains("of course") || trimmed.contains("ofcourse")) {
+                continue;
+            }
+            if (sb.length() > 0) sb.append("\n");
+            sb.append(line);
+        }
+        return sb.toString();
+    }
+
+    private String bulletize(String text) {
+        StringBuilder sb = new StringBuilder();
+        for (String line : text.split("\n")) {
+            String trimmed = line.trim();
+            if (trimmed.isEmpty()) continue;
+            if (!trimmed.startsWith("•") && !trimmed.startsWith("-")) {
+                trimmed = "• " + trimmed;
+            }
+            if (sb.length() > 0) sb.append("\n");
+            sb.append(trimmed);
+        }
+        return sb.toString();
+    }
+
+    private String getOrdinalSuffix(int number) {
+        if (number >= 11 && number <= 13) return "th";
+        switch (number % 10) {
+            case 1: return "st";
+            case 2: return "nd";
+            case 3: return "rd";
+            default: return "th";
+        }
     }
 }
