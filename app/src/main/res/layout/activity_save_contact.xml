@@ -50,6 +50,7 @@
             </com.google.android.material.card.MaterialCardView>
 
             <TextView
+                android:id="@+id/tv_activity_title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/title_save_job_call"
@@ -67,6 +68,28 @@
                 android:textSize="18sp"
                 android:textStyle="bold"
                 android:layout_marginBottom="16dp"/>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/til_phone_number"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                app:boxCornerRadiusTopStart="12dp"
+                app:boxCornerRadiusTopEnd="12dp"
+                app:boxCornerRadiusBottomStart="12dp"
+                app:boxCornerRadiusBottomEnd="12dp"
+                app:boxStrokeColor="@color/accent_indigo"
+                app:hintTextColor="@color/accent_indigo"
+                android:visibility="gone">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/et_phone_number"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Phone Number"
+                    android:inputType="phone"
+                    android:textColor="@color/text_primary" />
+            </com.google.android.material.textfield.TextInputLayout>
 
             <!-- SECTION 1: CANDIDATE PROFILE -->
             <TextView
@@ -519,6 +542,131 @@
             </LinearLayout>
 
 
+
+            <!-- Interest Status Dropdown -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Interest Status"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="4dp"
+                android:layout_marginStart="4dp"
+                android:gravity="start" />
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginBottom="16dp"
+                android:background="@drawable/spinner_border">
+
+                <Spinner
+                    android:id="@+id/spinner_interest_status"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:paddingHorizontal="12dp"
+                    android:spinnerMode="dropdown" />
+            </FrameLayout>
+
+            <!-- JD Screenshot Layout -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="16dp">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_upload_jd_screenshot"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Add JD Screenshot"
+                    android:textAllCaps="false"
+                    android:textColor="@color/accent_indigo"
+                    app:strokeColor="@color/accent_indigo"
+                    app:cornerRadius="12dp"
+                    android:layout_marginEnd="12dp" />
+
+                <LinearLayout
+                    android:id="@+id/layout_screenshots_container"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <!-- Slot 1 -->
+                    <FrameLayout
+                        android:id="@+id/fl_jd_screenshot_container_1"
+                        android:layout_width="60dp"
+                        android:layout_height="60dp"
+                        android:layout_marginEnd="8dp"
+                        android:visibility="gone">
+                        <ImageView
+                            android:id="@+id/iv_jd_screenshot_preview_1"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:scaleType="centerCrop"
+                            android:background="@color/divider" />
+                        <ImageButton
+                            android:id="@+id/btn_remove_jd_screenshot_1"
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:layout_gravity="top|end"
+                            android:src="@android:drawable/ic_menu_close_clear_cancel"
+                            android:background="#80000000"
+                            app:tint="@color/white"
+                            android:contentDescription="Remove screenshot 1" />
+                    </FrameLayout>
+
+                    <!-- Slot 2 -->
+                    <FrameLayout
+                        android:id="@+id/fl_jd_screenshot_container_2"
+                        android:layout_width="60dp"
+                        android:layout_height="60dp"
+                        android:layout_marginEnd="8dp"
+                        android:visibility="gone">
+                        <ImageView
+                            android:id="@+id/iv_jd_screenshot_preview_2"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:scaleType="centerCrop"
+                            android:background="@color/divider" />
+                        <ImageButton
+                            android:id="@+id/btn_remove_jd_screenshot_2"
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:layout_gravity="top|end"
+                            android:src="@android:drawable/ic_menu_close_clear_cancel"
+                            android:background="#80000000"
+                            app:tint="@color/white"
+                            android:contentDescription="Remove screenshot 2" />
+                    </FrameLayout>
+
+                    <!-- Slot 3 -->
+                    <FrameLayout
+                        android:id="@+id/fl_jd_screenshot_container_3"
+                        android:layout_width="60dp"
+                        android:layout_height="60dp"
+                        android:visibility="gone">
+                        <ImageView
+                            android:id="@+id/iv_jd_screenshot_preview_3"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:scaleType="centerCrop"
+                            android:background="@color/divider" />
+                        <ImageButton
+                            android:id="@+id/btn_remove_jd_screenshot_3"
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:layout_gravity="top|end"
+                            android:src="@android:drawable/ic_menu_close_clear_cancel"
+                            android:background="#80000000"
+                            app:tint="@color/white"
+                            android:contentDescription="Remove screenshot 3" />
+                    </FrameLayout>
+                </LinearLayout>
+            </LinearLayout>
 
             <!-- Preferred account Spinner Dropdown -->
             <TextView

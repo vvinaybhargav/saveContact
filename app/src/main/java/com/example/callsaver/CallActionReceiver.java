@@ -158,11 +158,19 @@ public class CallActionReceiver extends BroadcastReceiver {
                                 if (!schedule.isEmpty()) {
                                     existing.setTentativeSchedule(schedule);
                                 }
-                                existing.setNoticePeriod(notice);
-                                existing.setMainAgenda(agenda);
-                                existing.setNextSteps(nextSteps);
-                                if (!recruiter.isEmpty()) {
-                                    existing.setRecruiterName(recruiter);
+                                if (existing.getNoticePeriod() == null || existing.getNoticePeriod().trim().isEmpty()) {
+                                    existing.setNoticePeriod(notice);
+                                }
+                                if (existing.getMainAgenda() == null || existing.getMainAgenda().trim().isEmpty()) {
+                                    existing.setMainAgenda(agenda);
+                                }
+                                if (existing.getNextSteps() == null || existing.getNextSteps().trim().isEmpty()) {
+                                    existing.setNextSteps(nextSteps);
+                                }
+                                if (existing.getRecruiterName() == null || existing.getRecruiterName().trim().isEmpty()) {
+                                    if (!recruiter.isEmpty()) {
+                                        existing.setRecruiterName(recruiter);
+                                    }
                                 }
                                 if (!matchingSkills.isEmpty() || !notMatchingSkills.isEmpty()) {
                                     existing.setMatchingSkills(SkillMatchUtils.mergeSkillListExcluding(
@@ -223,7 +231,7 @@ public class CallActionReceiver extends BroadcastReceiver {
             if (existing != null) {
                 db.insertNote(existing.getId(), notes, System.currentTimeMillis());
             } else {
-                JobCall newCall = new JobCall(phoneNumber, "Unknown Company", "First time", "Auto-Saved", notes, duration, timestamp);
+                JobCall newCall = new JobCall(phoneNumber, "Unknown Company", "Screening", "Auto-Saved", notes, duration, timestamp);
                 long newId = db.insertJobCall(newCall);
                 if (newId > 0) {
                     db.insertNote(newId, notes, System.currentTimeMillis());

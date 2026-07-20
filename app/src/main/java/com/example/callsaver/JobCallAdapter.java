@@ -200,7 +200,7 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
         }
         String badgeText = status;
         if (call.getInterestRating() != null && !call.getInterestRating().isEmpty()) {
-            badgeText += " (" + call.getInterestRating() + "/10)";
+            badgeText += " (" + call.getInterestRating() + ")";
         }
         tv.setText(badgeText);
         
@@ -228,6 +228,8 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
                 bgColor = context.getResources().getColor(R.color.status_green_bg);
                 break;
             case "First time":
+            case "Screening":
+            case "Interested":
             default:
                 textColor = context.getResources().getColor(R.color.status_blue);
                 bgColor = context.getResources().getColor(R.color.status_blue_bg);

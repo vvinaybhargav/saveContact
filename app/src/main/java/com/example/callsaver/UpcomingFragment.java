@@ -154,7 +154,7 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
             String schedule = c.getTentativeSchedule();
             if (schedule != null && !schedule.trim().isEmpty()) {
                 allUpcomingList.add(c);
-            } else if (status != null && (status.equals("First time") || status.equals("1st Round") || status.equals("2nd Round") || status.equals("Final Round") || status.equals("HR / Salary"))) {
+            } else if (status != null && (status.equals("First time") || status.equals("Screening") || status.equals("Interested") || status.equals("1st Round") || status.equals("2nd Round") || status.equals("Final Round") || status.equals("HR / Salary"))) {
                 allUpcomingList.add(c);
             }
         }
@@ -442,7 +442,7 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
         
         // Status Spinner
         final Spinner spinner = new Spinner(requireContext());
-        String[] spinnerStatuses = {"First time", "1st Round", "2nd Round", "Final Round", "HR / Salary", "Offered", "Not Interested", "Negative"};
+        String[] spinnerStatuses = {"First time", "Screening", "Interested", "1st Round", "2nd Round", "Final Round", "HR / Salary", "Offered", "Not Interested", "Negative"};
         ArrayAdapter<String> spinnerAdapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_spinner_item, spinnerStatuses);
         spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinner.setAdapter(spinnerAdapter);
@@ -450,7 +450,6 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
         // Pre-select current status
         if (call.getRoundStatus() != null) {
             String currentStatus = call.getRoundStatus();
-            if (currentStatus.equals("Screening")) currentStatus = "First time";
             int pos = spinnerAdapter.getPosition(currentStatus);
             spinner.setSelection(pos >= 0 ? pos : 0);
         }
@@ -526,318 +525,12 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
 
     private void showAddEditCallDialog(final JobCall editCall) {
         if (getContext() == null) return;
-
-        activeDialogManualUploadUsed = false;
-        activeDialogManualUploadAIFailed = false;
-
-        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
-        LayoutInflater inflater = getLayoutInflater();
-        View dialogView = inflater.inflate(R.layout.dialog_add_call, null);
-        builder.setView(dialogView);
-
-        TextView dialogTitle = dialogView.findViewById(R.id.dialog_title);
-        EditText etPhone = dialogView.findViewById(R.id.et_phone);
-        EditText etCompany = dialogView.findViewById(R.id.et_company);
-        EditText etRecruiter = dialogView.findViewById(R.id.et_recruiter_name);
-        EditText etTags = null;
-        EditText etNotes = dialogView.findViewById(R.id.et_notes);
-        LinearLayout llNotesTimeline = dialogView.findViewById(R.id.ll_notes_timeline);
-        View labelNotes = dialogView.findViewById(R.id.label_notes);
-        View llSkillsMatchSection = dialogView.findViewById(R.id.ll_skills_match_section);
-        TextView tvSkillsMatching = dialogView.findViewById(R.id.tv_skills_matching);
-        TextView tvSkillsNotMatching = dialogView.findViewById(R.id.tv_skills_not_matching);
-        Spinner spinnerRound = dialogView.findViewById(R.id.spinner_round);
-
-        EditText etCandidateName = null;
-        EditText etAppliedRole = dialogView.findViewById(R.id.et_applied_role);
-        EditText etTentativeSchedule = dialogView.findViewById(R.id.et_tentative_schedule);
-        TextInputLayout tilTentativeSchedule = dialogView.findViewById(R.id.til_tentative_schedule);
-        if (tilTentativeSchedule != null) {
-            tilTentativeSchedule.setEndIconOnClickListener(v -> etTentativeSchedule.setText(""));
-        }
-        // Notice Period / Main Agenda / Next Steps were removed from the dialog UI;
-        // these ids no longer exist in dialog_add_call.xml, so findViewById would
-        // return null and crash on unguarded use. Keep them null and guard everywhere.
-        EditText etNoticePeriod = null;
-        EditText etMainAgenda = null;
-        EditText etNextSteps = null;
-
-        if (etTentativeSchedule != null) {
-            etTentativeSchedule.setOnClickListener(v -> showDateTimePicker(etTentativeSchedule));
-        }
-
-        View btnTomorrow = dialogView.findViewById(R.id.btn_schedule_tomorrow);
-        if (btnTomorrow != null && etTentativeSchedule != null) {
-            btnTomorrow.setOnClickListener(v -> {
-                java.util.Calendar cal = java.util.Calendar.getInstance();
-                cal.add(java.util.Calendar.DAY_OF_YEAR, 1);
-                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd 'at' hh:mm a", java.util.Locale.getDefault());
-                etTentativeSchedule.setText(sdf.format(cal.getTime()));
-            });
-        }
-
-        Button btnCancel = dialogView.findViewById(R.id.btn_dialog_cancel);
-        Button btnSave = dialogView.findViewById(R.id.btn_dialog_save);
-        Button btnDelete = dialogView.findViewById(R.id.btn_dialog_delete);
-        Button btnSaveContacts = dialogView.findViewById(R.id.btn_dialog_save_contacts);
-        Button btnShowBanner = dialogView.findViewById(R.id.btn_dialog_show_banner);
-        TextInputLayout tilNotes = dialogView.findViewById(R.id.til_notes);
-
-        activeDialogNotesField = etNotes;
-        activeDialogTilNotes = tilNotes;
-        activeLlTranscriptionProgress = dialogView.findViewById(R.id.ll_dialog_transcription_progress);
-        activeTvTranscriptionStatus = dialogView.findViewById(R.id.tv_dialog_transcription_status);
-
-        View tvDialogManualRecording = dialogView.findViewById(R.id.tv_dialog_manual_recording);
-        if (tvDialogManualRecording != null) {
-            Long autoSaveJobId = (editCall != null && editCall.getId() > 0) ? (long) editCall.getId() : null;
-            tvDialogManualRecording.setOnClickListener(v -> showManualRecordingDialogForNotesField(etNotes, autoSaveJobId,
-                    llNotesTimeline, labelNotes, llSkillsMatchSection, tvSkillsMatching, tvSkillsNotMatching));
-        }
-
-        tilNotes.setEndIconOnClickListener(v -> {
-            Intent intent = new Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-            intent.putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-            intent.putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault());
-            intent.putExtra(android.speech.RecognizerIntent.EXTRA_PROMPT, "Speak note...");
-            try {
-                startActivityForResult(intent, 200);
-            } catch (Exception e) {
-                Toast.makeText(requireContext(), "Speech recognition is not supported.", Toast.LENGTH_SHORT).show();
-            }
-        });
-
-        // JD fields binding
-        EditText etJdLink = dialogView.findViewById(R.id.et_jd_link);
-        Button btnUploadJd = dialogView.findViewById(R.id.btn_upload_jd_screenshot);
-        FrameLayout flJdPreviewContainer = dialogView.findViewById(R.id.fl_jd_screenshot_container);
-        ImageView ivJdPreview = dialogView.findViewById(R.id.iv_jd_screenshot_preview);
-        View btnRemoveJd = dialogView.findViewById(R.id.btn_remove_jd_screenshot);
-        EditText etInterestRating = dialogView.findViewById(R.id.et_interest_rating);
-
-        activeFlJdPreviewContainer = flJdPreviewContainer;
-        activeIvJdPreview = ivJdPreview;
-        activeEtInterestRating = etInterestRating;
-
+        Intent intent = new Intent(requireContext(), SaveContactActivity.class);
         if (editCall != null) {
-            etJdLink.setText(editCall.getJdLink());
-            etInterestRating.setText(editCall.getInterestRating());
-            currentJdImagePath = editCall.getJdImagePath();
-            if (currentJdImagePath != null && !currentJdImagePath.isEmpty()) {
-                ivJdPreview.setImageURI(android.net.Uri.fromFile(new java.io.File(currentJdImagePath)));
-                flJdPreviewContainer.setVisibility(View.VISIBLE);
-            } else {
-                flJdPreviewContainer.setVisibility(View.GONE);
-            }
-        } else {
-            currentJdImagePath = null;
-            flJdPreviewContainer.setVisibility(View.GONE);
+            intent.putExtra("job_id", (long) editCall.getId());
+            intent.putExtra("phone_number", editCall.getPhoneNumber());
         }
-
-        btnUploadJd.setOnClickListener(v -> {
-            Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-            intent.setType("image/*");
-            startActivityForResult(intent, REQ_CODE_PICK_JD_SCREENSHOT);
-        });
-
-        btnRemoveJd.setOnClickListener(v -> {
-            currentJdImagePath = "";
-            flJdPreviewContainer.setVisibility(View.GONE);
-        });
-
-        ivJdPreview.setOnClickListener(v -> {
-            if (currentJdImagePath != null && !currentJdImagePath.isEmpty()) {
-                showFullScreenImage(currentJdImagePath);
-            }
-        });
-
-        ArrayAdapter<CharSequence> spinnerAdapter = ArrayAdapter.createFromResource(requireContext(),
-                R.array.round_statuses, android.R.layout.simple_spinner_item);
-        spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerRound.setAdapter(spinnerAdapter);
-
-        if (editCall != null) {
-            dialogTitle.setText("Edit Recruiter Lead");
-            btnSave.setText("Update");
-            btnDelete.setVisibility(View.VISIBLE);
-            btnSaveContacts.setVisibility(View.VISIBLE);
-            btnShowBanner.setVisibility(View.VISIBLE);
-
-            etPhone.setText(editCall.getPhoneNumber());
-            etCompany.setText(editCall.getCompanyName());
-            etRecruiter.setText(editCall.getRecruiterName());
-            if (etTags != null) etTags.setText(editCall.getTags());
-            etNotes.setText("");
-
-            if (etCandidateName != null) etCandidateName.setText(editCall.getCandidateName());
-            etAppliedRole.setText(editCall.getAppliedRole());
-            etTentativeSchedule.setText(editCall.getTentativeSchedule());
-
-            int roundPos = spinnerAdapter.getPosition(editCall.getRoundStatus());
-            spinnerRound.setSelection(roundPos >= 0 ? roundPos : 0);
-
-            populateTimeline(llNotesTimeline, labelNotes, editCall.getId());
-            populateSkillsMatch(llSkillsMatchSection, tvSkillsMatching, tvSkillsNotMatching, editCall);
-
-            btnDelete.setOnClickListener(v -> {
-                dbHelper.deleteJobCall(editCall.getId());
-                Toast.makeText(requireContext(), "Lead deleted successfully", Toast.LENGTH_SHORT).show();
-                loadUpcomingInterviews();
-                builder.create().dismiss();
-            });
-
-            btnSaveContacts.setOnClickListener(v -> {
-                String cName = etCandidateName != null ? etCandidateName.getText().toString().trim() : "";
-                String cComp = etCompany.getText().toString().trim();
-                String cRole = etAppliedRole.getText().toString().trim();
-                String phone = etPhone.getText().toString().trim();
-
-                Intent contactIntent = new Intent(Intent.ACTION_INSERT);
-                contactIntent.setType(android.provider.ContactsContract.RawContacts.CONTENT_TYPE);
-                contactIntent.putExtra(android.provider.ContactsContract.Intents.Insert.PHONE, phone);
-                contactIntent.putExtra(android.provider.ContactsContract.Intents.Insert.NAME, cName.isEmpty() ? "Recruiter" : cName);
-                contactIntent.putExtra(android.provider.ContactsContract.Intents.Insert.COMPANY, cComp);
-                contactIntent.putExtra(android.provider.ContactsContract.Intents.Insert.JOB_TITLE, cRole);
-                startActivity(contactIntent);
-            });
-
-            btnShowBanner.setOnClickListener(v -> {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !android.provider.Settings.canDrawOverlays(requireContext())) {
-                    Toast.makeText(requireContext(), "Overlay permission is required to show the banner. Enable it in Settings.", Toast.LENGTH_LONG).show();
-                    return;
-                }
-                String previewPhone = etPhone.getText().toString().trim();
-                if (previewPhone.isEmpty()) previewPhone = editCall.getPhoneNumber();
-                Intent overlayIntent = new Intent(requireContext(), CallerIdService.class);
-                overlayIntent.putExtra("phone_number", previewPhone);
-                overlayIntent.putExtra("company_name", etCompany.getText().toString().trim());
-                overlayIntent.putExtra("round_status", spinnerRound.getSelectedItem() != null ? spinnerRound.getSelectedItem().toString() : editCall.getRoundStatus());
-                overlayIntent.putExtra("tags", "");
-                overlayIntent.putExtra("job_call_id", (long) editCall.getId());
-                overlayIntent.putExtra("recruiter_name", etRecruiter.getText().toString().trim());
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    requireContext().startForegroundService(overlayIntent);
-                } else {
-                    requireContext().startService(overlayIntent);
-                }
-                Toast.makeText(requireContext(), "Showing banner preview - swipe it away or tap its notification to dismiss.", Toast.LENGTH_LONG).show();
-            });
-
-        } else {
-            dialogTitle.setText("Add Recruiter Lead");
-            btnSave.setText("Save");
-            btnDelete.setVisibility(View.GONE);
-            btnSaveContacts.setVisibility(View.GONE);
-            btnShowBanner.setVisibility(View.GONE);
-        }
-
-        AlertDialog dialog = builder.create();
-
-        btnCancel.setOnClickListener(v -> dialog.dismiss());
-
-        btnSave.setOnClickListener(v -> {
-            String phone = etPhone.getText().toString().trim();
-            String comp = etCompany.getText().toString().trim();
-            String recruiterName = etRecruiter.getText().toString().trim();
-            String tagsVal = etTags != null ? etTags.getText().toString().trim() : "";
-            String notesVal = etNotes.getText().toString().trim();
-            String roundVal = spinnerRound.getSelectedItem().toString();
-
-            String candidate = etCandidateName != null ? etCandidateName.getText().toString().trim() : "";
-            String role = etAppliedRole.getText().toString().trim();
-            String schedule = etTentativeSchedule.getText().toString().trim();
-            String interestRatingVal = etInterestRating != null ? etInterestRating.getText().toString().trim() : "";
-            String notice = editCall != null ? editCall.getNoticePeriod() : "";
-            String agenda = editCall != null ? editCall.getMainAgenda() : "";
-            String nextStepsVal = editCall != null ? editCall.getNextSteps() : "";
-
-            if (phone.isEmpty()) {
-                etPhone.setError("Phone number is required");
-                return;
-            }
-
-            if (editCall != null) {
-                editCall.setPhoneNumber(phone);
-                editCall.setCompanyName(comp);
-                editCall.setRecruiterName(recruiterName);
-                editCall.setTags(tagsVal);
-                editCall.setRoundStatus(roundVal);
-
-                editCall.setCandidateName(candidate);
-                editCall.setAppliedRole(role);
-                editCall.setTentativeSchedule(schedule);
-                editCall.setNoticePeriod(notice);
-                editCall.setMainAgenda(agenda);
-                editCall.setNextSteps(nextStepsVal);
-                editCall.setJdLink(etJdLink.getText().toString().trim());
-                editCall.setJdImagePath(currentJdImagePath != null ? currentJdImagePath : "");
-                editCall.setInterestRating(interestRatingVal);
-
-                dbHelper.updateJobCall(editCall);
-
-                boolean noteWasFromManualUpload = activeDialogManualUploadUsed;
-                boolean noteFailedAI = activeDialogManualUploadAIFailed;
-                long insertedNoteId = -1;
-                if (!notesVal.isEmpty()) {
-                    insertedNoteId = dbHelper.insertNote(editCall.getId(), notesVal, System.currentTimeMillis());
-                }
-
-                Toast.makeText(requireContext(), "Lead updated successfully", Toast.LENGTH_SHORT).show();
-
-                if (!notesVal.isEmpty() && (!noteWasFromManualUpload || noteFailedAI)) {
-                    runAiOnManualNote(editCall.getId(), insertedNoteId, notesVal, spinnerRound, etTentativeSchedule,
-                            llNotesTimeline, labelNotes, llSkillsMatchSection, tvSkillsMatching, tvSkillsNotMatching);
-                }
-            } else {
-                JobCall newCall = new JobCall(phone, comp, roundVal, tagsVal, notesVal, 0, System.currentTimeMillis());
-                newCall.setCandidateName(candidate);
-                newCall.setAppliedRole(role);
-                newCall.setRecruiterName(recruiterName);
-                newCall.setTentativeSchedule(schedule);
-                newCall.setNoticePeriod(notice);
-                newCall.setMainAgenda(agenda);
-                newCall.setNextSteps(nextStepsVal);
-                newCall.setJdLink(etJdLink.getText().toString().trim());
-                newCall.setJdImagePath(currentJdImagePath != null ? currentJdImagePath : "");
-                newCall.setInterestRating(interestRatingVal);
-
-                long newId = dbHelper.insertJobCall(newCall);
-                boolean noteWasFromManualUpload = activeDialogManualUploadUsed;
-                boolean noteFailedAI = activeDialogManualUploadAIFailed;
-                long insertedNoteId = -1;
-                if (newId > 0 && !notesVal.isEmpty()) {
-                    insertedNoteId = dbHelper.insertNote(newId, notesVal, System.currentTimeMillis());
-                }
-                Toast.makeText(requireContext(), "Lead saved successfully", Toast.LENGTH_SHORT).show();
-
-                if (newId > 0 && !notesVal.isEmpty() && (!noteWasFromManualUpload || noteFailedAI)) {
-                    runAiOnManualNote(newId, insertedNoteId, notesVal, null, null, null, null, null, null, null);
-                }
-            }
-
-            loadUpcomingInterviews();
-            dialog.dismiss();
-        });
-
-        dialog.setOnDismissListener(d -> {
-            activeFlJdPreviewContainer = null;
-            activeIvJdPreview = null;
-            activeDialogNotesField = null;
-            activeDialogTilNotes = null;
-            activeEtInterestRating = null;
-            activeLlTranscriptionProgress = null;
-            activeTvTranscriptionStatus = null;
-        });
-
-        if (dialog.getWindow() != null) {
-            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
-        }
-        dialog.show();
-
-        View parent = (View) dialogView.getParent();
-        if (parent != null) {
-            parent.setBackgroundResource(R.drawable.spinner_border);
-        }
+        startActivity(intent);
     }
 
     private void showDateTimePicker(final EditText etTarget) {

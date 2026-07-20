@@ -177,10 +177,10 @@ public class MainActivity extends AppCompatActivity {
         bottomNavigation.postDelayed(new Runnable() {
             @Override
             public void run() {
-                if (trackerFragment != null && trackerFragment.isAdded()) {
-                    JobCall prefilledCall = new JobCall(phoneNumber, "", "First time", "", "", 0, System.currentTimeMillis());
-                    trackerFragment.showAddEditCallDialog(prefilledCall);
-                }
+                Intent intent = new Intent(MainActivity.this, SaveContactActivity.class);
+                intent.putExtra("phone_number", phoneNumber);
+                intent.putExtra("prefill_status", "Screening");
+                startActivity(intent);
             }
         }, 250);
     }

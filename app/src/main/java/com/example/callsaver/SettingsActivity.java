@@ -236,12 +236,23 @@ public class SettingsActivity extends AppCompatActivity {
     }
 
     private void loadDiagnosticLogs() {
-        String logContent = DebugLogger.readLogs(this).trim();
-        if (logContent.isEmpty()) {
-            tvLogs.setText("[No diagnostic logs recorded yet]");
-        } else {
-            tvLogs.setText(logContent);
-        }
+        tvLogs.setText("Loading diagnostic logs...");
+        new Thread(() -> {
+            String logContent = DebugLogger.readLogs(this).trim();
+            final String displayContent;
+            if (logContent.length() > 80000) {
+                displayContent = "... [Truncated due to size] ...\n" + logContent.substring(logContent.length() - 80000);
+            } else {
+                displayContent = logContent;
+            }
+            runOnUiThread(() -> {
+                if (displayContent.isEmpty()) {
+                    tvLogs.setText("[No diagnostic logs recorded yet]");
+                } else {
+                    tvLogs.setText(displayContent);
+                }
+            });
+        }).start();
     }
 
     private void checkDuplicateSuggestions(Button btnCheckDuplicates) {
@@ -354,7 +365,7 @@ public class SettingsActivity extends AppCompatActivity {
             leads++;
             String st = c.getRoundStatus();
             if (st == null) continue;
-            if (st.equals("First time") || st.equals("HR / Salary")) {
+            if (st.equals("First time") || st.equals("Screening") || st.equals("Interested") || st.equals("HR / Salary")) {
                 screenings++;
             } else if (st.equals("1st Round") || st.equals("2nd Round") || st.equals("Final Round")) {
                 interviews++;

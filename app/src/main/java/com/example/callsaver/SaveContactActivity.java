@@ -89,6 +89,35 @@ public class SaveContactActivity extends AppCompatActivity {
     private Button btnSaveApiKey;
     private Button btnAutoTranscribe;
 
+    // Unified edit, interest and screenshots additions
+    private TextView tvTitle;
+    private com.google.android.material.textfield.TextInputLayout tilPhone;
+    private EditText etPhone;
+    private TextView tvPhone;
+    private Spinner spinnerInterestStatus;
+    
+    private long editJobCallId = -1;
+    private JobCall editJobCall = null;
+    
+    private final String[] screenshotPaths = {"", "", ""};
+    private static final int REQ_CODE_PICK_JD_SCREENSHOT = 800;
+
+    private final int[] containerIds = {
+        R.id.fl_jd_screenshot_container_1, 
+        R.id.fl_jd_screenshot_container_2, 
+        R.id.fl_jd_screenshot_container_3
+    };
+    private final int[] previewIds = {
+        R.id.iv_jd_screenshot_preview_1, 
+        R.id.iv_jd_screenshot_preview_2, 
+        R.id.iv_jd_screenshot_preview_3
+    };
+    private final int[] removeIds = {
+        R.id.btn_remove_jd_screenshot_1, 
+        R.id.btn_remove_jd_screenshot_2, 
+        R.id.btn_remove_jd_screenshot_3
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -100,16 +129,21 @@ public class SaveContactActivity extends AppCompatActivity {
 
         dbHelper = new DatabaseHelper(this);
 
-        phoneNumber = getIntent().getStringExtra("phone_number");
-        callTimestamp = getIntent().getLongExtra("timestamp", System.currentTimeMillis());
-        callDuration = getIntent().getIntExtra("duration", 0);
-
-        DebugLogger.log(this, "[Activity] Opened for number: " + phoneNumber + ", duration: " + callDuration + "s, timestamp: " + callTimestamp);
-
-        if (phoneNumber == null) {
-            finish();
-            return;
+        editJobCallId = getIntent().getLongExtra("job_id", -1);
+        if (editJobCallId != -1) {
+            editJobCall = dbHelper.getJobCallById(editJobCallId);
+            if (editJobCall != null) {
+                phoneNumber = editJobCall.getPhoneNumber();
+                callTimestamp = editJobCall.getTimestamp();
+                callDuration = editJobCall.getDuration();
+            }
+        } else {
+            phoneNumber = getIntent().getStringExtra("phone_number");
+            callTimestamp = getIntent().getLongExtra("timestamp", System.currentTimeMillis());
+            callDuration = getIntent().getIntExtra("duration", 0);
         }
+
+        DebugLogger.log(this, "[Activity] Opened. editJobCallId: " + editJobCallId + ", number: " + phoneNumber + ", duration: " + callDuration + "s");
 
         TextView tvPhoneNumber = findViewById(R.id.tv_phone_number);
         etCompanyName = findViewById(R.id.et_company_name);
@@ -158,13 +192,102 @@ public class SaveContactActivity extends AppCompatActivity {
         Button btnSaveBoth = findViewById(R.id.btn_save_both);
         View rootLayout = findViewById(R.id.root_layout);
 
-        tvPhoneNumber.setText(phoneNumber);
+        tvTitle = findViewById(R.id.tv_activity_title);
+        tilPhone = findViewById(R.id.til_phone_number);
+        etPhone = findViewById(R.id.et_phone_number);
+        tvPhone = findViewById(R.id.tv_phone_number);
+        spinnerInterestStatus = findViewById(R.id.spinner_interest_status);
+
+        if (editJobCall != null) {
+            if (tvTitle != null) tvTitle.setText("Edit Call Log");
+            if (btnSaveBoth != null) btnSaveBoth.setText("Save Changes");
+        }
+
+        if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
+            if (tilPhone != null) tilPhone.setVisibility(View.VISIBLE);
+            if (tvPhone != null) tvPhone.setVisibility(View.GONE);
+        } else {
+            if (tilPhone != null) tilPhone.setVisibility(View.GONE);
+            if (tvPhone != null) {
+                tvPhone.setVisibility(View.VISIBLE);
+                tvPhone.setText(phoneNumber);
+            }
+        }
 
         // Bind spinner data
         ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(this,
                 R.array.round_statuses, android.R.layout.simple_spinner_item);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerRound.setAdapter(adapter);
+
+        String[] interestOptions = {"", "Interested", "Not Interested"};
+        ArrayAdapter<String> interestAdapter = new ArrayAdapter<>(this, 
+                android.R.layout.simple_spinner_item, interestOptions);
+        interestAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        if (spinnerInterestStatus != null) {
+            spinnerInterestStatus.setAdapter(interestAdapter);
+        }
+
+        View btnUploadJd = findViewById(R.id.btn_upload_jd_screenshot);
+        if (btnUploadJd != null) {
+            btnUploadJd.setOnClickListener(v -> {
+                int firstEmptyIdx = -1;
+                for (int i = 0; i < 3; i++) {
+                    if (screenshotPaths[i] == null || screenshotPaths[i].trim().isEmpty()) {
+                        firstEmptyIdx = i;
+                        break;
+                    }
+                }
+                if (firstEmptyIdx == -1) {
+                    Toast.makeText(this, "Maximum 3 screenshots allowed.", Toast.LENGTH_SHORT).show();
+                } else {
+                    Intent intentPick = new Intent(Intent.ACTION_GET_CONTENT);
+                    intentPick.setType("image/*");
+                    startActivityForResult(intentPick, REQ_CODE_PICK_JD_SCREENSHOT + firstEmptyIdx);
+                }
+            });
+        }
+
+        if (editJobCall != null) {
+            if (etCompanyName != null) etCompanyName.setText(editJobCall.getCompanyName());
+            if (etRecruiterName != null) etRecruiterName.setText(editJobCall.getRecruiterName());
+            if (etNotes != null) etNotes.setText(editJobCall.getNotes());
+            if (etAppliedRole != null) etAppliedRole.setText(editJobCall.getAppliedRole());
+            if (etTentativeSchedule != null) etTentativeSchedule.setText(editJobCall.getTentativeSchedule());
+            if (etNoticePeriod != null) etNoticePeriod.setText(editJobCall.getNoticePeriod());
+            if (etMainAgenda != null) etMainAgenda.setText(editJobCall.getMainAgenda());
+            if (etNextSteps != null) etNextSteps.setText(editJobCall.getNextSteps());
+            
+            // Set spinner round selection
+            if (spinnerRound != null) {
+                int pos = adapter.getPosition(editJobCall.getRoundStatus());
+                spinnerRound.setSelection(pos >= 0 ? pos : 0);
+            }
+            
+            // Set spinner interest selection
+            if (spinnerInterestStatus != null) {
+                int pos = interestAdapter.getPosition(editJobCall.getInterestRating());
+                spinnerInterestStatus.setSelection(pos >= 0 ? pos : 0);
+            }
+
+            // Load screenshots
+            String imagePathsStr = editJobCall.getJdImagePath();
+            if (imagePathsStr != null && !imagePathsStr.trim().isEmpty()) {
+                String[] parts = imagePathsStr.split(",");
+                for (int i = 0; i < Math.min(parts.length, 3); i++) {
+                    screenshotPaths[i] = parts[i].trim();
+                }
+            }
+        } else {
+            String prefillStatus = getIntent().getStringExtra("prefill_status");
+            if (prefillStatus != null && !prefillStatus.isEmpty()) {
+                if (spinnerRound != null) {
+                    int pos = adapter.getPosition(prefillStatus);
+                    spinnerRound.setSelection(pos >= 0 ? pos : 0);
+                }
+            }
+        }
+        updateScreenshotPreviews();
 
         // Bind Recording & Transcription views
         llRecordingPanel = findViewById(R.id.ll_recording_panel);
@@ -504,6 +627,16 @@ public class SaveContactActivity extends AppCompatActivity {
         btnDismiss.setOnClickListener(v -> finish());
 
         btnSaveBoth.setOnClickListener(v -> {
+            if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
+                if (etPhone != null) {
+                    phoneNumber = etPhone.getText().toString().trim();
+                }
+            }
+            if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
+                Toast.makeText(this, "Please enter a phone number.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
             String company = etCompanyName.getText().toString().trim();
             String recruiter = etRecruiterName.getText().toString().trim();
             String tags = etTags != null ? etTags.getText().toString().trim() : "";
@@ -516,6 +649,45 @@ public class SaveContactActivity extends AppCompatActivity {
             String notice = etNoticePeriod.getText().toString().trim();
             String agenda = etMainAgenda.getText().toString().trim();
             String nextStepsVal = etNextSteps.getText().toString().trim();
+
+            String interest = "";
+            if (spinnerInterestStatus != null && spinnerInterestStatus.getSelectedItem() != null) {
+                interest = spinnerInterestStatus.getSelectedItem().toString();
+            }
+
+            StringBuilder sbImg = new StringBuilder();
+            for (int i = 0; i < 3; i++) {
+                if (screenshotPaths[i] != null && !screenshotPaths[i].trim().isEmpty()) {
+                    if (sbImg.length() > 0) {
+                        sbImg.append(",");
+                    }
+                    sbImg.append(screenshotPaths[i].trim());
+                }
+            }
+            String finalPaths = sbImg.toString();
+
+            if (editJobCall != null) {
+                editJobCall.setPhoneNumber(phoneNumber);
+                editJobCall.setCompanyName(company);
+                editJobCall.setRoundStatus(round);
+                editJobCall.setTags(tags);
+                editJobCall.setNotes(notes);
+                editJobCall.setRecruiterName(recruiter);
+                editJobCall.setCandidateName(candidate);
+                editJobCall.setAppliedRole(role);
+                editJobCall.setTentativeSchedule(schedule);
+                editJobCall.setNoticePeriod(notice);
+                editJobCall.setMainAgenda(agenda);
+                editJobCall.setKeyDiscussionPoints(notes);
+                editJobCall.setNextSteps(nextStepsVal);
+                editJobCall.setInterestRating(interest);
+                editJobCall.setJdImagePath(finalPaths);
+
+                dbHelper.updateJobCall(editJobCall);
+                Toast.makeText(SaveContactActivity.this, "Call log updated successfully!", Toast.LENGTH_SHORT).show();
+                finish();
+                return;
+            }
 
             // Deduplicate check
             JobCall existing = null;
@@ -542,6 +714,9 @@ public class SaveContactActivity extends AppCompatActivity {
                 if (!recruiter.isEmpty()) {
                     existing.setRecruiterName(recruiter);
                 }
+                existing.setInterestRating(interest);
+                existing.setJdImagePath(finalPaths);
+
                 dbHelper.updateJobCall(existing);
 
                 Toast.makeText(SaveContactActivity.this, "Linked to existing company " + existing.getCompanyName(), Toast.LENGTH_LONG).show();
@@ -557,6 +732,8 @@ public class SaveContactActivity extends AppCompatActivity {
                 call.setMainAgenda(agenda);
                 call.setKeyDiscussionPoints(notes);
                 call.setNextSteps(nextStepsVal);
+                call.setInterestRating(interest);
+                call.setJdImagePath(finalPaths);
 
                 long id = dbHelper.insertJobCall(call);
 
@@ -736,6 +913,151 @@ public class SaveContactActivity extends AppCompatActivity {
                 }
                 etNotes.setSelection(etNotes.getText().length());
             }
+        } else if (requestCode >= REQ_CODE_PICK_JD_SCREENSHOT && requestCode < REQ_CODE_PICK_JD_SCREENSHOT + 3) {
+            if (resultCode == RESULT_OK && data != null && data.getData() != null) {
+                int index = requestCode - REQ_CODE_PICK_JD_SCREENSHOT;
+                String path = copyUriToInternalStorage(data.getData());
+                if (path != null) {
+                    screenshotPaths[index] = path;
+                    updateScreenshotPreviews();
+                } else {
+                    Toast.makeText(this, "Failed to copy image.", Toast.LENGTH_SHORT).show();
+                }
+            }
+        }
+    }
+
+    private void updateScreenshotPreviews() {
+        for (int i = 0; i < 3; i++) {
+            final int index = i;
+            View container = findViewById(containerIds[i]);
+            ImageView preview = findViewById(previewIds[index]);
+            View removeBtn = findViewById(removeIds[index]);
+
+            if (container == null || preview == null || removeBtn == null) continue;
+
+            String path = screenshotPaths[i];
+            if (path != null && !path.trim().isEmpty()) {
+                preview.setImageURI(android.net.Uri.fromFile(new java.io.File(path)));
+                container.setVisibility(View.VISIBLE);
+                
+                preview.setOnClickListener(v -> showFullScreenImage(path));
+                removeBtn.setOnClickListener(v -> {
+                    screenshotPaths[index] = "";
+                    updateScreenshotPreviews();
+                });
+            } else {
+                container.setVisibility(View.GONE);
+            }
+        }
+    }
+
+    private void showFullScreenImage(String path) {
+        if (path == null || path.isEmpty()) return;
+        android.app.Dialog dialog = new android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen);
+        dialog.setContentView(R.layout.dialog_full_screen_image);
+        ImageView iv = dialog.findViewById(R.id.iv_full_screen);
+        View btnClose = dialog.findViewById(R.id.btn_close_full_screen);
+        
+        iv.setImageURI(android.net.Uri.fromFile(new java.io.File(path)));
+        
+        if (btnClose != null) {
+            btnClose.setOnClickListener(v -> dialog.dismiss());
+        }
+        
+        // Zoom and Pan Logic
+        final float[] scaleFactor = {1.0f};
+        final float[] lastTouchX = {0f};
+        final float[] lastTouchY = {0f};
+        final float[] posX = {0f};
+        final float[] posY = {0f};
+        final int[] activePointerId = {android.view.MotionEvent.INVALID_POINTER_ID};
+        
+        android.view.ScaleGestureDetector scaleDetector = new android.view.ScaleGestureDetector(this, 
+            new android.view.ScaleGestureDetector.SimpleOnScaleGestureListener() {
+                @Override
+                public boolean onScale(android.view.ScaleGestureDetector detector) {
+                    scaleFactor[0] *= detector.getScaleFactor();
+                    scaleFactor[0] = Math.max(0.5f, Math.min(scaleFactor[0], 5.0f));
+                    iv.setScaleX(scaleFactor[0]);
+                    iv.setScaleY(scaleFactor[0]);
+                    return true;
+                }
+            });
+            
+        iv.setOnTouchListener((v, event) -> {
+            scaleDetector.onTouchEvent(event);
+            
+            final int action = event.getActionMasked();
+            switch (action) {
+                case android.view.MotionEvent.ACTION_DOWN: {
+                    final int pointerIndex = event.getActionIndex();
+                    final float x = event.getX(pointerIndex);
+                    final float y = event.getY(pointerIndex);
+                    lastTouchX[0] = x;
+                    lastTouchY[0] = y;
+                    activePointerId[0] = event.getPointerId(0);
+                    break;
+                }
+                case android.view.MotionEvent.ACTION_MOVE: {
+                    final int pointerIndex = event.findPointerIndex(activePointerId[0]);
+                    if (pointerIndex != android.view.MotionEvent.INVALID_POINTER_ID) {
+                        final float x = event.getX(pointerIndex);
+                        final float y = event.getY(pointerIndex);
+                        
+                        if (scaleFactor[0] > 1.0f) {
+                            final float dx = x - lastTouchX[0];
+                            final float dy = y - lastTouchY[0];
+                            posX[0] += dx;
+                            posY[0] += dy;
+                            iv.setTranslationX(posX[0]);
+                            iv.setTranslationY(posY[0]);
+                        }
+                    }
+                    break;
+                }
+                case android.view.MotionEvent.ACTION_UP:
+                case android.view.MotionEvent.ACTION_CANCEL: {
+                    activePointerId[0] = android.view.MotionEvent.INVALID_POINTER_ID;
+                    break;
+                }
+                case android.view.MotionEvent.ACTION_POINTER_UP: {
+                    final int pointerIndex = event.getActionIndex();
+                    final int pointerId = event.getPointerId(pointerIndex);
+                    if (pointerId == activePointerId[0]) {
+                        final int newPointerIndex = pointerIndex == 0 ? 1 : 0;
+                        lastTouchX[0] = event.getX(newPointerIndex);
+                        lastTouchY[0] = event.getY(newPointerIndex);
+                        activePointerId[0] = event.getPointerId(newPointerIndex);
+                    }
+                    break;
+                }
+            }
+            return true;
+        });
+        
+        dialog.show();
+    }
+
+    private String copyUriToInternalStorage(android.net.Uri uri) {
+        try {
+            java.io.InputStream is = getContentResolver().openInputStream(uri);
+            if (is == null) return null;
+            java.io.File dir = new java.io.File(getFilesDir(), "jd_screenshots");
+            if (!dir.exists()) dir.mkdirs();
+            java.io.File file = new java.io.File(dir, "jd_" + System.currentTimeMillis() + ".png");
+            java.io.FileOutputStream os = new java.io.FileOutputStream(file);
+            byte[] buffer = new byte[1024];
+            int bytesRead;
+            while ((bytesRead = is.read(buffer)) != -1) {
+                os.write(buffer, 0, bytesRead);
+            }
+            os.close();
+            is.close();
+            return file.getAbsolutePath();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
         }
     }
 

@@ -17,6 +17,16 @@ public class DebugLogger {
     public static synchronized void log(Context context, String message) {
         try {
             File logFile = new File(context.getExternalFilesDir(null), FILE_NAME);
+            
+            // Log rotation: if debug_log.txt exceeds 1MB, rotate it to debug_log_old.txt
+            if (logFile.exists() && logFile.length() > 1000000L) {
+                File backupFile = new File(context.getExternalFilesDir(null), "debug_log_old.txt");
+                if (backupFile.exists()) {
+                    backupFile.delete();
+                }
+                logFile.renameTo(backupFile);
+            }
+            
             FileWriter writer = new FileWriter(logFile, true);
             String timestamp = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.getDefault()).format(new Date());
             writer.write(timestamp + " - " + message + "\n");

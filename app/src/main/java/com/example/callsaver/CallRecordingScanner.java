@@ -122,6 +122,9 @@ public class CallRecordingScanner {
             dirs.add(customDir);
         }
 
+        // Add the app's own local recordings directory
+        dirs.add(CallRecorderService.recordingsDir(context));
+
         dirs.add(new File(Environment.getExternalStorageDirectory(), "Music/Recordings/Call Recordings"));
         dirs.add(new File(Environment.getExternalStorageDirectory(), "Recordings/Call"));
         dirs.add(new File(Environment.getExternalStorageDirectory(), "Recordings/Call Recordings"));

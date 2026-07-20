@@ -58,13 +58,14 @@ public class AnalyticsActivity extends AppCompatActivity {
     private int stageRank(String status) {
         if (status == null) return 1;
         switch (status) {
-            case "Screening":
-            case "First time": return 1;
-            case "1st Round": return 2;
-            case "2nd Round": return 3;
-            case "Final Round": return 4;
-            case "HR / Salary": return 5;
-            case "Offered": return 6;
+            case "First time":
+            case "Screening": return 1;
+            case "Interested": return 2;
+            case "1st Round": return 3;
+            case "2nd Round": return 4;
+            case "Final Round": return 5;
+            case "HR / Salary": return 6;
+            case "Offered": return 7;
             case "Not Interested":
             case "Negative": return 0;
             default: return 1;
@@ -83,7 +84,7 @@ public class AnalyticsActivity extends AppCompatActivity {
         int rejected = 0;
         for (JobCall c : calls) {
             int rank = stageRank(c.getRoundStatus());
-            if (rank >= 2) reachedInterview++;
+            if (rank >= 3) reachedInterview++; // rank 3 is 1st Round
             if ("Offered".equals(c.getRoundStatus())) offered++;
             if ("Negative".equals(c.getRoundStatus()) || "Not Interested".equals(c.getRoundStatus())) rejected++;
         }
@@ -101,7 +102,7 @@ public class AnalyticsActivity extends AppCompatActivity {
         int offered = 0;
         for (JobCall c : calls) {
             int rank = stageRank(c.getRoundStatus());
-            if (rank >= 2) reachedInterview++;
+            if (rank >= 3) reachedInterview++; // rank 3 is 1st Round
             if ("Offered".equals(c.getRoundStatus())) offered++;
         }
 

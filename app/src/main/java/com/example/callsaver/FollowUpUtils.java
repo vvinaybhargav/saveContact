@@ -26,15 +26,80 @@ public class FollowUpUtils {
     /** Grace period after the scheduled call time before we push a reminder notification. */
     public static final long NOTIFICATION_DELAY_MILLIS = 2 * 60 * 60 * 1000L;
 
+    private static final String[] PATTERNS = {
+        "yyyy-MM-dd hh:mm a",
+        "yyyy-MM-dd HH:mm",
+        "yyyy-MM-dd",
+        "dd MMM yyyy hh:mm a",
+        "dd MMMM yyyy hh:mm a",
+        "dd MMM yyyy HH:mm",
+        "dd MMMM yyyy HH:mm",
+        "MMM dd yyyy hh:mm a",
+        "MMMM dd yyyy hh:mm a",
+        "MMM dd yyyy HH:mm",
+        "MMMM dd yyyy HH:mm",
+        
+        "dd MMM hh:mm a",
+        "dd MMMM hh:mm a",
+        "dd MMM HH:mm",
+        "dd MMMM HH:mm",
+        "MMM dd hh:mm a",
+        "MMMM dd hh:mm a",
+        "MMM dd HH:mm",
+        "MMMM dd HH:mm",
+        "dd MMM",
+        "dd MMMM",
+        "MMM dd",
+        "MMMM dd"
+    };
+
     /** Parses a tentative_schedule string into millis, or -1 if unparseable/empty. */
     public static long parseScheduleMillis(String schedule) {
         if (schedule == null || schedule.trim().isEmpty()) return -1;
-        try {
-            Date d = SCHEDULE_FORMAT.parse(schedule.trim());
-            return d != null ? d.getTime() : -1;
-        } catch (ParseException e) {
-            return -1;
+        
+        // Clean ordinal suffixes: 1st, 2nd, 3rd, 22nd -> 1, 2, 3, 22
+        String clean = schedule.replaceAll("(?i)(\\d+)(st|nd|rd|th)", "$1");
+        
+        // Strip the word "at" surrounded by spaces
+        clean = clean.replaceAll("(?i)\\bat\\b", " ");
+        
+        // Standardize time like "4pm" or "4 pm" to "4:00 pm"
+        clean = clean.replaceAll("(?i)(?<![:.])\\b(\\d+)\\s*(am|pm)\\b", "$1:00 $2");
+        
+        // Clean multiple spaces
+        clean = clean.replaceAll("\\s+", " ").trim();
+        
+        for (String pattern : PATTERNS) {
+            try {
+                SimpleDateFormat sdf = new SimpleDateFormat(pattern, Locale.getDefault());
+                Date d = sdf.parse(clean);
+                if (d != null) {
+                    java.util.Calendar cal = java.util.Calendar.getInstance();
+                    int currentYear = cal.get(java.util.Calendar.YEAR);
+                    cal.setTime(d);
+                    // If year is omitted (like 1970/1972 default), update to current calendar year
+                    if (cal.get(java.util.Calendar.YEAR) < 2000) {
+                        cal.set(java.util.Calendar.YEAR, currentYear);
+                    }
+                    return cal.getTimeInMillis();
+                }
+            } catch (ParseException ignored) {}
+            
+            try {
+                SimpleDateFormat sdf = new SimpleDateFormat(pattern, Locale.ENGLISH);
+                Date d = sdf.parse(clean);
+                if (d != null) {
+                    java.util.Calendar cal = java.util.Calendar.getInstance();
+                    int currentYear = cal.get(java.util.Calendar.YEAR);
+                    cal.setTime(d);
+                    if (cal.get(java.util.Calendar.YEAR) < 2000) {
+                        cal.set(java.util.Calendar.YEAR, currentYear);
+                    }
+                    return cal.getTimeInMillis();
+                }
+            } catch (ParseException ignored) {}
         }
+        return -1;
     }
 
     /**

@@ -20,6 +20,8 @@ import android.widget.Toast;
 import androidx.core.app.NotificationCompat;
 
 import java.io.File;
+import java.util.List;
+import java.util.ArrayList;
 
 public class CallReceiver extends BroadcastReceiver {
 
@@ -143,93 +145,9 @@ public class CallReceiver extends BroadcastReceiver {
         } else if (stateStr.equals(TelephonyManager.EXTRA_STATE_IDLE)) {
             // Dismiss overlay banner immediately
             context.stopService(new Intent(context, CallerIdService.class));
-            DebugLogger.log(context, "[Receiver] Idle transition. Dismissed overlay. Scanning Call Log in 800ms...");
+            DebugLogger.log(context, "[Receiver] Idle transition. Dismissed overlay. Scanning Call Log in background...");
 
-            // Query call log with a brief delay to allow system write synchronization
-            new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    CallLogEntry entry = getLatestCallLogEntry(context);
-                    if (entry != null) {
-                        long callEndTime = entry.date + (entry.duration * 1000L);
-                        long diff = Math.abs(System.currentTimeMillis() - callEndTime);
-                        DebugLogger.log(context, "[Receiver] Call log: number=" + entry.number + ", duration=" + entry.duration + "s, type=" + entry.type + ", timeDiff=" + (diff / 1000) + "s ago");
-                        // Make sure the call log was written in the last 15 seconds
-                        if (diff < 15000L) {
-                            Log.d(TAG, "Matched call log entry: " + entry.number + ", duration: " + entry.duration);
-
-                            // Android can deliver the IDLE PHONE_STATE broadcast more than
-                            // once for the same call end (common quirk, OEM-dependent). Without
-                            // this guard each duplicate broadcast re-runs the whole
-                            // transcribe -> AI -> insertNote pipeline, producing duplicate notes.
-                            String callSignature = entry.number + "|" + entry.date + "|" + entry.duration;
-                            String lastSignature = prefs.getString("last_processed_call_signature", "");
-                            long lastProcessedAt = prefs.getLong("last_processed_call_at", 0);
-                            if (callSignature.equals(lastSignature)
-                                    && (System.currentTimeMillis() - lastProcessedAt) < 60000L) {
-                                DebugLogger.log(context, "[Receiver] Duplicate IDLE broadcast for the same call (" + callSignature + "), skipping re-processing.");
-                                return;
-                            }
-                            prefs.edit()
-                                    .putString("last_processed_call_signature", callSignature)
-                                    .putLong("last_processed_call_at", System.currentTimeMillis())
-                                    .apply();
-
-                            DatabaseHelper db = new DatabaseHelper(context);
-                            JobCall call = db.getJobCallByNumber(context, entry.number);
-                            
-                            // Check call direction and answered status
-                            boolean isOutgoing = entry.type == android.provider.CallLog.Calls.OUTGOING_TYPE;
-                            boolean isIncomingAnswered = entry.type == android.provider.CallLog.Calls.INCOMING_TYPE && entry.duration > 0;
-                            
-                            if (call != null) {
-                                String typeLabel = "Incoming";
-                                if (isOutgoing) {
-                                    typeLabel = "Outgoing";
-                                } else if (entry.type == android.provider.CallLog.Calls.MISSED_TYPE || entry.type == android.provider.CallLog.Calls.REJECTED_TYPE) {
-                                    typeLabel = "Missed";
-                                }
-                                db.insertCallHistory(call.getId(), typeLabel, entry.duration, entry.date + entry.duration * 1000L);
-                            }
-                            
-                            boolean autoTranscribe = prefs.getBoolean("auto_transcribe_background", true);
-
-                            if (isOutgoing || isIncomingAnswered) {
-                                if (autoTranscribe && entry.duration >= 15) {
-                                    DebugLogger.log(context, "[Receiver] Auto-transcribing call for " + entry.number + " in background...");
-                                    triggerBackgroundTranscription(context, entry.number, entry.duration, entry.date + entry.duration * 1000L);
-                                } else {
-                                    DebugLogger.log(context, "[Receiver] Launching SaveContactActivity popup for " + entry.number);
-                                    Intent dialogIntent = new Intent(context, SaveContactActivity.class);
-                                    dialogIntent.putExtra("phone_number", entry.number);
-                                    dialogIntent.putExtra("duration", entry.duration);
-                                    dialogIntent.putExtra("timestamp", entry.date);
-                                    dialogIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                                    context.startActivity(dialogIntent);
-                                }
-                            } else {
-                                DebugLogger.log(context, "[Receiver] Call not answered or not outgoing (Skipped popup)");
-                            }
-                        } else {
-                            Log.d(TAG, "Latest call log is too old: diff = " + diff / 1000 + "s");
-                            DebugLogger.log(context, "[Receiver] Latest call log is too old (diff = " + (diff / 1000) + "s)");
-                            // Only surface this to the user when it's a number we're already
-                            // tracking - otherwise every unrelated hangup/IDLE blip (which fires
-                            // this handler too) would notify for calls the user doesn't care about.
-                            DatabaseHelper db = new DatabaseHelper(context);
-                            JobCall trackedCall = db.getJobCallByNumber(context, entry.number);
-                            if (trackedCall != null) {
-                                showAiFailureNotification(context, entry.number, entry.duration,
-                                        "The system call log took too long to update (" + (diff / 1000)
-                                                + "s) after this call ended, so it couldn't be auto-processed. Tap to save/transcribe manually.");
-                            }
-                        }
-                    } else {
-                        Log.d(TAG, "No call log entry found");
-                        DebugLogger.log(context, "[Receiver] No call log entries found on device.");
-                    }
-                }
-            }, 800);
+            final String incomingNumber = prefs.getString(KEY_INCOMING_NUMBER, null);
 
             // Clean up state
             prefs.edit()
@@ -237,6 +155,19 @@ public class CallReceiver extends BroadcastReceiver {
                     .remove(KEY_ANSWERED)
                     .putString(KEY_LAST_STATE, TelephonyManager.EXTRA_STATE_IDLE)
                     .apply();
+
+            // Run recent call logs checking on background thread
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        Thread.sleep(800); // Wait 800ms for system write sync
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    processRecentCalls(context, 1, incomingNumber);
+                }
+            }).start();
         }
     }
 
@@ -420,11 +351,12 @@ public class CallReceiver extends BroadcastReceiver {
         return 0;
     }
 
-    private static CallLogEntry getLatestCallLogEntry(Context context) {
+    private static List<CallLogEntry> getRecentCallLogEntries(Context context, int limit) {
+        List<CallLogEntry> entries = new ArrayList<>();
         if (androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_CALL_LOG) 
                 != android.content.pm.PackageManager.PERMISSION_GRANTED) {
             DebugLogger.log(context, "[Receiver] Call log query skipped: READ_CALL_LOG permission NOT granted.");
-            return null;
+            return entries;
         }
         
         android.database.Cursor cursor = null;
@@ -443,11 +375,13 @@ public class CallReceiver extends BroadcastReceiver {
             );
             
             if (cursor != null && cursor.moveToFirst()) {
-                String number = cursor.getString(0);
-                long date = cursor.getLong(1);
-                int duration = cursor.getInt(2);
-                int type = cursor.getInt(3);
-                return new CallLogEntry(number, date, duration, type);
+                do {
+                    String number = cursor.getString(0);
+                    long date = cursor.getLong(1);
+                    int duration = cursor.getInt(2);
+                    int type = cursor.getInt(3);
+                    entries.add(new CallLogEntry(number, date, duration, type));
+                } while (cursor.moveToNext() && entries.size() < limit);
             } else {
                 DebugLogger.log(context, "[Receiver] Call log query returned empty cursor.");
             }
@@ -460,7 +394,137 @@ public class CallReceiver extends BroadcastReceiver {
                 cursor.close();
             }
         }
-        return null;
+        return entries;
+    }
+
+    private static boolean isSignatureProcessed(Context context, String signature) {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        String list = prefs.getString("processed_call_signatures_list", null);
+        if (list == null) {
+            // First run: mark all current call logs as processed so we don't process old history
+            List<CallLogEntry> currentEntries = getRecentCallLogEntries(context, 10);
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < currentEntries.size(); i++) {
+                String sig = currentEntries.get(i).number + "|" + currentEntries.get(i).date + "|" + currentEntries.get(i).duration;
+                sb.append("[").append(sig).append("]");
+                if (i < currentEntries.size() - 1) sb.append(",");
+            }
+            prefs.edit().putString("processed_call_signatures_list", sb.toString()).apply();
+            list = sb.toString();
+        }
+        return list.contains("[" + signature + "]");
+    }
+
+    private static void markSignatureProcessed(Context context, String signature) {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        String list = prefs.getString("processed_call_signatures_list", "");
+        List<String> items = new ArrayList<>();
+        if (!list.isEmpty()) {
+            String[] parts = list.split(",");
+            for (String part : parts) {
+                if (!part.isEmpty()) {
+                    items.add(part);
+                }
+            }
+        }
+        String newItem = "[" + signature + "]";
+        if (!items.contains(newItem)) {
+            items.add(newItem);
+        }
+        if (items.size() > 20) {
+            items = items.subList(items.size() - 20, items.size());
+        }
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < items.size(); i++) {
+            if (i > 0) {
+                sb.append(",");
+            }
+            sb.append(items.get(i));
+        }
+        prefs.edit().putString("processed_call_signatures_list", sb.toString()).apply();
+    }
+
+    private void processRecentCalls(final Context context, final int attempt, final String fallbackNumber) {
+        List<CallLogEntry> entries = getRecentCallLogEntries(context, 5);
+        boolean foundNewCall = false;
+        long now = System.currentTimeMillis();
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+
+        for (CallLogEntry entry : entries) {
+            long callEndTime = entry.date + (entry.duration * 1000L);
+            long diff = Math.abs(now - callEndTime);
+
+            // Allow window of 10 minutes to scan recent call logs (handles call waiting, delays)
+            if (diff < 600000L) {
+                String callSignature = entry.number + "|" + entry.date + "|" + entry.duration;
+                if (!isSignatureProcessed(context, callSignature)) {
+                    markSignatureProcessed(context, callSignature);
+                    foundNewCall = true;
+                    processSingleCallEntry(context, entry, prefs);
+                }
+            }
+        }
+
+        if (!foundNewCall && attempt < 4) {
+            DebugLogger.log(context, "[Receiver] No new recent call log found (attempt " + attempt + "/4). Retrying in 1500ms...");
+            try {
+                Thread.sleep(1500);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            processRecentCalls(context, attempt + 1, fallbackNumber);
+        } else if (!foundNewCall) {
+            DebugLogger.log(context, "[Receiver] No recent call log found after 4 attempts.");
+            if (fallbackNumber != null && !fallbackNumber.trim().isEmpty()) {
+                DatabaseHelper db = new DatabaseHelper(context);
+                JobCall trackedCall = db.getJobCallByNumber(context, fallbackNumber);
+                if (trackedCall != null) {
+                    showAiFailureNotification(context, fallbackNumber, 0,
+                            "The system call log took too long to update after this call ended, so it couldn't be auto-processed. Tap to save/transcribe manually.");
+                }
+            }
+        }
+    }
+
+    private void processSingleCallEntry(Context context, CallLogEntry entry, SharedPreferences prefs) {
+        DebugLogger.log(context, "[Receiver] Call log matched: number=" + entry.number + ", duration=" + entry.duration + "s, type=" + entry.type);
+        Log.d(TAG, "Matched call log entry: " + entry.number + ", duration: " + entry.duration);
+
+        DatabaseHelper db = new DatabaseHelper(context);
+        JobCall call = db.getJobCallByNumber(context, entry.number);
+        
+        // Check call direction and answered status
+        boolean isOutgoing = entry.type == android.provider.CallLog.Calls.OUTGOING_TYPE;
+        boolean isIncomingAnswered = entry.type == android.provider.CallLog.Calls.INCOMING_TYPE && entry.duration > 0;
+        
+        if (call != null) {
+            String typeLabel = "Incoming";
+            if (isOutgoing) {
+                typeLabel = "Outgoing";
+            } else if (entry.type == android.provider.CallLog.Calls.MISSED_TYPE || entry.type == android.provider.CallLog.Calls.REJECTED_TYPE) {
+                typeLabel = "Missed";
+            }
+            db.insertCallHistory(call.getId(), typeLabel, entry.duration, entry.date + entry.duration * 1000L);
+        }
+        
+        boolean autoTranscribe = prefs.getBoolean("auto_transcribe_background", true);
+
+        if (isOutgoing || isIncomingAnswered) {
+            if (autoTranscribe && entry.duration >= 15) {
+                DebugLogger.log(context, "[Receiver] Auto-transcribing call for " + entry.number + " in background...");
+                triggerBackgroundTranscription(context, entry.number, entry.duration, entry.date + entry.duration * 1000L);
+            } else {
+                DebugLogger.log(context, "[Receiver] Launching SaveContactActivity popup for " + entry.number);
+                Intent dialogIntent = new Intent(context, SaveContactActivity.class);
+                dialogIntent.putExtra("phone_number", entry.number);
+                dialogIntent.putExtra("duration", entry.duration);
+                dialogIntent.putExtra("timestamp", entry.date);
+                dialogIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                context.startActivity(dialogIntent);
+            }
+        } else {
+            DebugLogger.log(context, "[Receiver] Call not answered or not outgoing (Skipped popup)");
+        }
     }
     
     private static class CallLogEntry {
@@ -800,9 +864,29 @@ public class CallReceiver extends BroadcastReceiver {
             nm.createNotificationChannel(channel);
         }
 
+        // Try to look up existing company/recruiter name to show in title
+        String displayLabel = phoneNumber;
+        try {
+            DatabaseHelper db = new DatabaseHelper(context);
+            JobCall call = db.getJobCallByNumber(context, phoneNumber);
+            if (call != null) {
+                String rec = call.getRecruiterName() != null ? call.getRecruiterName().trim() : "";
+                String comp = call.getCompanyName() != null ? call.getCompanyName().trim() : "";
+                if (!rec.isEmpty() && !comp.isEmpty()) {
+                    displayLabel = rec + " @ " + comp;
+                } else if (!comp.isEmpty()) {
+                    displayLabel = comp;
+                } else if (!rec.isEmpty()) {
+                    displayLabel = rec;
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error checking db for progress notification label: " + e.getMessage());
+        }
+
         Notification notification = new NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.sym_action_call)
-                .setContentTitle("Processing call - " + phoneNumber)
+                .setContentTitle("Processing call - " + displayLabel)
                 .setContentText(stage)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .setOngoing(true)

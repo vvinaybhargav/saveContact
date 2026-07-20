@@ -70,6 +70,8 @@ public class OpenAiClient {
                     "\n" +
                     "\"present_round\" MUST be exactly one of these values, chosen by what the call indicates about the CURRENT/NEXT stage of the pipeline (not a free-form label):\n" +
                     "  \"First time\" - initial/HR screening call, first call, or no technical round scheduled yet.\n" +
+                    "  \"Screening\" - initial screening interview or discussion in progress.\n" +
+                    "  \"Interested\" - candidate is marked as interested/shortlisted.\n" +
                     "  \"1st Round\" - the call mentions 'L1', 'first round', 'first technical round', or schedules/discusses the first interview round.\n" +
                     "  \"2nd Round\" - the call mentions 'L2', 'second round', or schedules/discusses the second interview round.\n" +
                     "  \"Final Round\" - mentions 'final round', 'last round', or similar.\n" +
@@ -77,8 +79,8 @@ public class OpenAiClient {
                     "  \"Offered\" - an offer was clearly extended.\n" +
                     "  \"Not Interested\" - the CANDIDATE said they are not interested / want to withdraw.\n" +
                     "  \"Negative\" - the recruiter/company clearly rejected the candidate or said the profile doesn't match, i.e. a negative outcome from their side.\n" +
-                    "  If nothing about the stage changed in this call, keep it as \"First time\" only if you have no other information; otherwise infer the most advanced stage explicitly mentioned.\n" +
-                    "  Example: 'You've been shortlisted, we'd like to schedule your slot' with no round number = keep the current/likely stage (usually \"1st Round\" if this is the first scheduled interview) and put the date/time in tentative_schedule.\n" +
+                    "  If nothing about the stage changed in this call, keep it as the current stage only if you have no other information; otherwise infer the most advanced stage explicitly mentioned.\n" +
+                    "  Example: 'You've been shortlisted, we'd like to schedule your slot' with no round = keep the current stage and put the date/time in tentative_schedule.\n" +
                     "\n" +
                     "\"sentiment_comment\": string or null - ONLY when the call had a clearly POSITIVE outcome (shortlisted, moving forward, offer) or clearly NEGATIVE outcome (rejected, profile doesn't match, withdrawing). One short sentence describing it, e.g. \"Shortlisted for L1, recruiter said profile matches well.\" or \"Rejected - recruiter said experience doesn't match requirement.\". null if the call was neutral/inconclusive.\n" +
                     "\n" +
@@ -187,7 +189,7 @@ public class OpenAiClient {
     }
 
     private static final java.util.Set<String> VALID_ROUND_STATUSES = new java.util.HashSet<>(java.util.Arrays.asList(
-            "First time", "1st Round", "2nd Round", "Final Round", "HR / Salary", "Offered", "Not Interested", "Negative"));
+            "First time", "Screening", "Interested", "1st Round", "2nd Round", "Final Round", "HR / Salary", "Offered", "Not Interested", "Negative"));
 
     /**
      * Maps the AI's present_round value onto our exact enum, tolerating close variants
@@ -200,6 +202,7 @@ public class OpenAiClient {
 
         String s = raw.toLowerCase().trim();
         if (s.contains("not interested") || s.contains("withdraw")) return "Not Interested";
+        if (s.contains("interested")) return "Interested";
         if (s.contains("reject") || s.contains("negative") || s.contains("not selected")
                 || s.contains("doesn't match") || s.contains("does not match")) return "Negative";
         if (s.contains("offer")) return "Offered";
@@ -207,7 +210,8 @@ public class OpenAiClient {
         if (s.contains("final")) return "Final Round";
         if (s.contains("l2") || s.contains("second") || s.contains("2nd")) return "2nd Round";
         if (s.contains("l1") || s.contains("first") || s.contains("1st") || s.contains("technical")) return "1st Round";
-        if (s.contains("screen") || s.contains("first time")) return "First time";
+        if (s.contains("screen")) return "Screening";
+        if (s.contains("first time") || s.contains("first call")) return "First time";
         return fallback;
     }
 
@@ -228,11 +232,13 @@ public class OpenAiClient {
         if (status == null) return 1;
         switch (status) {
             case "First time": return 1;
-            case "1st Round": return 2;
-            case "2nd Round": return 3;
-            case "Final Round": return 4;
-            case "HR / Salary": return 5;
-            case "Offered": return 6;
+            case "Screening": return 2;
+            case "Interested": return 3;
+            case "1st Round": return 4;
+            case "2nd Round": return 5;
+            case "Final Round": return 6;
+            case "HR / Salary": return 7;
+            case "Offered": return 8;
             case "Not Interested":
             case "Negative": return 0;
             default: return 1;

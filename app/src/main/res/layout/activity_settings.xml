@@ -209,7 +209,7 @@
                         android:id="@+id/btn_settings_save_keys"
                         android:layout_width="match_parent"
                         android:layout_height="48dp"
-                        android:text="Save API Credentials"
+                        android:text="Save"
                         android:textAllCaps="false"
                         android:textColor="@color/white"
                         android:backgroundTint="@color/accent_indigo"
