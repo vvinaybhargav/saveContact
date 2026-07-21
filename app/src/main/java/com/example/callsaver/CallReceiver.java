@@ -913,6 +913,12 @@ public class CallReceiver extends BroadcastReceiver {
         if (json == null || json.isNull(key)) return fallback;
         String val = json.optString(key, fallback).trim();
         if (val.equalsIgnoreCase("null")) return fallback;
+        String lower = val.toLowerCase();
+        if (lower.equals("not mentioned") || lower.equals("not mentioned.") 
+                || lower.equals("not_mentioned") || lower.equals("n/a") 
+                || lower.equals("none") || lower.equals("unknown")) {
+            return fallback;
+        }
         return val;
     }
 

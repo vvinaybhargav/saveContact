@@ -30,7 +30,14 @@ public class JobCall {
         if (val == null || val.trim().equalsIgnoreCase("null")) {
             return "";
         }
-        return val.trim();
+        String trimmed = val.trim();
+        String lower = trimmed.toLowerCase();
+        if (lower.equals("not mentioned") || lower.equals("not mentioned.") 
+                || lower.equals("not_mentioned") || lower.equals("n/a") 
+                || lower.equals("none") || lower.equals("unknown")) {
+            return "";
+        }
+        return trimmed;
     }
 
     // Constructor for retrieving from DB (with ID and Duration)
