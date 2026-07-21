@@ -124,7 +124,7 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
             }
 
             SimpleDateFormat sdf = new SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault());
-            String formattedDate = sdf.format(new Date(call.getTimestamp()));
+            String formattedDate = sdf.format(new Date(call.getLastActivityTime()));
             holder.tvCallTime.setText(formattedDate);
 
             String companyForInitial = (company == null || company.trim().isEmpty()) ? "" : company;

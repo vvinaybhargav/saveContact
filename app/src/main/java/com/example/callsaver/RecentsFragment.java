@@ -60,6 +60,8 @@ public class RecentsFragment extends Fragment implements RecentsAdapter.OnCallAc
         public int type;
         public long date;
         public String sim; // "SIM 1" / "SIM 2", or null on single-SIM
+        public String companyName;
+        public String recruiterName;
 
         public RecentCallModel(String number, String name, int type, long date, String sim) {
             this.number = number;
@@ -417,6 +419,10 @@ public class RecentsFragment extends Fragment implements RecentsAdapter.OnCallAc
 
         allCallLogsList.clear();
 
+        // Get DB phone mappings for caller/company lookup
+        DatabaseHelper dbHelper = new DatabaseHelper(requireContext());
+        List<DatabaseHelper.PhoneJobMapping> mappings = dbHelper.getAllPhoneJobMappings();
+
         // Map each phone-account id to a SIM label (only when there are 2+ SIMs).
         java.util.Map<String, String> simLabels = buildSimLabelMap();
 
@@ -454,7 +460,18 @@ public class RecentsFragment extends Fragment implements RecentsAdapter.OnCallAc
                         sim = simLabels.get(cursor.getString(acctIdx));
                     }
 
-                    allCallLogsList.add(new RecentCallModel(number, name, type, date, sim));
+                    RecentCallModel model = new RecentCallModel(number, name, type, date, sim);
+                    if (number != null && !number.trim().isEmpty()) {
+                        for (DatabaseHelper.PhoneJobMapping mapping : mappings) {
+                            if (android.telephony.PhoneNumberUtils.compare(requireContext(), mapping.phoneNumber, number)) {
+                                model.companyName = mapping.companyName;
+                                model.recruiterName = mapping.recruiterName;
+                                break;
+                            }
+                        }
+                    }
+
+                    allCallLogsList.add(model);
                     count++;
                 } while (cursor.moveToNext() && count < 80); // Capped at 80 logs
             }
@@ -470,6 +487,9 @@ public class RecentsFragment extends Fragment implements RecentsAdapter.OnCallAc
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
             return;
         }
+
+        DatabaseHelper dbHelper = new DatabaseHelper(requireContext());
+        List<DatabaseHelper.PhoneJobMapping> mappings = dbHelper.getAllPhoneJobMappings();
 
         Uri uri = ContactsContract.CommonDataKinds.Phone.CONTENT_URI;
         String[] projection = new String[]{
@@ -505,7 +525,17 @@ public class RecentsFragment extends Fragment implements RecentsAdapter.OnCallAc
                     }
 
                     if (!duplicate) {
-                        outList.add(new RecentCallModel(number, name, 100, 0, null));
+                        RecentCallModel model = new RecentCallModel(number, name, 100, 0, null);
+                        if (number != null && !number.trim().isEmpty()) {
+                            for (DatabaseHelper.PhoneJobMapping mapping : mappings) {
+                                if (android.telephony.PhoneNumberUtils.compare(requireContext(), mapping.phoneNumber, number)) {
+                                    model.companyName = mapping.companyName;
+                                    model.recruiterName = mapping.recruiterName;
+                                    break;
+                                }
+                            }
+                        }
+                        outList.add(model);
                         count++;
                     }
                 }
@@ -523,7 +553,9 @@ public class RecentsFragment extends Fragment implements RecentsAdapter.OnCallAc
         for (RecentCallModel item : allCallLogsList) {
             boolean matchesName = item.name != null && item.name.toLowerCase().contains(query.toLowerCase());
             boolean matchesNumber = item.number != null && item.number.contains(query);
-            if (query.isEmpty() || matchesName || matchesNumber) {
+            boolean matchesCompany = item.companyName != null && item.companyName.toLowerCase().contains(query.toLowerCase());
+            boolean matchesRecruiter = item.recruiterName != null && item.recruiterName.toLowerCase().contains(query.toLowerCase());
+            if (query.isEmpty() || matchesName || matchesNumber || matchesCompany || matchesRecruiter) {
                 filtered.add(item);
             }
         }

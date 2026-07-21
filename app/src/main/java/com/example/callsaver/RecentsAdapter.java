@@ -48,17 +48,40 @@ public class RecentsAdapter extends RecyclerView.Adapter<RecentsAdapter.ViewHold
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         RecentsFragment.RecentCallModel call = callLogsList.get(position);
 
-        // Name is present if the contact is saved in device
-        String displayName = (call.name != null && !call.name.trim().isEmpty()) ? call.name : call.number;
-        holder.tvCallerTitle.setText(displayName);
+        // Determine names and company names
+        String contactName = (call.name != null && !call.name.trim().isEmpty()) ? call.name.trim() : null;
+        String mappedRecruiter = (call.recruiterName != null && !call.recruiterName.trim().isEmpty()) ? call.recruiterName.trim() : null;
+        String company = (call.companyName != null && !call.companyName.trim().isEmpty()) ? call.companyName.trim() : null;
 
+        // Choose the primary name to show (contactName has priority, then recruiterName)
+        String primaryName = contactName != null ? contactName : mappedRecruiter;
+
+        // Build Title text (Name + Company)
+        String titleText;
+        if (primaryName != null && company != null) {
+            titleText = primaryName + " (" + company + ")";
+        } else if (primaryName != null) {
+            titleText = primaryName;
+        } else if (company != null) {
+            titleText = company;
+        } else {
+            titleText = call.number; // default to showing phone number in title if no name/company
+        }
+        holder.tvCallerTitle.setText(titleText);
+
+        // Display Call Time / Phone Number
         if (call.type == 100) {
+            // For contacts search result
             holder.tvCallTime.setText(call.number);
         } else {
-            // Format Date
+            // For call history items, format: [Phone Number] · [Formatted Date]
             SimpleDateFormat sdf = new SimpleDateFormat("dd MMM, h:mm a", Locale.getDefault());
             String dateStr = sdf.format(new Date(call.date));
-            holder.tvCallTime.setText(dateStr);
+            if (call.number != null && !call.number.trim().isEmpty() && !call.number.equals(titleText)) {
+                holder.tvCallTime.setText(call.number + "  ·  " + dateStr);
+            } else {
+                holder.tvCallTime.setText(dateStr);
+            }
         }
 
         // Style based on Call Type

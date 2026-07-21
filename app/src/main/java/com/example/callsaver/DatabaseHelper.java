@@ -346,6 +346,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                         cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_DURATION)),
                         cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_TIMESTAMP))
                 );
+                call.setLastActivityTime(cursor.getLong(cursor.getColumnIndexOrThrow("last_activity")));
                 call.setCandidateName(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_CANDIDATE_NAME)));
                 call.setAppliedRole(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_APPLIED_ROLE)));
                 call.setTentativeSchedule(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_TENTATIVE_SCHEDULE)));

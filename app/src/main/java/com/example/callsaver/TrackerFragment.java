@@ -458,12 +458,29 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                 int dateIdx = cursor.getColumnIndexOrThrow(CallLog.Calls.DATE);
                 int durationIdx = cursor.getColumnIndexOrThrow(CallLog.Calls.DURATION);
 
-                int count = 0;
+                int scanCount = 0;
+                int addedCount = 0;
                 do {
                     String number = cursor.getString(numberIdx);
                     int type = cursor.getInt(typeIdx);
                     long date = cursor.getLong(dateIdx);
                     int duration = cursor.getInt(durationIdx);
+
+                    scanCount++;
+
+                    // Skip missed and rejected calls
+                    if (type == CallLog.Calls.MISSED_TYPE || type == CallLog.Calls.REJECTED_TYPE) {
+                        continue;
+                    }
+                    // For incoming and outgoing, only show if duration > 10 seconds
+                    if (type == CallLog.Calls.INCOMING_TYPE || type == CallLog.Calls.OUTGOING_TYPE) {
+                        if (duration <= 10) {
+                            continue;
+                        }
+                    } else {
+                        // Skip other types (e.g. voicemail, blocked, etc.)
+                        continue;
+                    }
 
                     long endTime = date + duration * 1000L;
                     // Check if this call event (by its end time) is already logged in history in memory
@@ -481,13 +498,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                         if (!dismissed.contains(key)) {
                             String badgeType = "Incoming";
                             String notesDesc = "Call";
-                            if (type == CallLog.Calls.MISSED_TYPE) {
-                                badgeType = "Missed";
-                                notesDesc = "Missed Call";
-                            } else if (type == CallLog.Calls.REJECTED_TYPE) {
-                                badgeType = "Rejected";
-                                notesDesc = "Rejected Call";
-                            } else if (type == CallLog.Calls.INCOMING_TYPE) {
+                            if (type == CallLog.Calls.INCOMING_TYPE) {
                                 badgeType = "Incoming";
                                 notesDesc = "Incoming Call";
                             } else if (type == CallLog.Calls.OUTGOING_TYPE) {
@@ -524,10 +535,10 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                             JobCall unloggedCall = new JobCall(number, displayName, badgeType, "", notesDesc, duration, endTime);
                             unloggedCall.setId((int) (-1 * (Math.abs(key.hashCode()) % 1000000 + 1)));
                             unlogged.add(unloggedCall);
+                            addedCount++;
                         }
                     }
-                    count++;
-                } while (cursor.moveToNext() && count < 40);
+                } while (cursor.moveToNext() && scanCount < 200 && addedCount < 40);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -583,7 +594,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                     allCallsList.clear();
                     allCallsList.addAll(updatedCalls);
                     allCallsList.addAll(unloggedCalls);
-                    java.util.Collections.sort(allCallsList, (a, b) -> Long.compare(b.getTimestamp(), a.getTimestamp()));
+                    java.util.Collections.sort(allCallsList, (a, b) -> Long.compare(b.getLastActivityTime(), a.getLastActivityTime()));
                     updateStatsAndFilter();
                 });
             }

@@ -9,6 +9,7 @@ public class JobCall {
     private String notes;
     private int duration; // Call duration in seconds
     private long timestamp;
+    private long lastActivityTime;
 
     private String recruiterName = "";
 
@@ -125,6 +126,14 @@ public class JobCall {
 
     public void setTimestamp(long timestamp) {
         this.timestamp = timestamp;
+    }
+
+    public long getLastActivityTime() {
+        return lastActivityTime != 0 ? lastActivityTime : timestamp;
+    }
+
+    public void setLastActivityTime(long lastActivityTime) {
+        this.lastActivityTime = lastActivityTime;
     }
 
     public String getCandidateName() {
