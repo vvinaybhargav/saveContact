@@ -769,20 +769,35 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     public long linkPhoneToJob(long jobId, String phoneNumber, String recruiterName) {
+        return linkPhoneToJob(jobId, phoneNumber, recruiterName, true);
+    }
+
+    public long linkPhoneToJob(long jobId, String phoneNumber, String recruiterName, boolean forceOverwrite) {
         if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
             return -1;
         }
         SQLiteDatabase db = this.getWritableDatabase();
         
         // Check if number already linked to this jobId
-        Cursor c = db.query(TABLE_PHONES, new String[]{COLUMN_PHONE_ID}, COLUMN_PHONE_JOB_ID + "=? AND " + COLUMN_PHONE_NUMBER + "=?", new String[]{String.valueOf(jobId), phoneNumber.trim()}, null, null, null);
+        Cursor c = db.query(TABLE_PHONES, new String[]{COLUMN_PHONE_ID, COLUMN_PHONE_RECRUITER_NAME}, 
+                COLUMN_PHONE_JOB_ID + "=? AND " + COLUMN_PHONE_NUMBER + "=?", 
+                new String[]{String.valueOf(jobId), phoneNumber.trim()}, null, null, null);
         boolean exists = c != null && c.moveToFirst();
+        String currentRecruiterName = "";
+        if (exists && c != null) {
+            currentRecruiterName = c.getString(1);
+        }
         if (c != null) c.close();
         
         ContentValues v = new ContentValues();
         v.put(COLUMN_PHONE_JOB_ID, jobId);
         v.put(COLUMN_PHONE_NUMBER, phoneNumber.trim());
-        v.put(COLUMN_PHONE_RECRUITER_NAME, recruiterName != null ? recruiterName.trim() : "");
+        
+        if (exists && !forceOverwrite && currentRecruiterName != null && !currentRecruiterName.trim().isEmpty()) {
+            v.put(COLUMN_PHONE_RECRUITER_NAME, currentRecruiterName.trim());
+        } else {
+            v.put(COLUMN_PHONE_RECRUITER_NAME, recruiterName != null ? recruiterName.trim() : "");
+        }
         
         long result;
         if (exists) {

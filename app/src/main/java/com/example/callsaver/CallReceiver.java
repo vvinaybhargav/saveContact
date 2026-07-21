@@ -734,7 +734,7 @@ public class CallReceiver extends BroadcastReceiver {
                                         
                                         // Link phone to job
                                         String finalRecruiter = recruiter.isEmpty() ? "Recruiter" : recruiter;
-                                        db.linkPhoneToJob(jobCallId, phoneNumber, finalRecruiter);
+                                        db.linkPhoneToJob(jobCallId, phoneNumber, finalRecruiter, false);
                                         
                                         // Log history entry
                                         db.insertCallHistory(jobCallId, "Incoming", duration, timestamp);

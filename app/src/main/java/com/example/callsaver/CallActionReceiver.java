@@ -136,7 +136,7 @@ public class CallActionReceiver extends BroadcastReceiver {
 
                             if (existing != null) {
                                 // Link phone to existing company and update status rounds
-                                db.linkPhoneToJob(existing.getId(), phoneNumber, recruiter);
+                                db.linkPhoneToJob(existing.getId(), phoneNumber, recruiter, false);
                                 if (!notes.isEmpty()) {
                                     db.insertNote(existing.getId(), notes, System.currentTimeMillis());
                                 }
