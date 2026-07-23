@@ -156,17 +156,22 @@ public class MainActivity extends AppCompatActivity {
      * Uses RoleManager on Android 10+ and TelecomManager on older versions.
      */
     private void offerDefaultDialer() {
+        // TelecomManager's getDefaultDialerPackage() is the authoritative source for
+        // "are we actually the default dialer right now" - trust it over
+        // RoleManager.isRoleHeld(), which can disagree (e.g. after repeated
+        // install/uninstall during testing) and would otherwise silently skip the
+        // prompt below even though we're genuinely not the default.
         if (isAlreadyDefaultDialer()) {
             return;
         }
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 RoleManager roleManager = (RoleManager) getSystemService(Context.ROLE_SERVICE);
-                if (roleManager != null
-                        && roleManager.isRoleAvailable(RoleManager.ROLE_DIALER)
-                        && !roleManager.isRoleHeld(RoleManager.ROLE_DIALER)) {
+                if (roleManager != null && roleManager.isRoleAvailable(RoleManager.ROLE_DIALER)) {
                     Intent intent = roleManager.createRequestRoleIntent(RoleManager.ROLE_DIALER);
                     startActivityForResult(intent, REQ_DEFAULT_DIALER);
+                } else {
+                    Toast.makeText(this, "Default Phone App role isn't available on this device.", Toast.LENGTH_LONG).show();
                 }
             } else {
                 Intent intent = new Intent(TelecomManager.ACTION_CHANGE_DEFAULT_DIALER)
@@ -175,7 +180,7 @@ public class MainActivity extends AppCompatActivity {
                 startActivity(intent);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            Toast.makeText(this, "Could not prompt for Default Phone App: " + e.getMessage(), Toast.LENGTH_LONG).show();
         }
     }
 
