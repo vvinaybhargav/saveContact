@@ -209,13 +209,26 @@ public class MainActivity extends AppCompatActivity {
                 .replace(R.id.fragment_container, trackerFragment)
                 .commit();
 
-        // Slight delay to ensure the fragment is attached and views are inflated before showing dialog
+        // Slight delay to ensure the fragment is attached before opening the capture screen.
         bottomNavigation.postDelayed(new Runnable() {
             @Override
             public void run() {
-                Intent intent = new Intent(MainActivity.this, SaveContactActivity.class);
+                // Same capture screen used everywhere else (in-call, Tracker, Upcoming, "+").
+                // Reuse the existing lead for this number if there is one, instead of
+                // always creating a new one.
+                JobCall existing = new DatabaseHelper(MainActivity.this).getJobCallByNumber(MainActivity.this, phoneNumber);
+                Intent intent = new Intent(MainActivity.this, InCallActivity.class);
+                intent.putExtra("mode", "review");
                 intent.putExtra("phone_number", phoneNumber);
-                intent.putExtra("prefill_status", "Screening");
+                if (existing != null) {
+                    intent.putExtra("company_name", existing.getCompanyName());
+                    intent.putExtra("round_status", existing.getRoundStatus());
+                    intent.putExtra("tags", existing.getTags());
+                    intent.putExtra("job_call_id", (long) existing.getId());
+                    intent.putExtra("recruiter_name", existing.getRecruiterName());
+                } else {
+                    intent.putExtra("job_call_id", -1L);
+                }
                 startActivity(intent);
             }
         }, 250);

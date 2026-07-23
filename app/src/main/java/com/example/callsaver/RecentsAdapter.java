@@ -29,6 +29,8 @@ public class RecentsAdapter extends RecyclerView.Adapter<RecentsAdapter.ViewHold
     public interface OnCallActionListener {
         void onDialClick(String phoneNumber);
         void onTrackClick(String phoneNumber);
+        void onMessageClick(String phoneNumber);
+        void onCopyClick(String phoneNumber);
     }
 
     public RecentsAdapter(Context context, List<RecentsFragment.RecentCallModel> callLogsList, OnCallActionListener listener) {
@@ -104,6 +106,18 @@ public class RecentsAdapter extends RecyclerView.Adapter<RecentsAdapter.ViewHold
                 listener.onTrackClick(call.number);
             }
         });
+
+        holder.btnActionMessage.setOnClickListener(v -> {
+            if (listener != null) {
+                listener.onMessageClick(call.number);
+            }
+        });
+
+        holder.btnActionCopy.setOnClickListener(v -> {
+            if (listener != null) {
+                listener.onCopyClick(call.number);
+            }
+        });
     }
 
     private void setupCallTypeStyle(ViewHolder holder, int callType) {
@@ -170,7 +184,7 @@ public class RecentsAdapter extends RecyclerView.Adapter<RecentsAdapter.ViewHold
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
         TextView tvCallerTitle, tvCallTypeLabel, tvCallTime;
-        MaterialCardView cardCallTypeBg, btnActionDial, btnActionTrack;
+        MaterialCardView cardCallTypeBg, btnActionDial, btnActionTrack, btnActionMessage, btnActionCopy;
         ImageView imgCallTypeIcon;
 
         public ViewHolder(@NonNull View itemView) {
@@ -181,6 +195,8 @@ public class RecentsAdapter extends RecyclerView.Adapter<RecentsAdapter.ViewHold
             cardCallTypeBg = itemView.findViewById(R.id.card_call_type_bg);
             btnActionDial = itemView.findViewById(R.id.btn_action_dial);
             btnActionTrack = itemView.findViewById(R.id.btn_action_track);
+            btnActionMessage = itemView.findViewById(R.id.btn_action_message);
+            btnActionCopy = itemView.findViewById(R.id.btn_action_copy);
             imgCallTypeIcon = itemView.findViewById(R.id.img_call_type_icon);
         }
     }

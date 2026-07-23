@@ -7,9 +7,9 @@
     <color name="accent_indigo_dark">#7A7A82</color>
 
     <!-- Neutral text & backgrounds overrides for night mode -->
-    <color name="text_primary">#EDEDED</color>   <!-- Lighter readable grey text -->
-    <color name="text_secondary">#B5B5B8</color> <!-- Muted secondary text -->
-    <color name="text_muted">#8E8E93</color>     <!-- Muted captions text -->
+    <color name="text_primary">#FFFFFF</color>   <!-- Bright white for primary text -->
+    <color name="text_secondary">#C2C2C7</color> <!-- Muted secondary text -->
+    <color name="text_muted">#96969C</color>     <!-- Muted captions text -->
     <color name="bg_light">#1E1E20</color>       <!-- Main screen background (soft charcoal grey) -->
     <color name="divider">#3A3A3D</color>        <!-- Divider / unselected chip background -->
     <color name="white">#28282A</color>          <!-- Cards & dialog backgrounds become charcoal-grey -->

@@ -24,9 +24,9 @@
     <color name="status_red_bg">#FEE2E2</color>
 
     <!-- Neutral text & backgrounds - grey/black glass theme app-wide -->
-    <color name="text_primary">#F5F5F5</color>
-    <color name="text_secondary">#B0B0B5</color>
-    <color name="text_muted">#87878D</color>
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#C2C2C7</color>
+    <color name="text_muted">#96969C</color>
     <color name="bg_light">#1C1C1E</color>
     <color name="divider">#33FFFFFF</color>
     <color name="white">#FFFFFF</color>

@@ -473,12 +473,42 @@ public class InCallActivity extends AppCompatActivity {
                 }
                 if (noteClean.trim().isEmpty()) continue;
 
+                android.widget.LinearLayout titleRow = new android.widget.LinearLayout(this);
+                titleRow.setOrientation(android.widget.LinearLayout.HORIZONTAL);
+                titleRow.setGravity(android.view.Gravity.CENTER_VERTICAL);
+                titleRow.setPadding(0, callCounter == 1 ? 0 : 12, 0, 4);
+
                 TextView titleTv = new TextView(this);
                 titleTv.setText(callCounter + getOrdinalSuffix(callCounter) + (note.isManual() ? " MCall" : " Call"));
                 titleTv.setTextColor(0xFF9A9AA2);
                 titleTv.setTextSize(12);
                 titleTv.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
-                titleTv.setPadding(0, callCounter == 1 ? 0 : 12, 0, 4);
+                titleTv.setLayoutParams(new android.widget.LinearLayout.LayoutParams(
+                        0, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+
+                TextView deleteTv = new TextView(this);
+                deleteTv.setText("Delete");
+                deleteTv.setTextColor(0xFFFB7185);
+                deleteTv.setTextSize(11);
+                deleteTv.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+                deleteTv.setPadding(16, 4, 4, 4);
+                deleteTv.setClickable(true);
+                deleteTv.setFocusable(true);
+                final long noteId = note.id;
+                deleteTv.setOnClickListener(v -> {
+                    new androidx.appcompat.app.AlertDialog.Builder(this)
+                            .setTitle("Delete this note?")
+                            .setMessage("This can't be undone.")
+                            .setPositiveButton("Delete", (d, w) -> {
+                                new DatabaseHelper(this).deleteNote(noteId, jobCallId);
+                                bindNotesAndSkills();
+                            })
+                            .setNegativeButton("Cancel", null)
+                            .show();
+                });
+
+                titleRow.addView(titleTv);
+                titleRow.addView(deleteTv);
 
                 TextView pointsTv = new TextView(this);
                 StringBuilder pointsSb = new StringBuilder();
@@ -497,7 +527,7 @@ public class InCallActivity extends AppCompatActivity {
                 pointsTv.setTextSize(13);
                 pointsTv.setLineSpacing(0f, 1.2f);
 
-                llExpandedList.addView(titleTv);
+                llExpandedList.addView(titleRow);
                 llExpandedList.addView(pointsTv);
                 callCounter++;
             }

@@ -2,6 +2,7 @@ package com.example.callsaver;
 
 import android.Manifest;
 import android.app.Activity;
+import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
@@ -78,12 +79,6 @@ public class RecentsFragment extends Fragment implements RecentsAdapter.OnCallAc
         return inflater.inflate(R.layout.fragment_recents, container, false);
     }
 
-    private View cardClipboardBanner;
-    private TextView tvClipboardText;
-    private View btnClipboardDial;
-    private View btnClipboardTrack;
-    private String detectedClipboardNumber = null;
-
     public void setDialedNumber(String number) {
         if (number != null && !number.trim().isEmpty()) {
             dialedDigits.setLength(0);
@@ -103,29 +98,6 @@ public class RecentsFragment extends Fragment implements RecentsAdapter.OnCallAc
         cardDialerDrawer = view.findViewById(R.id.card_dialer_drawer);
         tvDialerDigits = view.findViewById(R.id.tv_dialer_digits);
         etSearchRecents = view.findViewById(R.id.et_search_recents);
-
-        cardClipboardBanner = view.findViewById(R.id.card_clipboard_banner);
-        tvClipboardText = view.findViewById(R.id.tv_clipboard_text);
-        btnClipboardDial = view.findViewById(R.id.btn_clipboard_paste_dial);
-        btnClipboardTrack = view.findViewById(R.id.btn_clipboard_track);
-
-        if (btnClipboardDial != null) {
-            btnClipboardDial.setOnClickListener(v -> {
-                if (detectedClipboardNumber != null) {
-                    onDialClick(detectedClipboardNumber);
-                    if (cardClipboardBanner != null) cardClipboardBanner.setVisibility(View.GONE);
-                }
-            });
-        }
-
-        if (btnClipboardTrack != null) {
-            btnClipboardTrack.setOnClickListener(v -> {
-                if (detectedClipboardNumber != null) {
-                    onTrackClick(detectedClipboardNumber);
-                    if (cardClipboardBanner != null) cardClipboardBanner.setVisibility(View.GONE);
-                }
-            });
-        }
 
         rvRecents.setLayoutManager(new LinearLayoutManager(requireContext()));
         callLogsList = new ArrayList<>();
@@ -180,30 +152,6 @@ public class RecentsFragment extends Fragment implements RecentsAdapter.OnCallAc
     public void onResume() {
         super.onResume();
         loadCallLogs();
-        checkClipboardForPhoneNumber();
-    }
-
-    private void checkClipboardForPhoneNumber() {
-        try {
-            ClipboardManager cm = (ClipboardManager) requireContext().getSystemService(Context.CLIPBOARD_SERVICE);
-            if (cm != null && cm.hasPrimaryClip() && cm.getPrimaryClip() != null && cm.getPrimaryClip().getItemCount() > 0) {
-                CharSequence text = cm.getPrimaryClip().getItemAt(0).coerceToText(requireContext());
-                if (text != null) {
-                    String cleanDigits = text.toString().replaceAll("[^0-9+]", "");
-                    if (cleanDigits.length() >= 7 && cleanDigits.length() <= 15) {
-                        detectedClipboardNumber = cleanDigits;
-                        if (tvClipboardText != null && cardClipboardBanner != null) {
-                            tvClipboardText.setText("📋 Copied: " + cleanDigits);
-                            cardClipboardBanner.setVisibility(View.VISIBLE);
-                            return;
-                        }
-                    }
-                }
-            }
-        } catch (Exception ignored) {}
-        if (cardClipboardBanner != null) {
-            cardClipboardBanner.setVisibility(View.GONE);
-        }
     }
 
     /**
@@ -695,6 +643,29 @@ public class RecentsFragment extends Fragment implements RecentsAdapter.OnCallAc
     public void onTrackClick(String phoneNumber) {
         if (getActivity() instanceof MainActivity) {
             ((MainActivity) getActivity()).openTrackerWithNumber(phoneNumber);
+        }
+    }
+
+    /** Opens the device's default messaging app pre-addressed to this number. */
+    @Override
+    public void onMessageClick(String phoneNumber) {
+        if (phoneNumber == null || phoneNumber.isEmpty()) return;
+        try {
+            Intent intent = new Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:" + phoneNumber));
+            startActivity(intent);
+        } catch (Exception e) {
+            Toast.makeText(requireContext(), "No messaging app found", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /** Copies the raw phone number to the clipboard. */
+    @Override
+    public void onCopyClick(String phoneNumber) {
+        if (phoneNumber == null || phoneNumber.isEmpty()) return;
+        ClipboardManager cm = (ClipboardManager) requireContext().getSystemService(Context.CLIPBOARD_SERVICE);
+        if (cm != null) {
+            cm.setPrimaryClip(ClipData.newPlainText("Phone number", phoneNumber));
+            Toast.makeText(requireContext(), "Number copied", Toast.LENGTH_SHORT).show();
         }
     }
 }
