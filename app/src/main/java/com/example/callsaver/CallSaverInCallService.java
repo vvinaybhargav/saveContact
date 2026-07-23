@@ -122,8 +122,7 @@ public class CallSaverInCallService extends InCallService {
 
         DatabaseHelper db = new DatabaseHelper(this);
         JobCall matchedCall = db.getJobCallByNumber(this, phoneNumber);
-        String label = matchedCall != null && matchedCall.getCompanyName() != null && !matchedCall.getCompanyName().isEmpty()
-                ? matchedCall.getCompanyName() : phoneNumber;
+        String label = resolveDisplayLabel(phoneNumber, matchedCall);
 
         Intent tapIntent = new Intent(this, InCallActivity.class);
         tapIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
@@ -135,6 +134,7 @@ public class CallSaverInCallService extends InCallService {
             tapIntent.putExtra("job_call_id", (long) matchedCall.getId());
             tapIntent.putExtra("recruiter_name", matchedCall.getRecruiterName());
         } else {
+            tapIntent.putExtra("contact_name", label);
             tapIntent.putExtra("job_call_id", -1L);
         }
 
@@ -183,11 +183,25 @@ public class CallSaverInCallService extends InCallService {
             intent.putExtra("job_call_id", (long) matchedCall.getId());
             intent.putExtra("recruiter_name", matchedCall.getRecruiterName());
         } else {
-            intent.putExtra("company_name", "Recruiter Lead");
+            String contactName = TrackerFragment.getContactNameByNumber(this, phoneNumber);
+            if (contactName != null && !contactName.isEmpty()) {
+                intent.putExtra("contact_name", contactName);
+            }
             intent.putExtra("round_status", "First time");
             intent.putExtra("job_call_id", -1L);
         }
         return intent;
+    }
+
+    private String resolveDisplayLabel(String phoneNumber, JobCall matchedCall) {
+        if (matchedCall != null && matchedCall.getCompanyName() != null && !matchedCall.getCompanyName().isEmpty()) {
+            return matchedCall.getCompanyName();
+        }
+        String contactName = TrackerFragment.getContactNameByNumber(this, phoneNumber);
+        if (contactName != null && !contactName.isEmpty()) {
+            return contactName;
+        }
+        return phoneNumber.isEmpty() ? "Unknown" : phoneNumber;
     }
 
     private void launchInCallActivity(Call call) {
@@ -208,8 +222,7 @@ public class CallSaverInCallService extends InCallService {
         String phoneNumber = resolvePhoneNumber(call);
         DatabaseHelper db = new DatabaseHelper(this);
         JobCall matchedCall = phoneNumber.isEmpty() ? null : db.getJobCallByNumber(this, phoneNumber);
-        String title = matchedCall != null && matchedCall.getCompanyName() != null && !matchedCall.getCompanyName().isEmpty()
-                ? matchedCall.getCompanyName() : (phoneNumber.isEmpty() ? "Incoming call" : phoneNumber);
+        String title = phoneNumber.isEmpty() ? "Incoming call" : resolveDisplayLabel(phoneNumber, matchedCall);
         String content = matchedCall != null && matchedCall.getRoundStatus() != null && !matchedCall.getRoundStatus().isEmpty()
                 ? "Incoming call - " + matchedCall.getRoundStatus() : "Incoming call";
 
@@ -273,8 +286,7 @@ public class CallSaverInCallService extends InCallService {
         String phoneNumber = resolvePhoneNumber(call);
         DatabaseHelper db = new DatabaseHelper(this);
         JobCall matchedCall = phoneNumber.isEmpty() ? null : db.getJobCallByNumber(this, phoneNumber);
-        String label = matchedCall != null && matchedCall.getCompanyName() != null && !matchedCall.getCompanyName().isEmpty()
-                ? matchedCall.getCompanyName() : (phoneNumber.isEmpty() ? "Unknown" : phoneNumber);
+        String label = resolveDisplayLabel(phoneNumber, matchedCall);
 
         Intent tapIntent = buildInCallIntent(call);
         int piFlags = PendingIntent.FLAG_UPDATE_CURRENT;

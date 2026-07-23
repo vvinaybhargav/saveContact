@@ -203,8 +203,8 @@
         app:cardCornerRadius="24dp"
         app:cardElevation="16dp"
         app:strokeWidth="1dp"
-        app:strokeColor="@color/divider"
-        app:cardBackgroundColor="@color/white"
+        app:strokeColor="@color/glass_stroke"
+        app:cardBackgroundColor="@color/primary_dark"
         android:visibility="gone">
 
         <LinearLayout

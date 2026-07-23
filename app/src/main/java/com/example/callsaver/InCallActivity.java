@@ -48,6 +48,7 @@ public class InCallActivity extends AppCompatActivity {
     private String tags;
     private long jobCallId;
     private String recruiter;
+    private String contactName;
     // When true, this screen is opened outside a live call (from the post-call
     // notification, or later from Tracker/Upcoming) purely to review/log details -
     // so it hides the call controls and opens the capture form directly, and must
@@ -110,6 +111,7 @@ public class InCallActivity extends AppCompatActivity {
         tags = intent.getStringExtra("tags");
         jobCallId = intent.getLongExtra("job_call_id", -1);
         recruiter = intent.getStringExtra("recruiter_name");
+        contactName = intent.getStringExtra("contact_name");
         reviewMode = "review".equals(intent.getStringExtra("mode"));
         int initialState = intent.getIntExtra("initial_state", Call.STATE_ACTIVE);
 
@@ -277,6 +279,12 @@ public class InCallActivity extends AppCompatActivity {
             }
         }
 
+        // Nothing saved for this number yet - fall back to the device's own contacts
+        // instead of showing a placeholder like "Recruiter Lead".
+        if (!notEmpty(candidateName) && !notEmpty(company) && !notEmpty(recruiter) && !notEmpty(contactName)) {
+            contactName = TrackerFragment.getContactNameByNumber(this, phoneNumber);
+        }
+
         String title;
         if (notEmpty(candidateName) && notEmpty(company)) {
             title = candidateName.trim() + " @ " + company.trim();
@@ -288,8 +296,10 @@ public class InCallActivity extends AppCompatActivity {
             title = candidateName.trim();
         } else if (notEmpty(recruiter)) {
             title = recruiter.trim();
+        } else if (notEmpty(contactName)) {
+            title = contactName.trim();
         } else {
-            title = phoneNumber;
+            title = notEmpty(phoneNumber) ? phoneNumber : "Unknown";
         }
         tvCallerName.setText(title);
 
@@ -299,7 +309,7 @@ public class InCallActivity extends AppCompatActivity {
         }
         tvCallerStatus.setText(statusText);
 
-        String initialChar = notEmpty(company) ? String.valueOf(company.charAt(0)).toUpperCase() : "R";
+        String initialChar = notEmpty(title) ? String.valueOf(title.charAt(0)).toUpperCase() : "?";
         tvAvatarLetter.setText(initialChar);
         int[] avatarColors = {0xFF6366F1, 0xFF10B981, 0xFF3B82F6, 0xFF8B5CF6, 0xFFEC4899, 0xFFF59E0B, 0xFF14B8A6};
         int colorIndex = Math.abs(title.hashCode()) % avatarColors.length;
@@ -552,7 +562,8 @@ public class InCallActivity extends AppCompatActivity {
                 long targetJobId = jobCallId;
 
                 if (targetJobId == -1) {
-                    String leadCompany = !companyVal.isEmpty() ? companyVal : "Unknown Recruiter";
+                    String leadCompany = !companyVal.isEmpty() ? companyVal
+                            : (notEmpty(contactName) ? contactName : "Unsaved Number");
                     JobCall newLead = new JobCall(phoneNumber, leadCompany, selectedRound, "", noteText, 0, System.currentTimeMillis());
                     newLead.setRecruiterName(nameVal);
                     newLead.setExpectedCtc(ctcVal);
