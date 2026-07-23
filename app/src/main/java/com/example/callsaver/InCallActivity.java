@@ -49,6 +49,10 @@ public class InCallActivity extends AppCompatActivity {
     private long jobCallId;
     private String recruiter;
     private String contactName;
+    // True when this number is a plain saved phone-contact with no recruiter/job-lead
+    // data of its own - no point showing the notes/skills tracker UI for a friend or
+    // family member, so we hide it and just show name + number.
+    private boolean isPersonalContact;
     // When true, this screen is opened outside a live call (from the post-call
     // notification, or later from Tracker/Upcoming) purely to review/log details -
     // so it hides the call controls and opens the capture form directly, and must
@@ -64,6 +68,22 @@ public class InCallActivity extends AppCompatActivity {
     private TextView tvSpeakerLabel;
     private ImageView btnToggleNote;
     private View llOverlayEditPanel;
+
+    // Note-editor fields, promoted to instance state so notes can auto-save (debounced
+    // while typing, and immediately when the call ends / screen is destroyed) instead
+    // of requiring an explicit Save tap that's easy to miss before a call disconnects.
+    private EditText etOverlayNoteInput;
+    private EditText etOverlayName;
+    private EditText etOverlayCompany;
+    private EditText etOverlayExpectedCtc;
+    private EditText etOverlayNextCall;
+    private Spinner spinnerOverlayRound;
+    private TextView tvNotesTimelineField;
+    private TextView tvCallerStatusField;
+    private int prefillRoundPosition = -1;
+    private String lastAutoSavedNoteText = "";
+    private final Handler autoSaveHandler = new Handler(Looper.getMainLooper());
+    private final Runnable autoSaveRunnable = () -> persistNoteAndDetails(false);
 
     private final Handler timerHandler = new Handler(Looper.getMainLooper());
     private long callStartElapsedMs = -1;
@@ -143,6 +163,11 @@ public class InCallActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        // The call can end (and this screen auto-close via finishIfOpen) at any moment -
+        // flush whatever's in the note editor right now instead of losing it because the
+        // user hadn't tapped Save yet.
+        autoSaveHandler.removeCallbacks(autoSaveRunnable);
+        if (!isPersonalContact) persistNoteAndDetails(false);
         super.onDestroy();
         if (instance == this) instance = null;
         timerHandler.removeCallbacks(timerRunnable);
@@ -245,6 +270,10 @@ public class InCallActivity extends AppCompatActivity {
                 llOverlayEditPanel.setVisibility(visible ? View.GONE : View.VISIBLE);
             });
         }
+        if (isPersonalContact) {
+            View toggleNoteColumn = findViewById(R.id.ll_toggle_note_column);
+            if (toggleNoteColumn != null) toggleNoteColumn.setVisibility(View.GONE);
+        }
     }
 
     private void updateMuteSpeakerUi() {
@@ -285,8 +314,15 @@ public class InCallActivity extends AppCompatActivity {
             contactName = TrackerFragment.getContactNameByNumber(this, phoneNumber);
         }
 
+        // A plain saved phone-contact with no recruiter/job-lead data of its own -
+        // no notes/skills tracker for a friend or family member, just name + number.
+        isPersonalContact = jobCallId == -1 && notEmpty(contactName)
+                && !notEmpty(candidateName) && !notEmpty(company) && !notEmpty(recruiter);
+
         String title;
-        if (notEmpty(candidateName) && notEmpty(company)) {
+        if (isPersonalContact) {
+            title = contactName.trim();
+        } else if (notEmpty(candidateName) && notEmpty(company)) {
             title = candidateName.trim() + " @ " + company.trim();
         } else if (notEmpty(company) && notEmpty(recruiter)) {
             title = recruiter.trim() + " @ " + company.trim();
@@ -303,9 +339,18 @@ public class InCallActivity extends AppCompatActivity {
         }
         tvCallerName.setText(title);
 
-        String statusText = notEmpty(roundStatus) ? roundStatus : "First time";
-        if (notEmpty(appliedRole)) {
-            statusText += " - " + appliedRole.trim() + " role";
+        // Always surface the raw number too, next to whatever status/round info we have.
+        String statusText;
+        if (isPersonalContact) {
+            statusText = notEmpty(phoneNumber) ? phoneNumber : "";
+        } else {
+            statusText = notEmpty(roundStatus) ? roundStatus : "First time";
+            if (notEmpty(appliedRole)) {
+                statusText += " - " + appliedRole.trim() + " role";
+            }
+            if (notEmpty(phoneNumber)) {
+                statusText += "  •  " + phoneNumber;
+            }
         }
         tvCallerStatus.setText(statusText);
 
@@ -323,6 +368,14 @@ public class InCallActivity extends AppCompatActivity {
     }
 
     private void bindNotesAndSkills() {
+        if (isPersonalContact) {
+            View notesCard = findViewById(R.id.ll_overlay_notes_card);
+            if (notesCard != null) notesCard.setVisibility(View.GONE);
+            View skillsCard = findViewById(R.id.ll_overlay_skills_match_container);
+            if (skillsCard != null) skillsCard.setVisibility(View.GONE);
+            return;
+        }
+
         TextView tvNotesTimeline = findViewById(R.id.tv_overlay_notes);
         android.widget.LinearLayout llCollapsedNotes = findViewById(R.id.ll_overlay_collapsed_notes);
         android.widget.LinearLayout llExpandedNotes = findViewById(R.id.ll_overlay_expanded_notes);
@@ -462,13 +515,15 @@ public class InCallActivity extends AppCompatActivity {
     }
 
     private void bindNoteEditor(TextView tvNotesTimeline, TextView tvCallerStatus) {
-        EditText etOverlayNoteInput = findViewById(R.id.et_overlay_note_input);
-        EditText etOverlayName = findViewById(R.id.et_overlay_name);
-        EditText etOverlayCompany = findViewById(R.id.et_overlay_company);
-        EditText etOverlayExpectedCtc = findViewById(R.id.et_overlay_expected_ctc);
-        EditText etOverlayNextCall = findViewById(R.id.et_overlay_next_call);
+        tvNotesTimelineField = tvNotesTimeline;
+        tvCallerStatusField = tvCallerStatus;
+        etOverlayNoteInput = findViewById(R.id.et_overlay_note_input);
+        etOverlayName = findViewById(R.id.et_overlay_name);
+        etOverlayCompany = findViewById(R.id.et_overlay_company);
+        etOverlayExpectedCtc = findViewById(R.id.et_overlay_expected_ctc);
+        etOverlayNextCall = findViewById(R.id.et_overlay_next_call);
         TextInputLayout tilOverlayNextCall = findViewById(R.id.til_overlay_next_call);
-        Spinner spinnerOverlayRound = findViewById(R.id.spinner_overlay_round);
+        spinnerOverlayRound = findViewById(R.id.spinner_overlay_round);
         View btnOverlayCancelNote = findViewById(R.id.btn_overlay_cancel_note);
         View btnOverlaySaveNote = findViewById(R.id.btn_overlay_save_note);
 
@@ -506,7 +561,8 @@ public class InCallActivity extends AppCompatActivity {
                 }
             }
         }
-        final int prefillRoundPosition = spinnerOverlayRound != null ? spinnerOverlayRound.getSelectedItemPosition() : -1;
+        prefillRoundPosition = spinnerOverlayRound != null ? spinnerOverlayRound.getSelectedItemPosition() : -1;
+        lastAutoSavedNoteText = "";
 
         if (btnOverlayCancelNote != null && llOverlayEditPanel != null) {
             btnOverlayCancelNote.setOnClickListener(v -> {
@@ -543,118 +599,156 @@ public class InCallActivity extends AppCompatActivity {
         if (chipFulltime != null) chipFulltime.setOnClickListener(chipClickListener);
         if (chipInterested != null) chipInterested.setOnClickListener(chipClickListener);
 
+        if (etOverlayNoteInput != null) {
+            etOverlayNoteInput.addTextChangedListener(new android.text.TextWatcher() {
+                @Override
+                public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+                @Override
+                public void onTextChanged(CharSequence s, int start, int before, int count) {
+                    autoSaveHandler.removeCallbacks(autoSaveRunnable);
+                    autoSaveHandler.postDelayed(autoSaveRunnable, 1200);
+                }
+
+                @Override
+                public void afterTextChanged(android.text.Editable s) {}
+            });
+        }
+
         if (btnOverlaySaveNote != null && llOverlayEditPanel != null && etOverlayNoteInput != null) {
             btnOverlaySaveNote.setOnClickListener(v -> {
-                String noteText = etOverlayNoteInput.getText().toString().trim();
-                String selectedRound = spinnerOverlayRound != null && spinnerOverlayRound.getSelectedItem() != null
-                        ? spinnerOverlayRound.getSelectedItem().toString() : "First time";
-                // The user explicitly picking a round in this dropdown always wins over
-                // whatever the AI later infers from the note text.
-                boolean userChangedRound = spinnerOverlayRound != null
-                        && spinnerOverlayRound.getSelectedItemPosition() != prefillRoundPosition;
-
-                String nameVal = etOverlayName != null ? etOverlayName.getText().toString().trim() : "";
-                String companyVal = etOverlayCompany != null ? etOverlayCompany.getText().toString().trim() : "";
-                String ctcVal = etOverlayExpectedCtc != null ? etOverlayExpectedCtc.getText().toString().trim() : "";
-                String nextCallVal = etOverlayNextCall != null ? etOverlayNextCall.getText().toString().trim() : "";
-
-                DatabaseHelper db = new DatabaseHelper(this);
-                long targetJobId = jobCallId;
-
-                if (targetJobId == -1) {
-                    String leadCompany = !companyVal.isEmpty() ? companyVal
-                            : (notEmpty(contactName) ? contactName : "Unsaved Number");
-                    JobCall newLead = new JobCall(phoneNumber, leadCompany, selectedRound, "", noteText, 0, System.currentTimeMillis());
-                    newLead.setRecruiterName(nameVal);
-                    newLead.setExpectedCtc(ctcVal);
-                    newLead.setTentativeSchedule(nextCallVal);
-                    targetJobId = db.insertJobCall(newLead);
-                    jobCallId = targetJobId;
-                    company = leadCompany;
-                    recruiter = nameVal;
-                } else {
-                    JobCall current = db.getJobCallById(targetJobId);
-                    if (current != null) {
-                        if (!nameVal.isEmpty()) current.setRecruiterName(nameVal);
-                        if (!companyVal.isEmpty()) current.setCompanyName(companyVal);
-                        current.setExpectedCtc(ctcVal);
-                        current.setTentativeSchedule(nextCallVal);
-                        current.setRoundStatus(selectedRound);
-                        db.updateJobCall(current);
-                        company = current.getCompanyName();
-                        recruiter = current.getRecruiterName();
-                    } else {
-                        db.updateRoundStatus(targetJobId, selectedRound);
-                    }
-                    if (!noteText.isEmpty()) {
-                        db.insertNote(targetJobId, noteText, System.currentTimeMillis());
-                    }
-                    db.refreshNotesPreview(targetJobId);
-                }
-
-                if (!noteText.isEmpty()) {
-                    final long finalJobId = targetJobId;
-                    OpenAiClient.extractFields(this, noteText, new OpenAiClient.OpenAiCallback() {
-                        @Override
-                        public void onSuccess(org.json.JSONObject result) {
-                            try {
-                                JobCall existingCall = db.getJobCallById(finalJobId);
-                                if (existingCall != null) {
-                                    String sched = result.optString("tentative_schedule", "").trim();
-                                    if (!sched.isEmpty() && nextCallVal.isEmpty()) {
-                                        existingCall.setTentativeSchedule(sched);
-                                    }
-                                    if (!userChangedRound) {
-                                        String round = OpenAiClient.normalizeRoundStatus(result.optString("present_round", ""), selectedRound);
-                                        if (OpenAiClient.shouldUpdateRoundStatus(existingCall.getRoundStatus(), round)) {
-                                            existingCall.setRoundStatus(round);
-                                        }
-                                    }
-                                    String agenda = result.optString("main_agenda", "").trim();
-                                    if (!agenda.isEmpty()) existingCall.setMainAgenda(agenda);
-                                    // Fill-if-blank: never overwrite what the user explicitly typed/picked.
-                                    String ctc = result.optString("expected_ctc", "").trim();
-                                    if (!ctc.isEmpty() && existingCall.getExpectedCtc().isEmpty()) existingCall.setExpectedCtc(ctc);
-                                    String wm = result.optString("work_mode", "").trim();
-                                    if (!wm.isEmpty() && existingCall.getWorkMode().isEmpty()) existingCall.setWorkMode(wm);
-                                    String et = result.optString("employment_type", "").trim();
-                                    if (!et.isEmpty() && existingCall.getEmploymentType().isEmpty()) existingCall.setEmploymentType(et);
-                                    db.updateJobCall(existingCall);
-                                    FollowUpNotifier.checkAndNotify(InCallActivity.this);
-                                }
-                            } catch (Exception e) {
-                                e.printStackTrace();
-                            }
-                        }
-
-                        @Override
-                        public void onError(String error) {
-                        }
-                    });
-                }
-
-                List<CallNote> freshNotesList = db.getNotesForJob(targetJobId);
-                if (!freshNotesList.isEmpty()) {
-                    StringBuilder sb = new StringBuilder();
-                    int count = 0;
-                    for (CallNote note : freshNotesList) {
-                        if (count >= 5) break;
-                        count++;
-                        sb.append("• ").append(note.note).append("\n");
-                    }
-                    if (sb.length() > 0) sb.setLength(sb.length() - 1);
-                    tvNotesTimeline.setText(sb.toString());
-                }
-                tvCallerStatus.setText("Stage: " + selectedRound);
-                bindCallerInfo();
-
-                llOverlayEditPanel.setVisibility(View.GONE);
-                etOverlayNoteInput.setText("");
-                Toast.makeText(this, "Saved!", Toast.LENGTH_SHORT).show();
-
-                // In review mode there's no live call to return to - close after saving.
-                if (reviewMode) finish();
+                autoSaveHandler.removeCallbacks(autoSaveRunnable);
+                persistNoteAndDetails(true);
             });
+        }
+    }
+
+    /**
+     * Saves whatever is currently in the note-editor fields. Called both from the Save
+     * button (with UI feedback + closes the panel) and silently - debounced while typing,
+     * and immediately when the call ends - so notes are never lost just because the call
+     * disconnected before the user tapped Save.
+     */
+    private void persistNoteAndDetails(boolean showFeedback) {
+        if (etOverlayNoteInput == null) return;
+        String noteText = etOverlayNoteInput.getText().toString().trim();
+        String nameVal = etOverlayName != null ? etOverlayName.getText().toString().trim() : "";
+        String companyVal = etOverlayCompany != null ? etOverlayCompany.getText().toString().trim() : "";
+        String ctcVal = etOverlayExpectedCtc != null ? etOverlayExpectedCtc.getText().toString().trim() : "";
+        String nextCallVal = etOverlayNextCall != null ? etOverlayNextCall.getText().toString().trim() : "";
+        String selectedRound = spinnerOverlayRound != null && spinnerOverlayRound.getSelectedItem() != null
+                ? spinnerOverlayRound.getSelectedItem().toString() : "First time";
+
+        // Nothing typed and nothing to update - skip silent auto-saves so we don't create
+        // an empty lead just because the panel was opened and closed.
+        boolean hasAnyDetail = !noteText.isEmpty() || !nameVal.isEmpty() || !companyVal.isEmpty()
+                || !ctcVal.isEmpty() || !nextCallVal.isEmpty();
+        if (!showFeedback && !hasAnyDetail) return;
+        // Nothing changed since the last auto-save - avoid inserting duplicate note rows.
+        if (!showFeedback && noteText.equals(lastAutoSavedNoteText) && jobCallId != -1) return;
+
+        // The user explicitly picking a round in this dropdown always wins over
+        // whatever the AI later infers from the note text.
+        boolean userChangedRound = spinnerOverlayRound != null
+                && spinnerOverlayRound.getSelectedItemPosition() != prefillRoundPosition;
+
+        DatabaseHelper db = new DatabaseHelper(this);
+        long targetJobId = jobCallId;
+
+        if (targetJobId == -1) {
+            String leadCompany = !companyVal.isEmpty() ? companyVal
+                    : (notEmpty(contactName) ? contactName : "Unsaved Number");
+            JobCall newLead = new JobCall(phoneNumber, leadCompany, selectedRound, "", noteText, 0, System.currentTimeMillis());
+            newLead.setRecruiterName(nameVal);
+            newLead.setExpectedCtc(ctcVal);
+            newLead.setTentativeSchedule(nextCallVal);
+            targetJobId = db.insertJobCall(newLead);
+            jobCallId = targetJobId;
+            company = leadCompany;
+            recruiter = nameVal;
+        } else {
+            JobCall current = db.getJobCallById(targetJobId);
+            if (current != null) {
+                if (!nameVal.isEmpty()) current.setRecruiterName(nameVal);
+                if (!companyVal.isEmpty()) current.setCompanyName(companyVal);
+                current.setExpectedCtc(ctcVal);
+                current.setTentativeSchedule(nextCallVal);
+                current.setRoundStatus(selectedRound);
+                db.updateJobCall(current);
+                company = current.getCompanyName();
+                recruiter = current.getRecruiterName();
+            } else {
+                db.updateRoundStatus(targetJobId, selectedRound);
+            }
+            if (!noteText.isEmpty() && !noteText.equals(lastAutoSavedNoteText)) {
+                db.insertNote(targetJobId, noteText, System.currentTimeMillis());
+            }
+            db.refreshNotesPreview(targetJobId);
+        }
+        lastAutoSavedNoteText = noteText;
+
+        if (!noteText.isEmpty()) {
+            final long finalJobId = targetJobId;
+            OpenAiClient.extractFields(this, noteText, new OpenAiClient.OpenAiCallback() {
+                @Override
+                public void onSuccess(org.json.JSONObject result) {
+                    try {
+                        JobCall existingCall = db.getJobCallById(finalJobId);
+                        if (existingCall != null) {
+                            String sched = result.optString("tentative_schedule", "").trim();
+                            if (!sched.isEmpty() && nextCallVal.isEmpty()) {
+                                existingCall.setTentativeSchedule(sched);
+                            }
+                            if (!userChangedRound) {
+                                String round = OpenAiClient.normalizeRoundStatus(result.optString("present_round", ""), selectedRound);
+                                if (OpenAiClient.shouldUpdateRoundStatus(existingCall.getRoundStatus(), round)) {
+                                    existingCall.setRoundStatus(round);
+                                }
+                            }
+                            String agenda = result.optString("main_agenda", "").trim();
+                            if (!agenda.isEmpty()) existingCall.setMainAgenda(agenda);
+                            // Fill-if-blank: never overwrite what the user explicitly typed/picked.
+                            String ctc = result.optString("expected_ctc", "").trim();
+                            if (!ctc.isEmpty() && existingCall.getExpectedCtc().isEmpty()) existingCall.setExpectedCtc(ctc);
+                            String wm = result.optString("work_mode", "").trim();
+                            if (!wm.isEmpty() && existingCall.getWorkMode().isEmpty()) existingCall.setWorkMode(wm);
+                            String et = result.optString("employment_type", "").trim();
+                            if (!et.isEmpty() && existingCall.getEmploymentType().isEmpty()) existingCall.setEmploymentType(et);
+                            db.updateJobCall(existingCall);
+                            FollowUpNotifier.checkAndNotify(InCallActivity.this);
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                @Override
+                public void onError(String error) {
+                }
+            });
+        }
+
+        List<CallNote> freshNotesList = db.getNotesForJob(targetJobId);
+        if (!freshNotesList.isEmpty() && tvNotesTimelineField != null) {
+            StringBuilder sb = new StringBuilder();
+            int count = 0;
+            for (CallNote note : freshNotesList) {
+                if (count >= 5) break;
+                count++;
+                sb.append("• ").append(note.note).append("\n");
+            }
+            if (sb.length() > 0) sb.setLength(sb.length() - 1);
+            tvNotesTimelineField.setText(sb.toString());
+        }
+        if (tvCallerStatusField != null) tvCallerStatusField.setText("Stage: " + selectedRound);
+        bindCallerInfo();
+
+        if (showFeedback) {
+            if (llOverlayEditPanel != null) llOverlayEditPanel.setVisibility(View.GONE);
+            etOverlayNoteInput.setText("");
+            Toast.makeText(this, "Saved!", Toast.LENGTH_SHORT).show();
+            // In review mode there's no live call to return to - close after saving.
+            if (reviewMode) finish();
         }
     }
 

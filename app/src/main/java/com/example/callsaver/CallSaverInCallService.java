@@ -122,7 +122,14 @@ public class CallSaverInCallService extends InCallService {
 
         DatabaseHelper db = new DatabaseHelper(this);
         JobCall matchedCall = db.getJobCallByNumber(this, phoneNumber);
-        String label = resolveDisplayLabel(phoneNumber, matchedCall);
+
+        // Plain saved phone-contact with no recruiter/job-lead data - nothing to log.
+        if (matchedCall == null) {
+            String contactOnly = TrackerFragment.getContactNameByNumber(this, phoneNumber);
+            if (contactOnly != null && !contactOnly.isEmpty()) return;
+        }
+
+        String label = resolveNameAndNumber(phoneNumber, matchedCall);
 
         Intent tapIntent = new Intent(this, InCallActivity.class);
         tapIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
@@ -204,8 +211,23 @@ public class CallSaverInCallService extends InCallService {
         return phoneNumber.isEmpty() ? "Unknown" : phoneNumber;
     }
 
+    /** Name (if any) plus the raw number, for consistent "who's calling" text everywhere. */
+    private String resolveNameAndNumber(String phoneNumber, JobCall matchedCall) {
+        String label = resolveDisplayLabel(phoneNumber, matchedCall);
+        if (label.equals(phoneNumber) || phoneNumber.isEmpty()) return label;
+        return label + " • " + phoneNumber;
+    }
+
     private void launchInCallActivity(Call call) {
         startActivity(buildInCallIntent(call));
+    }
+
+    /** Used by CallNotificationActionReceiver so tapping "Answer" in the notification
+     *  actually brings the full-screen call UI to front, not just answers silently. */
+    public static void bringInCallUiToFront() {
+        if (instance != null && activeCall != null) {
+            instance.launchInCallActivity(activeCall);
+        }
     }
 
     private void showIncomingCallNotification(Call call) {
@@ -222,7 +244,7 @@ public class CallSaverInCallService extends InCallService {
         String phoneNumber = resolvePhoneNumber(call);
         DatabaseHelper db = new DatabaseHelper(this);
         JobCall matchedCall = phoneNumber.isEmpty() ? null : db.getJobCallByNumber(this, phoneNumber);
-        String title = phoneNumber.isEmpty() ? "Incoming call" : resolveDisplayLabel(phoneNumber, matchedCall);
+        String title = phoneNumber.isEmpty() ? "Incoming call" : resolveNameAndNumber(phoneNumber, matchedCall);
         String content = matchedCall != null && matchedCall.getRoundStatus() != null && !matchedCall.getRoundStatus().isEmpty()
                 ? "Incoming call - " + matchedCall.getRoundStatus() : "Incoming call";
 
@@ -286,7 +308,7 @@ public class CallSaverInCallService extends InCallService {
         String phoneNumber = resolvePhoneNumber(call);
         DatabaseHelper db = new DatabaseHelper(this);
         JobCall matchedCall = phoneNumber.isEmpty() ? null : db.getJobCallByNumber(this, phoneNumber);
-        String label = resolveDisplayLabel(phoneNumber, matchedCall);
+        String label = resolveNameAndNumber(phoneNumber, matchedCall);
 
         Intent tapIntent = buildInCallIntent(call);
         int piFlags = PendingIntent.FLAG_UPDATE_CURRENT;

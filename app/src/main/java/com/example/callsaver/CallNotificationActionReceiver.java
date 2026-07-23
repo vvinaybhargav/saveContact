@@ -21,6 +21,7 @@ public class CallNotificationActionReceiver extends BroadcastReceiver {
         if (intent == null) return;
         if (ACTION_ANSWER.equals(intent.getAction())) {
             CallSaverInCallService.answer();
+            CallSaverInCallService.bringInCallUiToFront();
         } else if (ACTION_DECLINE.equals(intent.getAction())) {
             CallSaverInCallService.reject();
         }
