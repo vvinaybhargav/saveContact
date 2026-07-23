@@ -1513,10 +1513,6 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         new AlertDialog.Builder(requireContext())
                 .setTitle("Select Call Recording File")
                 .setItems(fileNames, (dialog, which) -> {
-                    File selectedFile = audioFiles.get(which);
-                    
-                    // Show feedback
-                    Toast.makeText(requireContext(), "⌛ Transcribing selected file: " + selectedFile.getName(), Toast.LENGTH_LONG).show();
                     String notesText = etNotesField.getText().toString().trim();
                     if (notesText.isEmpty()) {
                         Toast.makeText(requireContext(), "Please enter notes first to analyze.", Toast.LENGTH_SHORT).show();
@@ -1530,154 +1526,135 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                     }
                     Toast.makeText(requireContext(), "✨ Running AI analysis...", Toast.LENGTH_SHORT).show();
                     OpenAiClient.extractFields(requireContext(), notesText, new OpenAiClient.OpenAiCallback() {
-                                @Override
-                                public void onSuccess(JSONObject result) {
-                                    if (!isAdded()) return;
-                                    try {
-                                         String candidate = optClean(result, "candidate_name", "");
-                                         if (!candidate.isEmpty() && activeEtCandidateName != null) {
-                                             String current = activeEtCandidateName.getText().toString().trim();
-                                             if (current.isEmpty()) {
-                                                 activeEtCandidateName.setText(candidate);
-                                             }
-                                         }
-                                         String company = optClean(result, "company_name", "");
-                                         if (!company.isEmpty() && activeEtCompany != null) {
-                                             String current = activeEtCompany.getText().toString().trim();
-                                             if (current.isEmpty()) {
-                                                 activeEtCompany.setText(company);
-                                             }
-                                         }
-                                         String role = optClean(result, "applied_role", "");
-                                         if (!role.isEmpty() && activeEtAppliedRole != null) {
-                                             String current = activeEtAppliedRole.getText().toString().trim();
-                                             if (current.isEmpty()) {
-                                                 activeEtAppliedRole.setText(role);
-                                             }
-                                         }
-                                         String round = optClean(result, "present_round", "");
-                                         if (!round.isEmpty() && activeSpinnerRound != null) {
-                                             setSpinnerSelection(activeSpinnerRound, round);
-                                         }
-                                         String schedule = optClean(result, "tentative_schedule", "");
-                                         if (!schedule.isEmpty() && activeEtTentativeSchedule != null) {
-                                             activeEtTentativeSchedule.setText(schedule);
-                                         }
-                                         String notice = optClean(result, "notice_period", "");
-                                         if (!notice.isEmpty() && activeEtNoticePeriod != null) {
-                                             activeEtNoticePeriod.setText(notice);
-                                         }
-                                         String agenda = optClean(result, "main_agenda", "");
-                                         if (!agenda.isEmpty() && activeEtMainAgenda != null) {
-                                             activeEtMainAgenda.setText(agenda);
-                                         }
-                                         String nextStepsVal = optClean(result, "next_steps", "");
-                                         if (!nextStepsVal.isEmpty() && activeEtNextSteps != null) {
-                                             activeEtNextSteps.setText(nextStepsVal);
-                                         }
-                                        
-                                        String notesFromPoints = "";
-                                        if (result.has("key_discussion_points")) {
-                                            JSONArray arr = result.getJSONArray("key_discussion_points");
-                                            StringBuilder sb = new StringBuilder();
-                                            for (int i = 0; i < arr.length(); i++) {
-                                                sb.append("• ").append(arr.getString(i)).append("\n");
-                                            }
-                                            notesFromPoints = sb.toString().trim();
-                                            if (activeEtNotes != null) {
-                                                activeEtNotes.setText(notesFromPoints);
-                                            }
-                                        }
-
-                                        // Auto-save straight to the DB, same as a real call - the user
-                                        // shouldn't have to also remember to tap Update after uploading a
-                                        // recording. Only possible for an existing lead (editCall != null);
-                                        // a brand-new lead still needs company/phone via Save.
-                                        if (autoSaveJobId != null && dbHelper != null) {
-                                            JobCall current = dbHelper.getJobCallById(autoSaveJobId);
-                                            if (current != null) {
-                                                if (!company.isEmpty() && current.getCompanyName().isEmpty()) current.setCompanyName(company);
-                                                if (!role.isEmpty() && current.getAppliedRole().isEmpty()) current.setAppliedRole(role);
-                                                if (!candidate.isEmpty() && current.getCandidateName().isEmpty()) current.setCandidateName(candidate);
-                                                if (!schedule.isEmpty()) current.setTentativeSchedule(schedule);
-                                                String normalizedRound = OpenAiClient.normalizeRoundStatus(round, current.getRoundStatus());
-                                                if (OpenAiClient.shouldUpdateRoundStatus(current.getRoundStatus(), normalizedRound)) {
-                                                    current.setRoundStatus(normalizedRound);
-                                                }
-                                                String sentimentComment = optClean(result, "sentiment_comment", "");
-                                                String userInterestsCsv = getContext() == null ? "" : getContext()
-                                                        .getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE)
-                                                        .getString("user_talking_points", "").trim();
-                                                String[] reconciled = SkillMatchUtils.reconcileWithInterests(userInterestsCsv,
-                                                        OpenAiClient.jsonArrayToCsv(result, "matching_skills"),
-                                                        OpenAiClient.jsonArrayToCsv(result, "not_matching_skills"));
-                                                if (!reconciled[0].isEmpty() || !reconciled[1].isEmpty()) {
-                                                    current.setMatchingSkills(SkillMatchUtils.mergeSkillListExcluding(
-                                                            current.getMatchingSkills(), reconciled[0], reconciled[1]));
-                                                    current.setNotMatchingSkills(SkillMatchUtils.mergeSkillListExcluding(
-                                                            current.getNotMatchingSkills(), reconciled[1], current.getMatchingSkills()));
-                                                }
-                                                dbHelper.updateJobCall(current);
-
-                                                String noteToSave = !notesFromPoints.isEmpty()
-                                                        ? notesFromPoints + " (AI Auto-transcribed)"
-                                                        : (!sentimentComment.isEmpty()
-                                                                ? "• " + sentimentComment + " (AI Auto-transcribed)"
-                                                                : "• " + text.trim() + " (AI Auto-transcribed, raw)");
-                                                if (!notesFromPoints.isEmpty() && !sentimentComment.isEmpty()) {
-                                                    noteToSave = "• " + sentimentComment + "\n" + noteToSave;
-                                                }
-                                                dbHelper.insertNote(autoSaveJobId, noteToSave, System.currentTimeMillis(), DatabaseHelper.NOTE_SOURCE_MANUAL);
-
-                                                // Clear the notes field so a later tap on Update doesn't
-                                                // insert this same text again as a second note.
-                                                if (activeEtNotes != null) activeEtNotes.setText("");
-                                                if (activeEtTentativeSchedule != null && !schedule.isEmpty()) {
-                                                    activeEtTentativeSchedule.setText(current.getTentativeSchedule());
-                                                }
-                                                if (activeSpinnerRound != null) {
-                                                    setSpinnerSelection(activeSpinnerRound, current.getRoundStatus());
-                                                }
-                                                populateTimeline(timelineContainer, timelineLabel, autoSaveJobId);
-                                                populateSkillsMatch(skillsSection, tvSkillsMatchingRef, tvSkillsNotMatchingRef, current);
-                                                refreshDashboardList();
-                                                Toast.makeText(requireContext(), "Call logged automatically!", Toast.LENGTH_SHORT).show();
-                                            }
-                                        } else {
-                                            Toast.makeText(requireContext(), "AI fields updated successfully!", Toast.LENGTH_SHORT).show();
-                                        }
-                                    } catch (Exception e) {
-                                        DebugLogger.log(requireContext(), "Failed to parse OpenAI fields in dialog: " + e.getMessage());
-                                        activeDialogManualUploadAIFailed = true;
-                                        etNotesField.setText(text);
-                                        Toast.makeText(requireContext(), "AI analysis failed. Pre-filled raw transcription.", Toast.LENGTH_LONG).show();
-                                    } finally {
-                                        if (activeLlTranscriptionProgress != null) {
-                                            activeLlTranscriptionProgress.setVisibility(View.GONE);
-                                        }
+                        @Override
+                        public void onSuccess(JSONObject result) {
+                            if (!isAdded()) return;
+                            try {
+                                 String candidate = optClean(result, "candidate_name", "");
+                                 if (!candidate.isEmpty() && activeEtCandidateName != null) {
+                                     String current = activeEtCandidateName.getText().toString().trim();
+                                     if (current.isEmpty()) {
+                                         activeEtCandidateName.setText(candidate);
+                                     }
+                                 }
+                                 String company = optClean(result, "company_name", "");
+                                 if (!company.isEmpty() && activeEtCompany != null) {
+                                     String current = activeEtCompany.getText().toString().trim();
+                                     if (current.isEmpty()) {
+                                         activeEtCompany.setText(company);
+                                     }
+                                 }
+                                 String role = optClean(result, "applied_role", "");
+                                 if (!role.isEmpty() && activeEtAppliedRole != null) {
+                                     String current = activeEtAppliedRole.getText().toString().trim();
+                                     if (current.isEmpty()) {
+                                         activeEtAppliedRole.setText(role);
+                                     }
+                                 }
+                                 String round = optClean(result, "present_round", "");
+                                 if (!round.isEmpty() && activeSpinnerRound != null) {
+                                     setSpinnerSelection(activeSpinnerRound, round);
+                                 }
+                                 String schedule = optClean(result, "tentative_schedule", "");
+                                 if (!schedule.isEmpty() && activeEtTentativeSchedule != null) {
+                                     activeEtTentativeSchedule.setText(schedule);
+                                 }
+                                 String notice = optClean(result, "notice_period", "");
+                                 if (!notice.isEmpty() && activeEtNoticePeriod != null) {
+                                     activeEtNoticePeriod.setText(notice);
+                                 }
+                                 String agenda = optClean(result, "main_agenda", "");
+                                 if (!agenda.isEmpty() && activeEtMainAgenda != null) {
+                                     activeEtMainAgenda.setText(agenda);
+                                 }
+                                 String nextStepsVal = optClean(result, "next_steps", "");
+                                 if (!nextStepsVal.isEmpty() && activeEtNextSteps != null) {
+                                     activeEtNextSteps.setText(nextStepsVal);
+                                 }
+                                
+                                String notesFromPoints = "";
+                                if (result.has("key_discussion_points")) {
+                                    JSONArray arr = result.getJSONArray("key_discussion_points");
+                                    StringBuilder sb = new StringBuilder();
+                                    for (int i = 0; i < arr.length(); i++) {
+                                        sb.append("• ").append(arr.getString(i)).append("\n");
+                                    }
+                                    notesFromPoints = sb.toString().trim();
+                                    if (activeEtNotes != null) {
+                                        activeEtNotes.setText(notesFromPoints);
                                     }
                                 }
 
-                                @Override
-                                public void onError(String error) {
-                                    activeDialogManualUploadAIFailed = true;
-                                    if (activeLlTranscriptionProgress != null) {
-                                        activeLlTranscriptionProgress.setVisibility(View.GONE);
+                                if (autoSaveJobId != null && dbHelper != null) {
+                                    JobCall current = dbHelper.getJobCallById(autoSaveJobId);
+                                    if (current != null) {
+                                        if (!company.isEmpty() && current.getCompanyName().isEmpty()) current.setCompanyName(company);
+                                        if (!role.isEmpty() && current.getAppliedRole().isEmpty()) current.setAppliedRole(role);
+                                        if (!candidate.isEmpty() && current.getCandidateName().isEmpty()) current.setCandidateName(candidate);
+                                        if (!schedule.isEmpty()) current.setTentativeSchedule(schedule);
+                                        String normalizedRound = OpenAiClient.normalizeRoundStatus(round, current.getRoundStatus());
+                                        if (OpenAiClient.shouldUpdateRoundStatus(current.getRoundStatus(), normalizedRound)) {
+                                            current.setRoundStatus(normalizedRound);
+                                        }
+                                        String sentimentComment = optClean(result, "sentiment_comment", "");
+                                        String userInterestsCsv = getContext() == null ? "" : getContext()
+                                                .getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE)
+                                                .getString("user_talking_points", "").trim();
+                                        String[] reconciled = SkillMatchUtils.reconcileWithInterests(userInterestsCsv,
+                                                OpenAiClient.jsonArrayToCsv(result, "matching_skills"),
+                                                OpenAiClient.jsonArrayToCsv(result, "not_matching_skills"));
+                                        if (!reconciled[0].isEmpty() || !reconciled[1].isEmpty()) {
+                                            current.setMatchingSkills(SkillMatchUtils.mergeSkillListExcluding(
+                                                    current.getMatchingSkills(), reconciled[0], reconciled[1]));
+                                            current.setNotMatchingSkills(SkillMatchUtils.mergeSkillListExcluding(
+                                                    current.getNotMatchingSkills(), reconciled[1], current.getMatchingSkills()));
+                                        }
+                                        dbHelper.updateJobCall(current);
+
+                                        String noteToSave = !notesFromPoints.isEmpty()
+                                                ? notesFromPoints
+                                                : (!sentimentComment.isEmpty()
+                                                        ? "• " + sentimentComment
+                                                        : "• " + notesText);
+                                        if (!notesFromPoints.isEmpty() && !sentimentComment.isEmpty()) {
+                                            noteToSave = "• " + sentimentComment + "\n" + noteToSave;
+                                        }
+                                        dbHelper.insertNote(autoSaveJobId, noteToSave, System.currentTimeMillis(), DatabaseHelper.NOTE_SOURCE_MANUAL);
+
+                                        if (activeEtNotes != null) activeEtNotes.setText("");
+                                        if (activeEtTentativeSchedule != null && !schedule.isEmpty()) {
+                                            activeEtTentativeSchedule.setText(current.getTentativeSchedule());
+                                        }
+                                        if (activeSpinnerRound != null) {
+                                            setSpinnerSelection(activeSpinnerRound, current.getRoundStatus());
+                                        }
+                                        populateTimeline(timelineContainer, timelineLabel, autoSaveJobId);
+                                        populateSkillsMatch(skillsSection, tvSkillsMatchingRef, tvSkillsNotMatchingRef, current);
+                                        refreshDashboardList();
+                                        Toast.makeText(requireContext(), "Call logged automatically!", Toast.LENGTH_SHORT).show();
                                     }
-                                    if (!isAdded()) return;
-                                    etNotesField.setText(text);
-                                    Toast.makeText(requireContext(), "AI analysis failed: " + error + ". Pre-filled raw.", Toast.LENGTH_LONG).show();
+                                } else {
+                                    Toast.makeText(requireContext(), "AI fields updated successfully!", Toast.LENGTH_SHORT).show();
                                 }
-                            });
+                            } catch (Exception e) {
+                                DebugLogger.log(requireContext(), "Failed to parse OpenAI fields in dialog: " + e.getMessage());
+                                activeDialogManualUploadAIFailed = true;
+                                Toast.makeText(requireContext(), "AI analysis failed.", Toast.LENGTH_LONG).show();
+                            } finally {
+                                if (activeLlTranscriptionProgress != null) {
+                                    activeLlTranscriptionProgress.setVisibility(View.GONE);
+                                }
+                            }
                         }
 
                         @Override
                         public void onError(String error) {
+                            activeDialogManualUploadAIFailed = true;
                             if (activeLlTranscriptionProgress != null) {
                                 activeLlTranscriptionProgress.setVisibility(View.GONE);
                             }
                             if (isAdded()) {
-                                Toast.makeText(requireContext(), "Error transcribing: " + error, Toast.LENGTH_LONG).show();
+                                Toast.makeText(requireContext(), "AI analysis failed: " + error, Toast.LENGTH_LONG).show();
                             }
                         }
                     });
