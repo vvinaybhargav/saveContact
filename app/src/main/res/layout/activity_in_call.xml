@@ -72,6 +72,21 @@
             android:maxLines="1"
             android:ellipsize="end" />
 
+        <HorizontalScrollView
+            android:id="@+id/hsv_overlay_tags"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:scrollbars="none"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:id="@+id/ll_overlay_tags_row"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal" />
+        </HorizontalScrollView>
+
         <TextView
             android:id="@+id/tv_call_timer"
             android:layout_width="wrap_content"
@@ -313,30 +328,6 @@
                         android:orientation="horizontal">
 
                         <com.google.android.material.chip.Chip
-                            android:id="@+id/chip_preset_first_call"
-                            style="@style/Widget.MaterialComponents.Chip.Action"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginEnd="6dp"
-                            android:text="First Call"
-                            android:textColor="@color/white_constant"
-                            app:chipBackgroundColor="@color/glass_fill_strong"
-                            app:chipStrokeColor="@color/glass_stroke"
-                            app:chipStrokeWidth="1dp" />
-
-                        <com.google.android.material.chip.Chip
-                            android:id="@+id/chip_preset_next_round"
-                            style="@style/Widget.MaterialComponents.Chip.Action"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginEnd="6dp"
-                            android:text="Next round scheduled"
-                            android:textColor="@color/white_constant"
-                            app:chipBackgroundColor="@color/glass_fill_strong"
-                            app:chipStrokeColor="@color/glass_stroke"
-                            app:chipStrokeWidth="1dp" />
-
-                        <com.google.android.material.chip.Chip
                             android:id="@+id/chip_preset_role"
                             style="@style/Widget.MaterialComponents.Chip.Action"
                             android:layout_width="wrap_content"
@@ -361,18 +352,6 @@
                             app:chipStrokeWidth="1dp" />
 
                         <com.google.android.material.chip.Chip
-                            android:id="@+id/chip_preset_c2h"
-                            style="@style/Widget.MaterialComponents.Chip.Action"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginEnd="6dp"
-                            android:text="C2H"
-                            android:textColor="@color/white_constant"
-                            app:chipBackgroundColor="@color/glass_fill_strong"
-                            app:chipStrokeColor="@color/glass_stroke"
-                            app:chipStrokeWidth="1dp" />
-
-                        <com.google.android.material.chip.Chip
                             android:id="@+id/chip_preset_fulltime"
                             style="@style/Widget.MaterialComponents.Chip.Action"
                             android:layout_width="wrap_content"
@@ -389,7 +368,31 @@
                             style="@style/Widget.MaterialComponents.Chip.Action"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
+                            android:layout_marginEnd="6dp"
                             android:text="Interested"
+                            android:textColor="@color/white_constant"
+                            app:chipBackgroundColor="@color/glass_fill_strong"
+                            app:chipStrokeColor="@color/glass_stroke"
+                            app:chipStrokeWidth="1dp" />
+
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chip_preset_interview_scheduled"
+                            style="@style/Widget.MaterialComponents.Chip.Action"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginEnd="6dp"
+                            android:text="Interview Scheduled"
+                            android:textColor="@color/white_constant"
+                            app:chipBackgroundColor="@color/glass_fill_strong"
+                            app:chipStrokeColor="@color/glass_stroke"
+                            app:chipStrokeWidth="1dp" />
+
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chip_preset_round_cleared"
+                            style="@style/Widget.MaterialComponents.Chip.Action"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Round Cleared"
                             android:textColor="@color/white_constant"
                             app:chipBackgroundColor="@color/glass_fill_strong"
                             app:chipStrokeColor="@color/glass_stroke"

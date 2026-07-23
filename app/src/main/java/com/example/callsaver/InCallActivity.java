@@ -68,6 +68,7 @@ public class InCallActivity extends AppCompatActivity {
     private TextView tvSpeakerLabel;
     private ImageView btnToggleNote;
     private View llOverlayEditPanel;
+    private android.os.PowerManager.WakeLock proximityWakeLock;
 
     // Note-editor fields, promoted to instance state so notes can auto-save (debounced
     // while typing, and immediately when the call ends / screen is destroyed) instead
@@ -82,6 +83,9 @@ public class InCallActivity extends AppCompatActivity {
     private TextView tvCallerStatusField;
     private int prefillRoundPosition = -1;
     private String lastAutoSavedNoteText = "";
+    // Chip-picked quick facts (role/work-mode/status etc.) - stored as tags, not appended
+    // into the free-text note, and shown as their own boxes next to the call status.
+    private String tagsValue = "";
     private final Handler autoSaveHandler = new Handler(Looper.getMainLooper());
     private final Runnable autoSaveRunnable = () -> persistNoteAndDetails(false);
 
@@ -168,6 +172,7 @@ public class InCallActivity extends AppCompatActivity {
         // user hadn't tapped Save yet.
         autoSaveHandler.removeCallbacks(autoSaveRunnable);
         if (!isPersonalContact) persistNoteAndDetails(false);
+        releaseProximityLock();
         super.onDestroy();
         if (instance == this) instance = null;
         timerHandler.removeCallbacks(timerRunnable);
@@ -204,10 +209,34 @@ public class InCallActivity extends AppCompatActivity {
             stopTimer();
         } else if (state == Call.STATE_ACTIVE) {
             startTimerIfNeeded();
+            acquireProximityLock();
         } else if (state == Call.STATE_DISCONNECTED) {
             stopTimer();
+            releaseProximityLock();
         }
         updateMuteSpeakerUi();
+    }
+
+    /**
+     * FLAG_KEEP_SCREEN_ON (needed so the call screen doesn't dim/lock mid-call) also
+     * stops the normal "screen off near ear" behavior, so we drive it ourselves via the
+     * proximity wake lock while the call is actually connected/active.
+     */
+    private void acquireProximityLock() {
+        if (reviewMode || proximityWakeLock != null) return;
+        android.os.PowerManager pm = (android.os.PowerManager) getSystemService(POWER_SERVICE);
+        if (pm != null && pm.isWakeLockLevelSupported(android.os.PowerManager.PROXIMITY_SCREEN_OFF_WAKE_LOCK)) {
+            proximityWakeLock = pm.newWakeLock(android.os.PowerManager.PROXIMITY_SCREEN_OFF_WAKE_LOCK, "CallSaver:ProximityLock");
+            proximityWakeLock.setReferenceCounted(false);
+            proximityWakeLock.acquire();
+        }
+    }
+
+    private void releaseProximityLock() {
+        if (proximityWakeLock != null && proximityWakeLock.isHeld()) {
+            proximityWakeLock.release();
+        }
+        proximityWakeLock = null;
     }
 
     private void startTimerIfNeeded() {
@@ -534,6 +563,9 @@ public class InCallActivity extends AppCompatActivity {
         String prefillCtc = currentForPrefill != null ? currentForPrefill.getExpectedCtc() : "";
         String prefillNextCall = currentForPrefill != null ? currentForPrefill.getTentativeSchedule() : "";
         String prefillRound = currentForPrefill != null ? currentForPrefill.getRoundStatus() : roundStatus;
+        tagsValue = currentForPrefill != null && notEmpty(currentForPrefill.getTags()) ? currentForPrefill.getTags() : tags;
+        if (tagsValue == null) tagsValue = "";
+        renderTagsRow();
 
         if (etOverlayName != null) etOverlayName.setText(prefillName);
         if (etOverlayCompany != null) etOverlayCompany.setText(prefillCompany);
@@ -571,33 +603,26 @@ public class InCallActivity extends AppCompatActivity {
             });
         }
 
-        View chipFirstCall = findViewById(R.id.chip_preset_first_call);
-        View chipNextRound = findViewById(R.id.chip_preset_next_round);
         View chipRole = findViewById(R.id.chip_preset_role);
         View chipHybrid = findViewById(R.id.chip_preset_hybrid);
-        View chipC2h = findViewById(R.id.chip_preset_c2h);
         View chipFulltime = findViewById(R.id.chip_preset_fulltime);
         View chipInterested = findViewById(R.id.chip_preset_interested);
+        View chipInterviewScheduled = findViewById(R.id.chip_preset_interview_scheduled);
+        View chipRoundCleared = findViewById(R.id.chip_preset_round_cleared);
 
+        // Chip taps add a tag (shown as its own box next to the call status), never
+        // appended into the free-text note - these are quick facts, not notes.
         View.OnClickListener chipClickListener = v -> {
-            if (v instanceof com.google.android.material.chip.Chip && etOverlayNoteInput != null) {
-                String presetText = ((com.google.android.material.chip.Chip) v).getText().toString();
-                String curr = etOverlayNoteInput.getText().toString();
-                if (curr.trim().isEmpty()) {
-                    etOverlayNoteInput.setText(presetText);
-                } else {
-                    etOverlayNoteInput.setText(curr.trim() + " • " + presetText);
-                }
-                etOverlayNoteInput.setSelection(etOverlayNoteInput.getText().length());
+            if (v instanceof com.google.android.material.chip.Chip) {
+                addTag(((com.google.android.material.chip.Chip) v).getText().toString());
             }
         };
-        if (chipFirstCall != null) chipFirstCall.setOnClickListener(chipClickListener);
-        if (chipNextRound != null) chipNextRound.setOnClickListener(chipClickListener);
         if (chipRole != null) chipRole.setOnClickListener(chipClickListener);
         if (chipHybrid != null) chipHybrid.setOnClickListener(chipClickListener);
-        if (chipC2h != null) chipC2h.setOnClickListener(chipClickListener);
         if (chipFulltime != null) chipFulltime.setOnClickListener(chipClickListener);
         if (chipInterested != null) chipInterested.setOnClickListener(chipClickListener);
+        if (chipInterviewScheduled != null) chipInterviewScheduled.setOnClickListener(chipClickListener);
+        if (chipRoundCleared != null) chipRoundCleared.setOnClickListener(chipClickListener);
 
         if (etOverlayNoteInput != null) {
             etOverlayNoteInput.addTextChangedListener(new android.text.TextWatcher() {
@@ -623,6 +648,54 @@ public class InCallActivity extends AppCompatActivity {
         }
     }
 
+    /** Adds a chip-picked tag (dedup, case-insensitive), re-renders the tag boxes, and autosaves. */
+    private void addTag(String tag) {
+        List<String> current = new ArrayList<>();
+        if (notEmpty(tagsValue)) {
+            for (String t : tagsValue.split(",")) {
+                String trimmed = t.trim();
+                if (!trimmed.isEmpty()) current.add(trimmed);
+            }
+        }
+        boolean exists = false;
+        for (String t : current) {
+            if (t.equalsIgnoreCase(tag)) { exists = true; break; }
+        }
+        if (!exists) current.add(tag);
+        tagsValue = android.text.TextUtils.join(", ", current);
+        renderTagsRow();
+        autoSaveHandler.removeCallbacks(autoSaveRunnable);
+        autoSaveHandler.postDelayed(autoSaveRunnable, 400);
+    }
+
+    /** Renders tagsValue as a row of small boxes next to the call status pill. */
+    private void renderTagsRow() {
+        View hsvTags = findViewById(R.id.hsv_overlay_tags);
+        android.widget.LinearLayout llTagsRow = findViewById(R.id.ll_overlay_tags_row);
+        if (hsvTags == null || llTagsRow == null) return;
+        llTagsRow.removeAllViews();
+        if (!notEmpty(tagsValue)) {
+            hsvTags.setVisibility(View.GONE);
+            return;
+        }
+        for (String tag : tagsValue.split(",")) {
+            String trimmed = tag.trim();
+            if (trimmed.isEmpty()) continue;
+            TextView box = new TextView(this);
+            box.setText(trimmed);
+            box.setTextColor(androidx.core.content.ContextCompat.getColor(this, R.color.white_constant));
+            box.setTextSize(11);
+            box.setBackgroundResource(R.drawable.bg_glass_card);
+            box.setPadding(24, 10, 24, 10);
+            android.widget.LinearLayout.LayoutParams lp = new android.widget.LinearLayout.LayoutParams(
+                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT);
+            lp.setMarginEnd(8);
+            box.setLayoutParams(lp);
+            llTagsRow.addView(box);
+        }
+        hsvTags.setVisibility(View.VISIBLE);
+    }
+
     /**
      * Saves whatever is currently in the note-editor fields. Called both from the Save
      * button (with UI feedback + closes the panel) and silently - debounced while typing,
@@ -642,7 +715,7 @@ public class InCallActivity extends AppCompatActivity {
         // Nothing typed and nothing to update - skip silent auto-saves so we don't create
         // an empty lead just because the panel was opened and closed.
         boolean hasAnyDetail = !noteText.isEmpty() || !nameVal.isEmpty() || !companyVal.isEmpty()
-                || !ctcVal.isEmpty() || !nextCallVal.isEmpty();
+                || !ctcVal.isEmpty() || !nextCallVal.isEmpty() || notEmpty(tagsValue);
         if (!showFeedback && !hasAnyDetail) return;
         // Nothing changed since the last auto-save - avoid inserting duplicate note rows.
         if (!showFeedback && noteText.equals(lastAutoSavedNoteText) && jobCallId != -1) return;
@@ -658,7 +731,7 @@ public class InCallActivity extends AppCompatActivity {
         if (targetJobId == -1) {
             String leadCompany = !companyVal.isEmpty() ? companyVal
                     : (notEmpty(contactName) ? contactName : "Unsaved Number");
-            JobCall newLead = new JobCall(phoneNumber, leadCompany, selectedRound, "", noteText, 0, System.currentTimeMillis());
+            JobCall newLead = new JobCall(phoneNumber, leadCompany, selectedRound, tagsValue, noteText, 0, System.currentTimeMillis());
             newLead.setRecruiterName(nameVal);
             newLead.setExpectedCtc(ctcVal);
             newLead.setTentativeSchedule(nextCallVal);
@@ -674,6 +747,7 @@ public class InCallActivity extends AppCompatActivity {
                 current.setExpectedCtc(ctcVal);
                 current.setTentativeSchedule(nextCallVal);
                 current.setRoundStatus(selectedRound);
+                current.setTags(tagsValue);
                 db.updateJobCall(current);
                 company = current.getCompanyName();
                 recruiter = current.getRecruiterName();

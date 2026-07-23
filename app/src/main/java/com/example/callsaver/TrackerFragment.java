@@ -757,7 +757,18 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
 
     @Override
     public void onItemClick(JobCall jobCall) {
-        showAddEditCallDialog(jobCall);
+        // Open the same capture screen used live in-call (in review mode) instead of the
+        // old separate dialog, so Tracker/Upcoming/in-call all show identical fields.
+        if (getContext() == null) return;
+        Intent intent = new Intent(getContext(), InCallActivity.class);
+        intent.putExtra("mode", "review");
+        intent.putExtra("phone_number", jobCall.getPhoneNumber());
+        intent.putExtra("company_name", jobCall.getCompanyName());
+        intent.putExtra("round_status", jobCall.getRoundStatus());
+        intent.putExtra("tags", jobCall.getTags());
+        intent.putExtra("job_call_id", (long) jobCall.getId());
+        intent.putExtra("recruiter_name", jobCall.getRecruiterName());
+        startActivity(intent);
     }
 
     @Override

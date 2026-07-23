@@ -420,7 +420,18 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
 
     @Override
     public void onInterviewClick(JobCall call) {
-        showAddEditCallDialog(call);
+        // Open the same capture screen used live in-call (in review mode) instead of the
+        // old separate dialog, so Tracker/Upcoming/in-call all show identical fields.
+        if (getContext() == null) return;
+        Intent intent = new Intent(getContext(), InCallActivity.class);
+        intent.putExtra("mode", "review");
+        intent.putExtra("phone_number", call.getPhoneNumber());
+        intent.putExtra("company_name", call.getCompanyName());
+        intent.putExtra("round_status", call.getRoundStatus());
+        intent.putExtra("tags", call.getTags());
+        intent.putExtra("job_call_id", (long) call.getId());
+        intent.putExtra("recruiter_name", call.getRecruiterName());
+        startActivity(intent);
     }
 
     @Override
