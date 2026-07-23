@@ -203,7 +203,7 @@ public class CallSaverInCallService extends InCallService {
         if (activeCall != null) activeCall.disconnect();
     }
 
-    public static void setMuted(boolean muted) {
+    public static void setCallMuted(boolean muted) {
         if (instance != null) instance.setMuted(muted);
     }
 

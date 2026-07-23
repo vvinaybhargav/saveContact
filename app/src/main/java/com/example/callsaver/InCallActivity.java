@@ -199,7 +199,7 @@ public class InCallActivity extends AppCompatActivity {
         }
         if (btnToggleMute != null) {
             btnToggleMute.setOnClickListener(v -> {
-                CallSaverInCallService.setMuted(!CallSaverInCallService.isMuted());
+                CallSaverInCallService.setCallMuted(!CallSaverInCallService.isMuted());
                 updateMuteSpeakerUi();
             });
         }
