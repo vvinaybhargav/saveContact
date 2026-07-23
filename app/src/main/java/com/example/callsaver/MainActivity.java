@@ -93,11 +93,17 @@ public class MainActivity extends AppCompatActivity {
         // Load Recents / Dialer fragment by default
         bottomNavigation.setSelectedItemId(R.id.navigation_recents);
 
-        // Offer system Default Dialer role prompt
-        offerDefaultDialer();
-
-        // Auto check/request permissions on first launch
+        // Some OEM skins (ColorOS/MIUI) evaluate Default Phone App eligibility based
+        // on whether the app already holds phone-related runtime permissions at the
+        // moment the role picker is built - on a fresh install those aren't granted
+        // yet, so the app gets silently excluded from the OS's picker if we ask for
+        // the role before permissions exist. Request permissions first; the dialer
+        // prompt fires from onRequestPermissionsResult once they're granted (or
+        // immediately below if everything was already granted from a prior run).
         requestRequiredPermissionsIfMissing();
+        if (allRequiredPermissionsGranted()) {
+            offerDefaultDialer();
+        }
 
         // Check overlay window permission for caller ID banner
         checkOverlayPermission();
@@ -275,6 +281,15 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private boolean allRequiredPermissionsGranted() {
+        for (String perm : getRequiredPermissions()) {
+            if (ContextCompat.checkSelfPermission(this, perm) != PackageManager.PERMISSION_GRANTED) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -288,6 +303,12 @@ public class MainActivity extends AppCompatActivity {
             }
             if (upcomingFragment != null && upcomingFragment.isAdded()) {
                 upcomingFragment.onResume();
+            }
+            // Now that phone-related permissions have been answered, this is the
+            // right moment to prompt for Default Phone App - some OEM skins wouldn't
+            // have listed us as eligible before these were granted.
+            if (allRequiredPermissionsGranted()) {
+                offerDefaultDialer();
             }
         }
     }
