@@ -44,7 +44,19 @@ public class UpcomingInterviewsAdapter extends RecyclerView.Adapter<UpcomingInte
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         JobCall call = interviewList.get(position);
         
-        holder.tvCompany.setText(call.getCompanyName() != null && !call.getCompanyName().isEmpty() ? call.getCompanyName() : "Unknown Company");
+        // No placeholder like "Unknown Company" - fall back to whatever else is filled
+        // in (recruiter name, then phone number), same as everywhere else in the app.
+        String company = call.getCompanyName();
+        String recruiterName = call.getRecruiterName();
+        String companyDisplay;
+        if (company != null && !company.trim().isEmpty()) {
+            companyDisplay = company.trim();
+        } else if (recruiterName != null && !recruiterName.trim().isEmpty()) {
+            companyDisplay = recruiterName.trim();
+        } else {
+            companyDisplay = call.getPhoneNumber();
+        }
+        holder.tvCompany.setText(companyDisplay);
         holder.tvRole.setText(call.getAppliedRole() != null && !call.getAppliedRole().isEmpty() ? call.getAppliedRole() : "Job Position");
         String roundText = call.getRoundStatus() != null && !call.getRoundStatus().isEmpty() ? call.getRoundStatus() : "First time";
         if (call.getInterestRating() != null && !call.getInterestRating().isEmpty()) {

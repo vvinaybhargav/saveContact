@@ -825,8 +825,11 @@ public class InCallActivity extends AppCompatActivity {
         long targetJobId = jobCallId;
 
         if (targetJobId == -1) {
+            // Leave company blank if it wasn't filled in - no placeholder text like
+            // "Unsaved Number"; the display logic elsewhere already falls back to
+            // showing just the name, or just the number, when a field is empty.
             String leadCompany = !companyVal.isEmpty() ? companyVal
-                    : (notEmpty(contactName) ? contactName : "Unsaved Number");
+                    : (notEmpty(contactName) ? contactName : "");
             JobCall newLead = new JobCall(phoneNumber, leadCompany, selectedRound, tagsValue, noteText, 0, System.currentTimeMillis());
             newLead.setRecruiterName(nameVal);
             newLead.setExpectedCtc(ctcVal);

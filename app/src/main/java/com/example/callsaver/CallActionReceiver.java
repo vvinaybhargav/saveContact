@@ -68,7 +68,7 @@ public class CallActionReceiver extends BroadcastReceiver {
             if (existing != null) {
                 db.insertNote(existing.getId(), notes, System.currentTimeMillis());
             } else {
-                JobCall newCall = new JobCall(phoneNumber, "Unknown Company", "Screening", "Auto-Saved", notes, duration, timestamp);
+                JobCall newCall = new JobCall(phoneNumber, "", "Screening", "Auto-Saved", notes, duration, timestamp);
                 long newId = db.insertJobCall(newCall);
                 if (newId > 0) {
                     db.insertNote(newId, notes, System.currentTimeMillis());
