@@ -100,7 +100,7 @@ public class CallerIdService extends Service {
 
         params = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.MATCH_PARENT,
-                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.MATCH_PARENT,
                 layoutType,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE |
                         WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED |
@@ -108,7 +108,7 @@ public class CallerIdService extends Service {
                         WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON,
                 PixelFormat.TRANSLUCENT
         );
-        params.gravity = Gravity.CENTER; // Center overlay in the middle of the screen like Truecaller
+        params.gravity = Gravity.FILL;
 
         // Bind views
         TextView tvCallerName = overlayView.findViewById(R.id.tv_overlay_caller_name);
