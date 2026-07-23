@@ -28,6 +28,7 @@ import androidx.core.app.NotificationCompat;
 public class CallSaverInCallService extends InCallService {
 
     private static final String CHANNEL_ID = "incoming_call_channel";
+    private static final String POST_CALL_CHANNEL_ID = "post_call_log_channel";
 
     private static CallSaverInCallService instance;
     private static Call activeCall;
@@ -81,6 +82,7 @@ public class CallSaverInCallService extends InCallService {
     @Override
     public void onCallRemoved(Call call) {
         super.onCallRemoved(call);
+        String endedNumber = resolvePhoneNumber(call);
         if (activeCall != null) {
             try {
                 activeCall.unregisterCallback(callStateCallback);
@@ -90,6 +92,63 @@ public class CallSaverInCallService extends InCallService {
         activeCall = null;
         cancelIncomingCallNotification();
         InCallActivity.finishIfOpen();
+        showPostCallNotification(endedNumber);
+    }
+
+    /**
+     * After a call ends, nudge the user to log details - tapping opens the SAME
+     * capture screen (InCallActivity in review mode) they'd use during the call, so
+     * the note-taking experience is identical whether logged live or after the fact.
+     */
+    private void showPostCallNotification(String phoneNumber) {
+        if (phoneNumber == null || phoneNumber.trim().isEmpty()) return;
+        NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        if (nm == null) return;
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(
+                    POST_CALL_CHANNEL_ID, "Log call after ending", NotificationManager.IMPORTANCE_HIGH);
+            channel.setDescription("Prompts you to log recruiter call details after a call ends.");
+            nm.createNotificationChannel(channel);
+        }
+
+        DatabaseHelper db = new DatabaseHelper(this);
+        JobCall matchedCall = db.getJobCallByNumber(this, phoneNumber);
+        String label = matchedCall != null && matchedCall.getCompanyName() != null && !matchedCall.getCompanyName().isEmpty()
+                ? matchedCall.getCompanyName() : phoneNumber;
+
+        Intent tapIntent = new Intent(this, InCallActivity.class);
+        tapIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        tapIntent.putExtra("mode", "review");
+        tapIntent.putExtra("phone_number", phoneNumber);
+        if (matchedCall != null) {
+            tapIntent.putExtra("company_name", matchedCall.getCompanyName());
+            tapIntent.putExtra("round_status", matchedCall.getRoundStatus());
+            tapIntent.putExtra("job_call_id", (long) matchedCall.getId());
+            tapIntent.putExtra("recruiter_name", matchedCall.getRecruiterName());
+        } else {
+            tapIntent.putExtra("job_call_id", -1L);
+        }
+
+        int piFlags = PendingIntent.FLAG_UPDATE_CURRENT;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) piFlags |= PendingIntent.FLAG_IMMUTABLE;
+        PendingIntent pendingIntent = PendingIntent.getActivity(
+                this, phoneNumber.hashCode() + 700, tapIntent, piFlags);
+
+        Notification notification = new NotificationCompat.Builder(this, POST_CALL_CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.ic_menu_edit)
+                .setContentTitle("Log call with " + label)
+                .setContentText("Tap to add notes, round, next call, CTC…")
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setCategory(NotificationCompat.CATEGORY_RECOMMENDATION)
+                .setAutoCancel(true)
+                .setContentIntent(pendingIntent)
+                .build();
+
+        try {
+            nm.notify(phoneNumber.hashCode() + 700, notification);
+        } catch (SecurityException ignored) {
+        }
     }
 
     private String resolvePhoneNumber(Call call) {

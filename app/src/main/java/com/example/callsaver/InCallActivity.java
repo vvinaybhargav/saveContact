@@ -48,6 +48,11 @@ public class InCallActivity extends AppCompatActivity {
     private String tags;
     private long jobCallId;
     private String recruiter;
+    // When true, this screen is opened outside a live call (from the post-call
+    // notification, or later from Tracker/Upcoming) purely to review/log details -
+    // so it hides the call controls and opens the capture form directly, and must
+    // NOT auto-finish on call-state changes.
+    private boolean reviewMode;
 
     private TextView tvCallTimer;
     private android.widget.LinearLayout llIncomingControls;
@@ -105,12 +110,27 @@ public class InCallActivity extends AppCompatActivity {
         tags = intent.getStringExtra("tags");
         jobCallId = intent.getLongExtra("job_call_id", -1);
         recruiter = intent.getStringExtra("recruiter_name");
+        reviewMode = "review".equals(intent.getStringExtra("mode"));
         int initialState = intent.getIntExtra("initial_state", Call.STATE_ACTIVE);
 
         bindCallerInfo();
         bindNotesAndSkills();
         bindControls();
-        applyState(initialState);
+
+        if (reviewMode) {
+            enterReviewMode();
+        } else {
+            applyState(initialState);
+        }
+    }
+
+    /** Configures the screen for out-of-call review/logging: no call controls, form open. */
+    private void enterReviewMode() {
+        stopTimer();
+        if (llIncomingControls != null) llIncomingControls.setVisibility(View.GONE);
+        if (llActiveControls != null) llActiveControls.setVisibility(View.GONE);
+        if (tvCallTimer != null) tvCallTimer.setText("Log call details");
+        if (llOverlayEditPanel != null) llOverlayEditPanel.setVisibility(View.VISIBLE);
     }
 
     @Override
@@ -128,13 +148,14 @@ public class InCallActivity extends AppCompatActivity {
 
     /** Called by CallSaverInCallService whenever the live call's state changes. */
     public static void notifyCallStateChanged(int state) {
-        if (instance != null) {
+        if (instance != null && !instance.reviewMode) {
             instance.runOnUiThread(() -> instance.applyState(state));
         }
     }
 
     public static void finishIfOpen() {
-        if (instance != null) {
+        // Only close a live-call screen; a review/logging screen isn't tied to a call.
+        if (instance != null && !instance.reviewMode) {
             instance.runOnUiThread(() -> {
                 if (!instance.isFinishing()) instance.finish();
             });
@@ -642,6 +663,9 @@ public class InCallActivity extends AppCompatActivity {
                 llOverlayEditPanel.setVisibility(View.GONE);
                 etOverlayNoteInput.setText("");
                 Toast.makeText(this, "Saved!", Toast.LENGTH_SHORT).show();
+
+                // In review mode there's no live call to return to - close after saving.
+                if (reviewMode) finish();
             });
         }
     }

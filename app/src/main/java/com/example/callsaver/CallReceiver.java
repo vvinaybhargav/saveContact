@@ -454,25 +454,12 @@ public class CallReceiver extends BroadcastReceiver {
             }
             db.insertCallHistory(call.getId(), typeLabel, entry.duration, entry.date + entry.duration * 1000L);
         }
-        
-        boolean autoTranscribe = prefs.getBoolean("auto_transcribe_background", true);
 
-        if (isOutgoing || isIncomingAnswered) {
-            if (autoTranscribe && entry.duration >= 15) {
-                DebugLogger.log(context, "[Receiver] Auto-transcribing call for " + entry.number + " in background...");
-                triggerBackgroundTranscription(context, entry.number, entry.duration, entry.date + entry.duration * 1000L);
-            } else {
-                DebugLogger.log(context, "[Receiver] Launching SaveContactActivity popup for " + entry.number);
-                Intent dialogIntent = new Intent(context, SaveContactActivity.class);
-                dialogIntent.putExtra("phone_number", entry.number);
-                dialogIntent.putExtra("duration", entry.duration);
-                dialogIntent.putExtra("timestamp", entry.date);
-                dialogIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                context.startActivity(dialogIntent);
-            }
-        } else {
-            DebugLogger.log(context, "[Receiver] Call not answered or not outgoing (Skipped popup)");
-        }
+        // The post-call "log details" prompt is now a notification posted by
+        // CallSaverInCallService.onCallRemoved (tapping it opens the same capture
+        // form in review mode). CallReceiver only records the call-history entry
+        // above; it no longer launches a separate SaveContactActivity popup, which
+        // would double-prompt alongside that notification.
     }
     
     private static class CallLogEntry {
@@ -487,10 +474,6 @@ public class CallReceiver extends BroadcastReceiver {
             this.duration = duration;
             this.type = type;
         }
-    }
-
-    private void triggerBackgroundTranscription(Context context, String phoneNumber, int duration, long timestamp) {
-        // Obsolete audio transcription replaced by in-call/post-call manual notes
     }
 
     private void showNotification(Context context, String title, String content) {
