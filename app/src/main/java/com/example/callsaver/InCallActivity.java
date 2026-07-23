@@ -178,6 +178,18 @@ public class InCallActivity extends AppCompatActivity {
         timerHandler.removeCallbacks(timerRunnable);
     }
 
+    @Override
+    public void onBackPressed() {
+        // Review-mode screens (Tracker/Upcoming/"+"/post-call notification) have no live
+        // call to return to - make sure back always actually leaves instead of getting
+        // stuck, same as the Cancel button.
+        if (reviewMode) {
+            finish();
+        } else {
+            super.onBackPressed();
+        }
+    }
+
     /** Called by CallSaverInCallService whenever the live call's state changes. */
     public static void notifyCallStateChanged(int state) {
         if (instance != null && !instance.reviewMode) {
@@ -598,8 +610,15 @@ public class InCallActivity extends AppCompatActivity {
 
         if (btnOverlayCancelNote != null && llOverlayEditPanel != null) {
             btnOverlayCancelNote.setOnClickListener(v -> {
-                llOverlayEditPanel.setVisibility(View.GONE);
-                if (etOverlayNoteInput != null) etOverlayNoteInput.setText("");
+                // Flush first so nothing typed in the last second is lost, then actually
+                // leave - in review mode there's no call to go back to, so close the screen.
+                autoSaveHandler.removeCallbacks(autoSaveRunnable);
+                persistNoteAndDetails(false);
+                if (reviewMode) {
+                    finish();
+                } else {
+                    llOverlayEditPanel.setVisibility(View.GONE);
+                }
             });
         }
 
@@ -668,7 +687,22 @@ public class InCallActivity extends AppCompatActivity {
         autoSaveHandler.postDelayed(autoSaveRunnable, 400);
     }
 
-    /** Renders tagsValue as a row of small boxes next to the call status pill. */
+    /** Removes a tag (tap-to-remove), re-renders the tag boxes, and autosaves. */
+    private void removeTag(String tag) {
+        List<String> current = new ArrayList<>();
+        if (notEmpty(tagsValue)) {
+            for (String t : tagsValue.split(",")) {
+                String trimmed = t.trim();
+                if (!trimmed.isEmpty() && !trimmed.equalsIgnoreCase(tag)) current.add(trimmed);
+            }
+        }
+        tagsValue = android.text.TextUtils.join(", ", current);
+        renderTagsRow();
+        autoSaveHandler.removeCallbacks(autoSaveRunnable);
+        autoSaveHandler.postDelayed(autoSaveRunnable, 400);
+    }
+
+    /** Renders tagsValue as a row of small tap-to-remove boxes next to the call status pill. */
     private void renderTagsRow() {
         View hsvTags = findViewById(R.id.hsv_overlay_tags);
         android.widget.LinearLayout llTagsRow = findViewById(R.id.ll_overlay_tags_row);
@@ -682,11 +716,14 @@ public class InCallActivity extends AppCompatActivity {
             String trimmed = tag.trim();
             if (trimmed.isEmpty()) continue;
             TextView box = new TextView(this);
-            box.setText(trimmed);
+            box.setText(trimmed + "  ✕");
             box.setTextColor(androidx.core.content.ContextCompat.getColor(this, R.color.white_constant));
             box.setTextSize(11);
             box.setBackgroundResource(R.drawable.bg_glass_card);
             box.setPadding(24, 10, 24, 10);
+            box.setClickable(true);
+            box.setFocusable(true);
+            box.setOnClickListener(v -> removeTag(trimmed));
             android.widget.LinearLayout.LayoutParams lp = new android.widget.LinearLayout.LayoutParams(
                     android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT);
             lp.setMarginEnd(8);

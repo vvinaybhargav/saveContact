@@ -177,8 +177,14 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         // Permissions banner click
         cardPermissionsBanner.setOnClickListener(v -> handlePermissionsRequestFlow());
 
-        // Log call manually FAB click
-        fabAddCall.setOnClickListener(v -> showAddEditCallDialog(null));
+        // Log call manually FAB click - same capture screen as everywhere else, in review mode.
+        fabAddCall.setOnClickListener(v -> {
+            if (getContext() == null) return;
+            Intent intent = new Intent(getContext(), InCallActivity.class);
+            intent.putExtra("mode", "review");
+            intent.putExtra("job_call_id", -1L);
+            startActivity(intent);
+        });
 
         tvCheckDuplicates = null;
 
@@ -1448,8 +1454,8 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                 JobCall jobCall = callList.get(position);
 
                 if (direction == ItemTouchHelper.LEFT) {
-                    // Swipe Left: Edit
-                    showAddEditCallDialog(jobCall);
+                    // Swipe Left: Edit - same capture screen as everywhere else.
+                    onItemClick(jobCall);
                     adapter.notifyItemChanged(position);
                 } else if (direction == ItemTouchHelper.RIGHT) {
                     // Swipe Right: Delete / Dismiss
