@@ -683,6 +683,7 @@ public class InCallActivity extends AppCompatActivity {
 
         View chipRole = findViewById(R.id.chip_preset_role);
         View chipHybrid = findViewById(R.id.chip_preset_hybrid);
+        View chipC2h = findViewById(R.id.chip_preset_c2h);
         View chipFulltime = findViewById(R.id.chip_preset_fulltime);
         View chipInterested = findViewById(R.id.chip_preset_interested);
         View chipInterviewScheduled = findViewById(R.id.chip_preset_interview_scheduled);
@@ -697,6 +698,7 @@ public class InCallActivity extends AppCompatActivity {
         };
         if (chipRole != null) chipRole.setOnClickListener(chipClickListener);
         if (chipHybrid != null) chipHybrid.setOnClickListener(chipClickListener);
+        if (chipC2h != null) chipC2h.setOnClickListener(chipClickListener);
         if (chipFulltime != null) chipFulltime.setOnClickListener(chipClickListener);
         if (chipInterested != null) chipInterested.setOnClickListener(chipClickListener);
         if (chipInterviewScheduled != null) chipInterviewScheduled.setOnClickListener(chipClickListener);
@@ -852,8 +854,11 @@ public class InCallActivity extends AppCompatActivity {
         } else {
             JobCall current = db.getJobCallById(targetJobId);
             if (current != null) {
-                if (!nameVal.isEmpty()) current.setRecruiterName(nameVal);
-                if (!companyVal.isEmpty()) current.setCompanyName(companyVal);
+                // Set unconditionally, including empty - whatever's in the field right
+                // now is what should be saved, so clearing a name/company and saving
+                // actually clears it instead of silently keeping the old value.
+                current.setRecruiterName(nameVal);
+                current.setCompanyName(companyVal);
                 current.setExpectedCtc(ctcVal);
                 current.setTentativeSchedule(nextCallVal);
                 current.setRoundStatus(selectedRound);

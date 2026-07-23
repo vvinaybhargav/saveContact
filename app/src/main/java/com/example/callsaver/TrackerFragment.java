@@ -15,6 +15,7 @@ import android.provider.ContactsContract;
 import android.provider.CallLog;
 import android.provider.Settings;
 import android.text.Editable;
+import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -744,10 +745,40 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         }
 
         if (!listPermissionsNeeded.isEmpty()) {
-            ActivityCompat.requestPermissions(requireActivity(),
-                    listPermissionsNeeded.toArray(new String[0]),
-                    ALL_PERMISSIONS_REQUEST_CODE);
+            // If a permission was already denied "permanently" (or the OEM never shows a
+            // system prompt for it at all - some ColorOS/MIUI builds do this for
+            // GET_ACCOUNTS/WRITE_CONTACTS), requestPermissions() silently no-ops with no
+            // dialog. Detect that and send the user straight to the app's permission
+            // settings instead of a request that visibly does nothing.
+            boolean anyPermanentlyDenied = false;
+            for (String perm : listPermissionsNeeded) {
+                if (!ActivityCompat.shouldShowRequestPermissionRationale(requireActivity(), perm)) {
+                    anyPermanentlyDenied = true;
+                    break;
+                }
+            }
+            if (anyPermanentlyDenied) {
+                String missing = TextUtils.join(", ", simplifyPermissionNames(listPermissionsNeeded));
+                Toast.makeText(requireContext(), "Still missing: " + missing + ". Opening app settings - please grant them there.", Toast.LENGTH_LONG).show();
+                Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        Uri.parse("package:" + requireContext().getPackageName()));
+                startActivity(intent);
+            } else {
+                ActivityCompat.requestPermissions(requireActivity(),
+                        listPermissionsNeeded.toArray(new String[0]),
+                        ALL_PERMISSIONS_REQUEST_CODE);
+            }
         }
+    }
+
+    /** Turns "android.permission.GET_ACCOUNTS" into "GET_ACCOUNTS" for a readable Toast. */
+    private List<String> simplifyPermissionNames(List<String> perms) {
+        List<String> simple = new ArrayList<>();
+        for (String p : perms) {
+            int idx = p.lastIndexOf('.');
+            simple.add(idx >= 0 ? p.substring(idx + 1) : p);
+        }
+        return simple;
     }
 
     @Override
