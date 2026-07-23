@@ -107,6 +107,11 @@ public class MainActivity extends AppCompatActivity {
         // Check overlay window permission for caller ID banner
         checkOverlayPermission();
 
+        // Android 14+ requires explicit special-app-access grant for full-screen
+        // intents; without it, an incoming call on the lock screen silently
+        // downgrades to sound-only (no screen launch) with no error shown anywhere.
+        checkFullScreenIntentPermission();
+
         ImageView btnSettings = findViewById(R.id.btn_main_settings);
         if (btnSettings != null) {
             btnSettings.setOnClickListener(v -> startActivity(new Intent(this, SettingsActivity.class)));
@@ -240,6 +245,29 @@ public class MainActivity extends AppCompatActivity {
                     })
                     .setNegativeButton("Cancel", null)
                     .show();
+        }
+    }
+
+    private void checkFullScreenIntentPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            android.app.NotificationManager nm =
+                    (android.app.NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+            if (nm != null && !nm.canUseFullScreenIntent()) {
+                new androidx.appcompat.app.AlertDialog.Builder(this)
+                        .setTitle("Full-Screen Call Alerts")
+                        .setMessage("To show the incoming-call screen when your phone is locked, allow CallSaver to use full-screen notifications. Without this, incoming calls will only ring with no screen shown.")
+                        .setPositiveButton("OK", (dialog, which) -> {
+                            try {
+                                Intent intent = new Intent(android.provider.Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
+                                        Uri.parse("package:" + getPackageName()));
+                                startActivity(intent);
+                            } catch (Exception e) {
+                                Toast.makeText(this, "Could not open full-screen intent settings: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                            }
+                        })
+                        .setNegativeButton("Cancel", null)
+                        .show();
+            }
         }
     }
 

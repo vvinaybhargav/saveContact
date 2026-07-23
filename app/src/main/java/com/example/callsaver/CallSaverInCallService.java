@@ -29,6 +29,8 @@ public class CallSaverInCallService extends InCallService {
 
     private static final String CHANNEL_ID = "incoming_call_channel";
     private static final String POST_CALL_CHANNEL_ID = "post_call_log_channel";
+    private static final String ONGOING_CALL_CHANNEL_ID = "ongoing_call_channel";
+    private static final int ONGOING_CALL_NOTIFICATION_ID = 8001;
 
     private static CallSaverInCallService instance;
     private static Call activeCall;
@@ -45,9 +47,14 @@ public class CallSaverInCallService extends InCallService {
                 // Answered from the notification, or the call otherwise became active
                 // while InCallActivity wasn't already showing - bring it up now.
                 launchInCallActivity(call);
+                // Keep a persistent "call in progress" notification while the call is
+                // live, so backgrounding the app (home button) still leaves a way back
+                // into the call screen instead of it seeming to vanish.
+                showOngoingCallNotification(call);
             }
             if (state == Call.STATE_DISCONNECTED) {
                 InCallActivity.finishIfOpen();
+                cancelOngoingCallNotification();
             }
         }
     };
@@ -91,6 +98,7 @@ public class CallSaverInCallService extends InCallService {
         }
         activeCall = null;
         cancelIncomingCallNotification();
+        cancelOngoingCallNotification();
         InCallActivity.finishIfOpen();
         showPostCallNotification(endedNumber);
     }
@@ -244,6 +252,55 @@ public class CallSaverInCallService extends InCallService {
     private void cancelIncomingCallNotification() {
         NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         if (nm != null) nm.cancel(CallNotificationActionReceiver.NOTIFICATION_ID);
+    }
+
+    /**
+     * Ongoing "call in progress, tap to return" notification shown while a call is
+     * active/dialing/connecting - lets the user get back to InCallActivity after
+     * backgrounding the app, since there's otherwise no way back into the call screen.
+     */
+    private void showOngoingCallNotification(Call call) {
+        NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        if (nm == null) return;
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(
+                    ONGOING_CALL_CHANNEL_ID, "Call in progress", NotificationManager.IMPORTANCE_DEFAULT);
+            channel.setDescription("Ongoing notification while a call is active - tap to return to the call screen.");
+            nm.createNotificationChannel(channel);
+        }
+
+        String phoneNumber = resolvePhoneNumber(call);
+        DatabaseHelper db = new DatabaseHelper(this);
+        JobCall matchedCall = phoneNumber.isEmpty() ? null : db.getJobCallByNumber(this, phoneNumber);
+        String label = matchedCall != null && matchedCall.getCompanyName() != null && !matchedCall.getCompanyName().isEmpty()
+                ? matchedCall.getCompanyName() : (phoneNumber.isEmpty() ? "Unknown" : phoneNumber);
+
+        Intent tapIntent = buildInCallIntent(call);
+        int piFlags = PendingIntent.FLAG_UPDATE_CURRENT;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) piFlags |= PendingIntent.FLAG_IMMUTABLE;
+        PendingIntent pendingIntent = PendingIntent.getActivity(
+                this, ONGOING_CALL_NOTIFICATION_ID, tapIntent, piFlags);
+
+        Notification notification = new NotificationCompat.Builder(this, ONGOING_CALL_CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.sym_action_call)
+                .setContentTitle("Call in progress - " + label)
+                .setContentText("Tap to return to the call screen")
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setCategory(NotificationCompat.CATEGORY_CALL)
+                .setOngoing(true)
+                .setContentIntent(pendingIntent)
+                .build();
+
+        try {
+            nm.notify(ONGOING_CALL_NOTIFICATION_ID, notification);
+        } catch (SecurityException ignored) {
+        }
+    }
+
+    private void cancelOngoingCallNotification() {
+        NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        if (nm != null) nm.cancel(ONGOING_CALL_NOTIFICATION_ID);
     }
 
     public static Call getActiveCall() {

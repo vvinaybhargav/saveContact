@@ -459,8 +459,6 @@ public class InCallActivity extends AppCompatActivity {
         EditText etOverlayNextCall = findViewById(R.id.et_overlay_next_call);
         TextInputLayout tilOverlayNextCall = findViewById(R.id.til_overlay_next_call);
         Spinner spinnerOverlayRound = findViewById(R.id.spinner_overlay_round);
-        Spinner spinnerOverlayWorkMode = findViewById(R.id.spinner_overlay_work_mode);
-        Spinner spinnerOverlayEmploymentType = findViewById(R.id.spinner_overlay_employment_type);
         View btnOverlayCancelNote = findViewById(R.id.btn_overlay_cancel_note);
         View btnOverlaySaveNote = findViewById(R.id.btn_overlay_save_note);
 
@@ -470,8 +468,6 @@ public class InCallActivity extends AppCompatActivity {
         String prefillCompany = currentForPrefill != null ? currentForPrefill.getCompanyName() : company;
         String prefillCtc = currentForPrefill != null ? currentForPrefill.getExpectedCtc() : "";
         String prefillNextCall = currentForPrefill != null ? currentForPrefill.getTentativeSchedule() : "";
-        String prefillWorkMode = currentForPrefill != null ? currentForPrefill.getWorkMode() : "";
-        String prefillEmploymentType = currentForPrefill != null ? currentForPrefill.getEmploymentType() : "";
         String prefillRound = currentForPrefill != null ? currentForPrefill.getRoundStatus() : roundStatus;
 
         if (etOverlayName != null) etOverlayName.setText(prefillName);
@@ -502,23 +498,6 @@ public class InCallActivity extends AppCompatActivity {
         }
         final int prefillRoundPosition = spinnerOverlayRound != null ? spinnerOverlayRound.getSelectedItemPosition() : -1;
 
-        if (spinnerOverlayWorkMode != null) {
-            ArrayAdapter<String> workModeAdapter = new ArrayAdapter<>(this,
-                    R.layout.item_spinner_white, new String[]{"", "Hybrid", "Onsite", "Remote"});
-            workModeAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-            spinnerOverlayWorkMode.setAdapter(workModeAdapter);
-            int pos = workModeAdapter.getPosition(prefillWorkMode != null ? prefillWorkMode : "");
-            spinnerOverlayWorkMode.setSelection(pos >= 0 ? pos : 0);
-        }
-        if (spinnerOverlayEmploymentType != null) {
-            ArrayAdapter<String> employmentAdapter = new ArrayAdapter<>(this,
-                    R.layout.item_spinner_white, new String[]{"", "C2H", "Direct Payroll"});
-            employmentAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-            spinnerOverlayEmploymentType.setAdapter(employmentAdapter);
-            int pos = employmentAdapter.getPosition(prefillEmploymentType != null ? prefillEmploymentType : "");
-            spinnerOverlayEmploymentType.setSelection(pos >= 0 ? pos : 0);
-        }
-
         if (btnOverlayCancelNote != null && llOverlayEditPanel != null) {
             btnOverlayCancelNote.setOnClickListener(v -> {
                 llOverlayEditPanel.setVisibility(View.GONE);
@@ -530,6 +509,11 @@ public class InCallActivity extends AppCompatActivity {
         View chipTmrw = findViewById(R.id.chip_preset_tmrw_interview);
         View chipNextRound = findViewById(R.id.chip_preset_next_round);
         View chipSalary = findViewById(R.id.chip_preset_salary);
+        View chipRole = findViewById(R.id.chip_preset_role);
+        View chipHybrid = findViewById(R.id.chip_preset_hybrid);
+        View chipC2h = findViewById(R.id.chip_preset_c2h);
+        View chipFulltime = findViewById(R.id.chip_preset_fulltime);
+        View chipInterested = findViewById(R.id.chip_preset_interested);
 
         View.OnClickListener chipClickListener = v -> {
             if (v instanceof com.google.android.material.chip.Chip && etOverlayNoteInput != null) {
@@ -547,6 +531,11 @@ public class InCallActivity extends AppCompatActivity {
         if (chipTmrw != null) chipTmrw.setOnClickListener(chipClickListener);
         if (chipNextRound != null) chipNextRound.setOnClickListener(chipClickListener);
         if (chipSalary != null) chipSalary.setOnClickListener(chipClickListener);
+        if (chipRole != null) chipRole.setOnClickListener(chipClickListener);
+        if (chipHybrid != null) chipHybrid.setOnClickListener(chipClickListener);
+        if (chipC2h != null) chipC2h.setOnClickListener(chipClickListener);
+        if (chipFulltime != null) chipFulltime.setOnClickListener(chipClickListener);
+        if (chipInterested != null) chipInterested.setOnClickListener(chipClickListener);
 
         if (btnOverlaySaveNote != null && llOverlayEditPanel != null && etOverlayNoteInput != null) {
             btnOverlaySaveNote.setOnClickListener(v -> {
@@ -562,10 +551,6 @@ public class InCallActivity extends AppCompatActivity {
                 String companyVal = etOverlayCompany != null ? etOverlayCompany.getText().toString().trim() : "";
                 String ctcVal = etOverlayExpectedCtc != null ? etOverlayExpectedCtc.getText().toString().trim() : "";
                 String nextCallVal = etOverlayNextCall != null ? etOverlayNextCall.getText().toString().trim() : "";
-                String workModeVal = spinnerOverlayWorkMode != null && spinnerOverlayWorkMode.getSelectedItem() != null
-                        ? spinnerOverlayWorkMode.getSelectedItem().toString() : "";
-                String employmentTypeVal = spinnerOverlayEmploymentType != null && spinnerOverlayEmploymentType.getSelectedItem() != null
-                        ? spinnerOverlayEmploymentType.getSelectedItem().toString() : "";
 
                 DatabaseHelper db = new DatabaseHelper(this);
                 long targetJobId = jobCallId;
@@ -576,8 +561,6 @@ public class InCallActivity extends AppCompatActivity {
                     newLead.setRecruiterName(nameVal);
                     newLead.setExpectedCtc(ctcVal);
                     newLead.setTentativeSchedule(nextCallVal);
-                    newLead.setWorkMode(workModeVal);
-                    newLead.setEmploymentType(employmentTypeVal);
                     targetJobId = db.insertJobCall(newLead);
                     jobCallId = targetJobId;
                     company = leadCompany;
@@ -589,8 +572,6 @@ public class InCallActivity extends AppCompatActivity {
                         if (!companyVal.isEmpty()) current.setCompanyName(companyVal);
                         current.setExpectedCtc(ctcVal);
                         current.setTentativeSchedule(nextCallVal);
-                        current.setWorkMode(workModeVal);
-                        current.setEmploymentType(employmentTypeVal);
                         current.setRoundStatus(selectedRound);
                         db.updateJobCall(current);
                         company = current.getCompanyName();
