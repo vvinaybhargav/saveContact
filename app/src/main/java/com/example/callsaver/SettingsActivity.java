@@ -174,38 +174,6 @@ public class SettingsActivity extends AppCompatActivity {
                 etUserInterests.setText(current.isEmpty() ? spoken : current + " " + spoken);
                 etUserInterests.setSelection(etUserInterests.getText().length());
             }
-        } else if (requestCode == REQ_CODE_BROWSE_FOLDER && resultCode == RESULT_OK && data != null) {
-            android.net.Uri treeUri = data.getData();
-            if (treeUri != null) {
-                String path = pathFromTreeUri(treeUri);
-                if (path != null) {
-                    etRecordingFolder.setText(path);
-                } else {
-                    Toast.makeText(this, "That folder isn't on internal storage - type the path manually instead.", Toast.LENGTH_LONG).show();
-                }
-            }
-        }
-    }
-
-    /**
-     * Converts a SAF tree Uri picked via ACTION_OPEN_DOCUMENT_TREE into a plain
-     * filesystem path, so the scanner (which reads java.io.File directly, relying on
-     * the app's All-Files-Access permission) can use it. Only works for folders on
-     * the device's primary internal storage - external SD cards aren't resolvable
-     * to a raw path this way, so the user is told to type it manually in that case.
-     */
-    private String pathFromTreeUri(android.net.Uri treeUri) {
-        try {
-            String docId = android.provider.DocumentsContract.getTreeDocumentId(treeUri);
-            String[] split = docId.split(":");
-            if (split.length == 0) return null;
-            String type = split[0];
-            if (!"primary".equalsIgnoreCase(type)) return null;
-            String relativePath = split.length > 1 ? split[1] : "";
-            String base = android.os.Environment.getExternalStorageDirectory().getAbsolutePath();
-            return relativePath.isEmpty() ? base : base + "/" + relativePath;
-        } catch (Exception e) {
-            return null;
         }
     }
 

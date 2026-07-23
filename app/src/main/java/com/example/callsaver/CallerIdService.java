@@ -444,7 +444,6 @@ public class CallerIdService extends Service {
                                     String sched = result.optString("tentative_schedule", "").trim();
                                     if (!sched.isEmpty()) {
                                         existingCall.setTentativeSchedule(sched);
-                                        existingCall.setNextCallDate(sched);
                                     }
                                     String round = OpenAiClient.normalizeRoundStatus(result.optString("present_round", ""), selectedRound);
                                     if (OpenAiClient.shouldUpdateRoundStatus(existingCall.getRoundStatus(), round)) {
@@ -631,62 +630,7 @@ public class CallerIdService extends Service {
     }
 
     private void startBackgroundTranscription(final String number, final int callDuration) {
-        updateNotification("Searching for call recording...");
-
-        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
-            java.io.File recordingFile = CallRecordingScanner.findLatestCallRecording(this, number, callDuration);
-            if (recordingFile == null) {
-                recordingFile = CallRecordingScanner.findLatestCallRecording(this, number, 0);
-            }
-
-            if (recordingFile != null) {
-                transcribeFile(recordingFile, number);
-            } else {
-                android.util.Log.d("CallerIdService", "No call recording found for: " + number);
-                showFallbackNotification(number);
-                stopSelf();
-            }
-        }, 2500);
-    }
-
-    private void transcribeFile(java.io.File file, String number) {
-        updateNotification("Transcribing call recording...");
-
-        android.content.SharedPreferences prefs = getSharedPreferences("CallSaverPrefs", MODE_PRIVATE);
-        String apiKey = prefs.getString("deepgram_api_key", "");
-
-        if (apiKey.isEmpty()) {
-            android.util.Log.w("CallerIdService", "Deepgram API key is missing. Skipping auto-transcription.");
-            showFallbackNotification(number);
-            stopSelf();
-            return;
-        }
-
-        Transcriber.transcribeCallRecording(this, file, new Transcriber.TranscriptionCallback() {
-            @Override
-            public void onSuccess(String text) {
-                DatabaseHelper db = new DatabaseHelper(CallerIdService.this);
-                JobCall call = db.getJobCallByNumber(CallerIdService.this, number);
-                long targetJobId;
-                if (call != null) {
-                    targetJobId = call.getId();
-                    db.insertNote(targetJobId, "[Auto-Transcribed Call Notes]\n" + text, System.currentTimeMillis());
-                } else {
-                    JobCall newLead = new JobCall(number, "Unknown Recruiter", "First time", "", "[Auto-Transcribed Call Notes]\n" + text, 0, System.currentTimeMillis());
-                    targetJobId = db.insertJobCall(newLead);
-                }
-
-                showSuccessNotification(number, text, targetJobId);
-                stopSelf();
-            }
-
-            @Override
-            public void onError(String error) {
-                android.util.Log.e("CallerIdService", "Transcription failed: " + error);
-                showFallbackNotification(number);
-                stopSelf();
-            }
-        });
+        // Obsolete audio transcription replaced by in-call/post-call manual notes
     }
 
     private void updateNotification(String text) {

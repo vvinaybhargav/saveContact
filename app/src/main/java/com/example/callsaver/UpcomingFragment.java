@@ -926,7 +926,7 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
                                                           final TextView tvSkillsNotMatchingRef) {
         if (getContext() == null || etNotesField == null) return;
 
-        File[] candidateDirs = CallRecordingScanner.getCandidateDirsForBrowsing(requireContext());
+        File[] candidateDirs = new File[] { requireContext().getExternalFilesDir(null), requireContext().getCacheDir() };
 
         final List<File> audioFiles = new ArrayList<>();
         for (File dir : candidateDirs) {

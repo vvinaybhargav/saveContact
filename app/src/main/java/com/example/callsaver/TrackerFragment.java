@@ -1468,7 +1468,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                                                           final TextView tvSkillsNotMatchingRef) {
         if (getContext() == null || etNotesField == null) return;
         
-        File[] candidateDirs = CallRecordingScanner.getCandidateDirsForBrowsing(requireContext());
+        File[] candidateDirs = new File[] { requireContext().getExternalFilesDir(null), requireContext().getCacheDir() };
 
         final List<File> audioFiles = new ArrayList<>();
         for (File dir : candidateDirs) {
