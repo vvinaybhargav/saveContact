@@ -359,20 +359,7 @@
             android:textColor="@color/text_primary" />
     </com.google.android.material.textfield.TextInputLayout>
 
-    <TextView
-        android:id="@+id/tv_dialog_manual_recording"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="end"
-        android:layout_marginBottom="14dp"
-        android:paddingVertical="4dp"
-        android:text="📁 Upload a recording to transcribe ›"
-        android:textColor="@color/accent_indigo"
-        android:textSize="12sp"
-        android:textStyle="bold"
-        android:clickable="true"
-        android:focusable="true"
-        android:background="?android:attr/selectableItemBackground" />
+
 
     <!-- Dialog Transcription Progress -->
     <LinearLayout

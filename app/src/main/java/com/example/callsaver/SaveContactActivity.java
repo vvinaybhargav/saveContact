@@ -435,25 +435,11 @@ public class SaveContactActivity extends AppCompatActivity {
             });
         });
 
-        // Scan for recording file with a delayed progress update so the user knows it's searching
         llRecordingPanel.setVisibility(View.VISIBLE);
-        if (tvTranscriptionStatus != null) {
-            tvTranscriptionStatus.setVisibility(View.VISIBLE);
-            tvTranscriptionStatus.setText("🔍 Locating call recording file...");
-        }
-        pbTranscribe.setVisibility(View.VISIBLE);
-        btnAutoTranscribe.setVisibility(View.GONE);
-
-        // Hide player controls until file is verified
-        final View playBtn = findViewById(R.id.iv_play_pause);
-        if (playBtn != null && playBtn.getParent() instanceof View) {
-            ((View) playBtn.getParent()).setVisibility(View.GONE);
-        }
-
         pbTranscribe.setVisibility(View.GONE);
         btnAutoTranscribe.setVisibility(View.VISIBLE);
         if (tvTranscriptionStatus != null) {
-            tvTranscriptionStatus.setText("💡 Type call notes & tap 'Analyze Notes with AI'.");
+            tvTranscriptionStatus.setText("💡 Type notes & tap 'Analyze Notes with AI'.");
         }
 
         // Fetch accounts

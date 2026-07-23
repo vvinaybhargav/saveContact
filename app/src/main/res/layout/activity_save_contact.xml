@@ -381,7 +381,7 @@
                     android:textColor="@color/text_primary"/>
             </com.google.android.material.textfield.TextInputLayout>
 
-            <!-- Call Recording Player & Auto Transcribe Panel -->
+            <!-- AI Analysis Button for Manual Notes -->
             <LinearLayout
                 android:id="@+id/ll_recording_panel"
                 android:layout_width="match_parent"
@@ -390,59 +390,18 @@
                 android:padding="12dp"
                 android:background="#F3F4F6"
                 android:layout_marginBottom="12dp"
-                android:visibility="gone">
-                
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Call Recording Found"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="11sp"
-                    android:textStyle="bold"
-                    android:layout_gravity="start"/>
-                    
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:layout_marginTop="4dp">
-                    
-                    <ImageView
-                        android:id="@+id/iv_play_pause"
-                        android:layout_width="36dp"
-                        android:layout_height="36dp"
-                        android:src="@android:drawable/ic_media_play"
-                        app:tint="@color/accent_indigo"
-                        android:clickable="true"
-                        android:focusable="true"/>
-                        
-                    <SeekBar
-                        android:id="@+id/sb_recording_progress"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"/>
-                        
-                    <TextView
-                        android:id="@+id/tv_player_time"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="00:00"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="12sp"/>
-                </LinearLayout>
+                android:visibility="visible">
                 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_auto_transcribe"
                     android:layout_width="match_parent"
-                    android:layout_height="38dp"
-                    android:text="✨ Auto-Transcribe (Deepgram)"
+                    android:layout_height="42dp"
+                    android:text="✨ Analyze Notes with AI"
                     android:textAllCaps="false"
                     android:textColor="@color/white"
-                    android:textSize="12sp"
+                    android:textSize="13sp"
                     app:cornerRadius="8dp"
-                    android:backgroundTint="@color/accent_indigo"
-                    android:layout_marginTop="6dp"/>
+                    android:backgroundTint="@color/accent_indigo"/>
                     
                 <ProgressBar
                     android:id="@+id/pb_transcribe"
