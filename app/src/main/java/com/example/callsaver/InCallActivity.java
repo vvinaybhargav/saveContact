@@ -385,7 +385,7 @@ public class InCallActivity extends AppCompatActivity {
 
         String initialChar = notEmpty(title) ? String.valueOf(title.charAt(0)).toUpperCase() : "?";
         tvAvatarLetter.setText(initialChar);
-        int[] avatarColors = {0xFF6366F1, 0xFF10B981, 0xFF3B82F6, 0xFF8B5CF6, 0xFFEC4899, 0xFFF59E0B, 0xFF14B8A6};
+        int[] avatarColors = {0xFF6E6E76, 0xFF10B981, 0xFF3B82F6, 0xFF64748B, 0xFFEC4899, 0xFFF59E0B, 0xFF14B8A6};
         int colorIndex = Math.abs(title.hashCode()) % avatarColors.length;
         if (cardAvatar != null) {
             cardAvatar.setCardBackgroundColor(avatarColors[colorIndex]);
@@ -463,7 +463,7 @@ public class InCallActivity extends AppCompatActivity {
 
                 TextView titleTv = new TextView(this);
                 titleTv.setText(callCounter + getOrdinalSuffix(callCounter) + (note.isManual() ? " MCall" : " Call"));
-                titleTv.setTextColor(0xFF6366F1);
+                titleTv.setTextColor(0xFF9A9AA2);
                 titleTv.setTextSize(12);
                 titleTv.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
                 titleTv.setPadding(0, callCounter == 1 ? 0 : 12, 0, 4);

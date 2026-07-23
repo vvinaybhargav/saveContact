@@ -3,7 +3,7 @@
     <!-- Soft outer glow ring -->
     <item>
         <shape android:shape="oval">
-            <solid android:color="#332A6CFF" />
+            <solid android:color="#33808080" />
         </shape>
     </item>
     <!-- Inner accent ring -->

@@ -131,7 +131,7 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
             String initial = companyForInitial.isEmpty() ? "?" : String.valueOf(companyForInitial.charAt(0)).toUpperCase();
             holder.tvAvatarText.setText(initial);
 
-            int[] avatarColors = {0xFF6366F1, 0xFF10B981, 0xFF3B82F6, 0xFF8B5CF6, 0xFFEC4899, 0xFFF59E0B, 0xFF14B8A6};
+            int[] avatarColors = {0xFF6E6E76, 0xFF10B981, 0xFF3B82F6, 0xFF64748B, 0xFFEC4899, 0xFFF59E0B, 0xFF14B8A6};
             int colorIndex = Math.abs(displayCompany.hashCode()) % avatarColors.length;
             holder.cardAvatar.setCardBackgroundColor(avatarColors[colorIndex]);
 

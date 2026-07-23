@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Premium design color palette -->
-    <color name="primary_dark">#121214</color>
-    <color name="primary_light">#2A2B36</color>
-    <color name="card_bg_dark">#1E1E24</color>
-    <color name="accent_indigo">#6366F1</color>
-    <color name="accent_indigo_dark">#4F46E5</color>
+    <!-- Premium design color palette - grey/black, no violet -->
+    <color name="primary_dark">#121212</color>
+    <color name="primary_light">#2C2C2E</color>
+    <color name="card_bg_dark">#1C1C1E</color>
+    <color name="accent_indigo">#6E6E76</color>
+    <color name="accent_indigo_dark">#54545B</color>
     
     <!-- System statuses -->
     <color name="status_green">#10B981</color>
@@ -23,31 +23,31 @@
     
     <color name="status_red_bg">#FEE2E2</color>
 
-    <!-- Neutral text & backgrounds - flipped to the glassmorphism dark theme app-wide -->
-    <color name="text_primary">#F5F3FF</color>
-    <color name="text_secondary">#B8B3D6</color>
-    <color name="text_muted">#8A84B0</color>
-    <color name="bg_light">#1B1440</color>
+    <!-- Neutral text & backgrounds - grey/black glass theme app-wide -->
+    <color name="text_primary">#F5F5F5</color>
+    <color name="text_secondary">#B0B0B5</color>
+    <color name="text_muted">#87878D</color>
+    <color name="bg_light">#1C1C1E</color>
     <color name="divider">#33FFFFFF</color>
     <color name="white">#FFFFFF</color>
     <color name="white_constant">#FFFFFF</color>
 
-    <!-- Premium in-call UI: gradient + glassmorphism -->
-    <color name="incall_grad_top">#3B1E6E</color>
-    <color name="incall_grad_mid">#1B1440</color>
-    <color name="incall_grad_bottom">#0B0A1A</color>
+    <!-- Premium in-call UI: gradient + glassmorphism - grey/black, no violet -->
+    <color name="incall_grad_top">#3A3A3D</color>
+    <color name="incall_grad_mid">#1E1E20</color>
+    <color name="incall_grad_bottom">#0A0A0A</color>
     <color name="glass_fill">#1FFFFFFF</color>
     <color name="glass_fill_strong">#2EFFFFFF</color>
     <color name="glass_stroke">#33FFFFFF</color>
-    <color name="accent_glow">#7C6CFF</color>
+    <color name="accent_glow">#A0A0A6</color>
     <color name="answer_green">#22C55E</color>
     <color name="decline_red">#F43F5E</color>
 
-    <!-- Call type accents (Recents) - indigo brand family, Missed pops in rose -->
-    <color name="call_incoming">#6366F1</color>
-    <color name="call_incoming_bg">#E0E7FF</color>
-    <color name="call_outgoing">#818CF8</color>
-    <color name="call_outgoing_bg">#ECEBFF</color>
+    <!-- Call type accents (Recents) - grey family, Missed pops in rose -->
+    <color name="call_incoming">#6E6E76</color>
+    <color name="call_incoming_bg">#E5E5EA</color>
+    <color name="call_outgoing">#8E8E93</color>
+    <color name="call_outgoing_bg">#EFEFF2</color>
     <color name="call_missed">#F43F5E</color>
     <color name="call_missed_bg">#FFE4E6</color>
 </resources>

@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Premium dark theme overrides (soft charcoal-grey, layered depth instead of solid black) -->
-    <color name="primary_dark">#17181B</color>  <!-- Header / status bar: slightly darker bar for separation -->
-    <color name="card_bg_dark">#2B2D31</color>  <!-- Lighter charcoal for cards -->
-    <color name="accent_indigo">#8B95FF</color>  <!-- Brighter indigo for headings / accents -->
-    <color name="accent_indigo_dark">#6366F1</color>
+    <!-- Premium dark theme overrides (soft charcoal-grey/black, no violet) -->
+    <color name="primary_dark">#141414</color>  <!-- Header / status bar: slightly darker bar for separation -->
+    <color name="card_bg_dark">#2B2B2D</color>  <!-- Lighter charcoal for cards -->
+    <color name="accent_indigo">#9A9AA2</color>  <!-- Grey for headings / accents -->
+    <color name="accent_indigo_dark">#7A7A82</color>
 
     <!-- Neutral text & backgrounds overrides for night mode -->
-    <color name="text_primary">#E6E9EC</color>   <!-- Lighter readable grey text -->
-    <color name="text_secondary">#B5BAC1</color> <!-- Muted secondary text -->
-    <color name="text_muted">#8E949C</color>     <!-- Muted captions text -->
-    <color name="bg_light">#1E1F22</color>       <!-- Main screen background (soft charcoal grey) -->
-    <color name="divider">#3A3E45</color>        <!-- Divider / unselected chip background -->
-    <color name="white">#26282C</color>          <!-- Cards & dialog backgrounds become charcoal-grey -->
+    <color name="text_primary">#EDEDED</color>   <!-- Lighter readable grey text -->
+    <color name="text_secondary">#B5B5B8</color> <!-- Muted secondary text -->
+    <color name="text_muted">#8E8E93</color>     <!-- Muted captions text -->
+    <color name="bg_light">#1E1E20</color>       <!-- Main screen background (soft charcoal grey) -->
+    <color name="divider">#3A3A3D</color>        <!-- Divider / unselected chip background -->
+    <color name="white">#28282A</color>          <!-- Cards & dialog backgrounds become charcoal-grey -->
     <color name="white_constant">#FFFFFF</color> <!-- Stays bright white where a constant is needed -->
 
     <!-- Statuses overrides for dark backgrounds -->
@@ -21,11 +21,11 @@
     <color name="status_purple_bg">#3D1E4E</color>
     <color name="status_red_bg">#4E1E1E</color>
 
-    <!-- Call type accents (brighter foregrounds + dark tinted circles for night) -->
-    <color name="call_incoming">#818CF8</color>
-    <color name="call_incoming_bg">#282C55</color>
-    <color name="call_outgoing">#A5B4FC</color>
-    <color name="call_outgoing_bg">#2E2C58</color>
+    <!-- Call type accents (grey family for night) -->
+    <color name="call_incoming">#9A9AA2</color>
+    <color name="call_incoming_bg">#2C2C2E</color>
+    <color name="call_outgoing">#B5B5B9</color>
+    <color name="call_outgoing_bg">#2E2E30</color>
     <color name="call_missed">#FB7185</color>
     <color name="call_missed_bg">#4E1E2A</color>
 </resources>
