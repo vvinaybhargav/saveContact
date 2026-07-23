@@ -341,13 +341,15 @@ public class SaveContactActivity extends AppCompatActivity {
             tvToggleApiKey.setText("▼ Settings: API Keys");
         });
 
-        // Set up auto-transcribe action
+        // Set up auto-transcribe
         btnAutoTranscribe.setOnClickListener(v -> {
-            pbTranscribe.setVisibility(View.VISIBLE);
-            if (tvTranscriptionStatus != null) {
-                tvTranscriptionStatus.setVisibility(View.VISIBLE);
-                tvTranscriptionStatus.setText("✨ Transcribing call recording via Deepgram...");
+            String text = etNotes.getText().toString().trim();
+            if (text.isEmpty()) {
+                Toast.makeText(this, "Please enter notes first to analyze.", Toast.LENGTH_SHORT).show();
+                return;
             }
+
+            pbTranscribe.setVisibility(View.VISIBLE);
             btnAutoTranscribe.setEnabled(false);
 
             if (tvTranscriptionStatus != null) {
@@ -363,93 +365,72 @@ public class SaveContactActivity extends AppCompatActivity {
                     }
                     btnAutoTranscribe.setEnabled(true);
                             
-                            try {
-                                 String candidate = optClean(result, "candidate_name", "");
-                                 if (!candidate.isEmpty() && etCandidateName != null) {
-                                     String current = etCandidateName.getText().toString().trim();
-                                     if (current.isEmpty()) {
-                                         etCandidateName.setText(candidate);
-                                     }
-                                 }
-                                 String company = optClean(result, "company_name", "");
-                                 if (!company.isEmpty()) {
-                                     String current = etCompanyName.getText().toString().trim();
-                                     if (current.isEmpty()) {
-                                         etCompanyName.setText(company);
-                                     }
-                                 }
-                                 String role = optClean(result, "applied_role", "");
-                                 if (!role.isEmpty()) {
-                                     String current = etAppliedRole.getText().toString().trim();
-                                     if (current.isEmpty()) {
-                                         etAppliedRole.setText(role);
-                                     }
-                                 }
-                                 String round = optClean(result, "present_round", "");
-                                 if (!round.isEmpty()) {
-                                     setSpinnerSelection(spinnerRound, round);
-                                 }
-                                 String schedule = optClean(result, "tentative_schedule", "");
-                                 if (!schedule.isEmpty()) {
-                                     etTentativeSchedule.setText(schedule);
-                                 }
-                                 String notice = optClean(result, "notice_period", "");
-                                 if (!notice.isEmpty()) {
-                                     etNoticePeriod.setText(notice);
-                                 }
-                                 String agenda = optClean(result, "main_agenda", "");
-                                 if (!agenda.isEmpty()) {
-                                     etMainAgenda.setText(agenda);
-                                 }
-                                 String nextStepsVal = optClean(result, "next_steps", "");
-                                 if (!nextStepsVal.isEmpty()) {
-                                     etNextSteps.setText(nextStepsVal);
-                                 }
-                                
-                                if (result.has("key_discussion_points")) {
-                                    JSONArray arr = result.getJSONArray("key_discussion_points");
-                                    StringBuilder sb = new StringBuilder();
-                                    for (int i = 0; i < arr.length(); i++) {
-                                        sb.append("• ").append(arr.getString(i)).append("\n");
-                                    }
-                                    etNotes.setText(sb.toString().trim());
-                                }
-                                Toast.makeText(SaveContactActivity.this, "AI fields updated successfully!", Toast.LENGTH_SHORT).show();
-                            } catch (Exception e) {
-                                DebugLogger.log(SaveContactActivity.this, "Failed to parse OpenAI fields: " + e.getMessage());
-                                etNotes.setText(text);
-                                Toast.makeText(SaveContactActivity.this, "AI parsing failed, pre-filled raw transcription.", Toast.LENGTH_LONG).show();
+                    try {
+                         String candidate = optClean(result, "candidate_name", "");
+                         if (!candidate.isEmpty() && etCandidateName != null) {
+                             String current = etCandidateName.getText().toString().trim();
+                             if (current.isEmpty()) {
+                                 etCandidateName.setText(candidate);
+                             }
+                         }
+                         String company = optClean(result, "company_name", "");
+                         if (!company.isEmpty()) {
+                             String current = etCompanyName.getText().toString().trim();
+                             if (current.isEmpty()) {
+                                 etCompanyName.setText(company);
+                             }
+                         }
+                         String role = optClean(result, "applied_role", "");
+                         if (!role.isEmpty()) {
+                             String current = etAppliedRole.getText().toString().trim();
+                             if (current.isEmpty()) {
+                                 etAppliedRole.setText(role);
+                             }
+                         }
+                         String round = optClean(result, "present_round", "");
+                         if (!round.isEmpty()) {
+                             setSpinnerSelection(spinnerRound, round);
+                         }
+                         String schedule = optClean(result, "tentative_schedule", "");
+                         if (!schedule.isEmpty()) {
+                             etTentativeSchedule.setText(schedule);
+                         }
+                         String notice = optClean(result, "notice_period", "");
+                         if (!notice.isEmpty()) {
+                             etNoticePeriod.setText(notice);
+                         }
+                         String agenda = optClean(result, "main_agenda", "");
+                         if (!agenda.isEmpty()) {
+                             etMainAgenda.setText(agenda);
+                         }
+                         String nextStepsVal = optClean(result, "next_steps", "");
+                         if (!nextStepsVal.isEmpty()) {
+                             etNextSteps.setText(nextStepsVal);
+                         }
+                        
+                        if (result.has("key_discussion_points")) {
+                            JSONArray arr = result.getJSONArray("key_discussion_points");
+                            StringBuilder sb = new StringBuilder();
+                            for (int i = 0; i < arr.length(); i++) {
+                                sb.append("• ").append(arr.getString(i)).append("\n");
                             }
+                            etNotes.setText(sb.toString().trim());
                         }
-
-                        @Override
-                        public void onError(String error) {
-                            prefs.edit().putBoolean("is_transcribing", false).remove("transcribing_number").apply();
-                            pbTranscribe.setVisibility(View.GONE);
-                            if (tvTranscriptionStatus != null) {
-                                tvTranscriptionStatus.setText("⚠️ OpenAI error: " + error);
-                            }
-                            btnAutoTranscribe.setEnabled(true);
-                            etNotes.setText(text);
-                            Toast.makeText(SaveContactActivity.this, "OpenAI failed: " + error + ". Saved raw.", Toast.LENGTH_LONG).show();
-                        }
-                    });
+                        Toast.makeText(SaveContactActivity.this, "AI fields updated successfully!", Toast.LENGTH_SHORT).show();
+                    } catch (Exception e) {
+                        DebugLogger.log(SaveContactActivity.this, "Failed to parse OpenAI fields: " + e.getMessage());
+                        Toast.makeText(SaveContactActivity.this, "AI parsing failed.", Toast.LENGTH_LONG).show();
+                    }
                 }
 
                 @Override
                 public void onError(String error) {
-                    prefs.edit()
-                            .putBoolean("is_transcribing", false)
-                            .remove("transcribing_number")
-                            .apply();
-
                     pbTranscribe.setVisibility(View.GONE);
                     if (tvTranscriptionStatus != null) {
-                        tvTranscriptionStatus.setText("❌ Error: " + error);
+                        tvTranscriptionStatus.setText("⚠️ OpenAI error: " + error);
                     }
                     btnAutoTranscribe.setEnabled(true);
-                    DebugLogger.log(SaveContactActivity.this, "[Activity] Transcription failed: " + error);
-                    Toast.makeText(SaveContactActivity.this, error, Toast.LENGTH_LONG).show();
+                    Toast.makeText(SaveContactActivity.this, "OpenAI failed: " + error, Toast.LENGTH_LONG).show();
                 }
             });
         });
