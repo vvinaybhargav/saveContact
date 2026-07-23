@@ -147,17 +147,6 @@
             </intent-filter>
         </service>
 
-        <!-- CallScreeningService: lets calls proceed normally on Android 10+, letting
-             CallSaverInCallService's onCallAdded own the call UI -->
-        <service
-            android:name=".CallSaverScreeningService"
-            android:permission="android.permission.BIND_SCREENING_SERVICE"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.telecom.CallScreeningService" />
-            </intent-filter>
-        </service>
-
     </application>
 
 </manifest>

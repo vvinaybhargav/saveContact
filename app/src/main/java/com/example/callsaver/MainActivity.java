@@ -37,8 +37,6 @@ public class MainActivity extends AppCompatActivity {
     private static final int ALL_PERMISSIONS_REQUEST_CODE = 200;
     private static final int REQ_DEFAULT_DIALER = 300;
     private static final int REQ_CODE_OVERLAY = 400;
-    private static final int REQ_CODE_SCREENING = 500;
-    private static final int REQ_CODE_STORAGE_MANAGE = 600;
 
     private BottomNavigationView bottomNavigation;
     private RecentsFragment recentsFragment;
@@ -227,43 +225,21 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void checkOverlayPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (!android.provider.Settings.canDrawOverlays(this)) {
-                new androidx.appcompat.app.AlertDialog.Builder(this)
-                        .setTitle("Overlay Permission Required")
-                        .setMessage("This app displays a full-screen Caller ID layout on recruiter calls. Tap 'OK' to enable this in settings.")
-                        .setPositiveButton("OK", (dialog, which) -> {
-                            Intent intent = new Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                                    Uri.parse("package:" + getPackageName()));
-                            startActivityForResult(intent, REQ_CODE_OVERLAY);
-                        })
-                        .setNegativeButton("Cancel", (dialog, which) -> requestCallScreeningRole())
-                        .show();
-            } else {
-                requestCallScreeningRole();
-            }
-        } else {
-            requestCallScreeningRole();
-        }
-    }
-
-    private void requestCallScreeningRole() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            RoleManager roleManager = (RoleManager) getSystemService(Context.ROLE_SERVICE);
-            if (roleManager != null
-                    && roleManager.isRoleAvailable(RoleManager.ROLE_CALL_SCREENING)
-                    && !roleManager.isRoleHeld(RoleManager.ROLE_CALL_SCREENING)) {
-                Intent intent = roleManager.createRequestRoleIntent(RoleManager.ROLE_CALL_SCREENING);
-                startActivityForResult(intent, REQ_CODE_SCREENING);
-            }
-        }
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQ_CODE_OVERLAY) {
-            requestCallScreeningRole();
+        // "Display over other apps" is still used to launch the post-call popup from the
+        // background. The call-screening role is no longer requested here - now that
+        // CallSaver is the full default dialer, its InCallService sees every call
+        // directly, so screening was a redundant extra permission prompt.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !android.provider.Settings.canDrawOverlays(this)) {
+            new androidx.appcompat.app.AlertDialog.Builder(this)
+                    .setTitle("Overlay Permission Required")
+                    .setMessage("This app displays a full-screen Caller ID layout on recruiter calls. Tap 'OK' to enable this in settings.")
+                    .setPositiveButton("OK", (dialog, which) -> {
+                        Intent intent = new Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                Uri.parse("package:" + getPackageName()));
+                        startActivityForResult(intent, REQ_CODE_OVERLAY);
+                    })
+                    .setNegativeButton("Cancel", null)
+                    .show();
         }
     }
 
