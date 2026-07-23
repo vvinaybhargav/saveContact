@@ -88,6 +88,13 @@ public class InCallActivity extends AppCompatActivity {
         }
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
+        // Blend the system bars into the premium gradient for a full-bleed look.
+        try {
+            getWindow().setStatusBarColor(androidx.core.content.ContextCompat.getColor(this, R.color.incall_grad_top));
+            getWindow().setNavigationBarColor(androidx.core.content.ContextCompat.getColor(this, R.color.incall_grad_bottom));
+        } catch (Exception ignored) {
+        }
+
         setContentView(R.layout.activity_in_call);
         instance = this;
 
@@ -459,7 +466,7 @@ public class InCallActivity extends AppCompatActivity {
 
         if (spinnerOverlayRound != null) {
             ArrayAdapter<String> roundAdapter = new ArrayAdapter<>(this,
-                    android.R.layout.simple_spinner_item,
+                    R.layout.item_spinner_white,
                     new String[]{"First time", "1st Round", "2nd Round", "Final Round", "HR / Salary", "Offered", "Not Interested", "Negative"});
             roundAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
             spinnerOverlayRound.setAdapter(roundAdapter);
@@ -476,7 +483,7 @@ public class InCallActivity extends AppCompatActivity {
 
         if (spinnerOverlayWorkMode != null) {
             ArrayAdapter<String> workModeAdapter = new ArrayAdapter<>(this,
-                    android.R.layout.simple_spinner_item, new String[]{"", "Hybrid", "Onsite", "Remote"});
+                    R.layout.item_spinner_white, new String[]{"", "Hybrid", "Onsite", "Remote"});
             workModeAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
             spinnerOverlayWorkMode.setAdapter(workModeAdapter);
             int pos = workModeAdapter.getPosition(prefillWorkMode != null ? prefillWorkMode : "");
@@ -484,7 +491,7 @@ public class InCallActivity extends AppCompatActivity {
         }
         if (spinnerOverlayEmploymentType != null) {
             ArrayAdapter<String> employmentAdapter = new ArrayAdapter<>(this,
-                    android.R.layout.simple_spinner_item, new String[]{"", "C2H", "Direct Payroll"});
+                    R.layout.item_spinner_white, new String[]{"", "C2H", "Direct Payroll"});
             employmentAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
             spinnerOverlayEmploymentType.setAdapter(employmentAdapter);
             int pos = employmentAdapter.getPosition(prefillEmploymentType != null ? prefillEmploymentType : "");

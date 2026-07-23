@@ -32,6 +32,17 @@
     <color name="white">#FFFFFF</color>
     <color name="white_constant">#FFFFFF</color>
 
+    <!-- Premium in-call UI: gradient + glassmorphism -->
+    <color name="incall_grad_top">#3B1E6E</color>
+    <color name="incall_grad_mid">#1B1440</color>
+    <color name="incall_grad_bottom">#0B0A1A</color>
+    <color name="glass_fill">#1FFFFFFF</color>
+    <color name="glass_fill_strong">#2EFFFFFF</color>
+    <color name="glass_stroke">#33FFFFFF</color>
+    <color name="accent_glow">#7C6CFF</color>
+    <color name="answer_green">#22C55E</color>
+    <color name="decline_red">#F43F5E</color>
+
     <!-- Call type accents (Recents) - indigo brand family, Missed pops in rose -->
     <color name="call_incoming">#6366F1</color>
     <color name="call_incoming_bg">#E0E7FF</color>

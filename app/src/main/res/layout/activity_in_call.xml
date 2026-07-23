@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/primary_dark">
+    android:background="@drawable/bg_incall_gradient">
 
     <!-- Header: Avatar, Caller Name, Status, Call Timer -->
     <LinearLayout
@@ -13,29 +13,36 @@
         android:orientation="vertical"
         android:gravity="center_horizontal"
         android:paddingHorizontal="24dp"
-        android:paddingTop="36dp"
-        android:paddingBottom="16dp">
+        android:paddingTop="44dp"
+        android:paddingBottom="18dp">
 
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/card_overlay_avatar"
-            android:layout_width="88dp"
-            android:layout_height="88dp"
-            app:cardCornerRadius="44dp"
-            app:cardElevation="0dp"
-            app:strokeWidth="0dp"
-            app:cardBackgroundColor="@color/accent_indigo"
-            android:layout_marginBottom="16dp">
+        <FrameLayout
+            android:layout_width="104dp"
+            android:layout_height="104dp"
+            android:layout_marginBottom="18dp"
+            android:background="@drawable/bg_avatar_glow">
 
-            <TextView
-                android:id="@+id/tv_overlay_avatar_letter"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:gravity="center"
-                android:text="R"
-                android:textColor="@color/white_constant"
-                android:textSize="34sp"
-                android:textStyle="bold" />
-        </com.google.android.material.card.MaterialCardView>
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_overlay_avatar"
+                android:layout_width="80dp"
+                android:layout_height="80dp"
+                android:layout_gravity="center"
+                app:cardCornerRadius="40dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="0dp"
+                app:cardBackgroundColor="@color/accent_indigo">
+
+                <TextView
+                    android:id="@+id/tv_overlay_avatar_letter"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center"
+                    android:text="R"
+                    android:textColor="@color/white_constant"
+                    android:textSize="32sp"
+                    android:textStyle="bold" />
+            </com.google.android.material.card.MaterialCardView>
+        </FrameLayout>
 
         <TextView
             android:id="@+id/tv_overlay_caller_name"
@@ -43,8 +50,9 @@
             android:layout_height="wrap_content"
             android:text="Recruiter @ Company"
             android:textColor="@color/white_constant"
-            android:textSize="21sp"
+            android:textSize="24sp"
             android:textStyle="bold"
+            android:letterSpacing="0.01"
             android:maxLines="2"
             android:gravity="center"
             android:ellipsize="end" />
@@ -53,10 +61,13 @@
             android:id="@+id/tv_overlay_caller_status"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="Stage: First time · Android"
-            android:textColor="@color/accent_indigo"
-            android:textSize="13sp"
+            android:layout_marginTop="8dp"
+            android:paddingHorizontal="14dp"
+            android:paddingVertical="5dp"
+            android:background="@drawable/bg_glass_card"
+            android:text="First time"
+            android:textColor="#D9D6FF"
+            android:textSize="12sp"
             android:textStyle="bold"
             android:maxLines="1"
             android:ellipsize="end" />
@@ -65,16 +76,12 @@
             android:id="@+id/tv_call_timer"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
+            android:layout_marginTop="10dp"
             android:text="Ringing…"
-            android:textColor="@color/text_secondary"
-            android:textSize="13sp" />
+            android:textColor="#A9A6C9"
+            android:textSize="14sp"
+            android:letterSpacing="0.02" />
     </LinearLayout>
-
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:background="@color/divider" />
 
     <!-- Scrollable notes / skills-match / call-history / note-editor content -->
     <ScrollView
@@ -83,158 +90,165 @@
         android:layout_weight="1"
         android:fillViewport="true"
         android:clipToPadding="false"
-        android:padding="18dp">
+        android:paddingHorizontal="18dp"
+        android:paddingTop="4dp"
+        android:paddingBottom="8dp"
+        android:scrollbars="none">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
-            <!-- Timeline Section Title -->
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Notes"
-                android:textColor="@color/text_muted"
-                android:textSize="10sp"
-                android:textStyle="bold"
-                android:letterSpacing="0.05"
-                android:layout_marginBottom="6dp" />
-
-            <!-- Default Notes Layout (collapsed view) -->
+            <!-- Notes glass card -->
             <LinearLayout
-                android:id="@+id/ll_overlay_collapsed_notes"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical">
-
-                <TextView
-                    android:id="@+id/tv_overlay_notes"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text=""
-                    android:textColor="@color/text_secondary"
-                    android:textSize="14sp"
-                    android:lineSpacingMultiplier="1.2" />
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical|end"
-                    android:layout_marginTop="6dp">
-
-                    <TextView
-                        android:id="@+id/tv_overlay_expand_button"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Expand Notes"
-                        android:textColor="@color/accent_indigo"
-                        android:textSize="12sp"
-                        android:textStyle="bold"
-                        android:clickable="true"
-                        android:focusable="true"/>
-                </LinearLayout>
-            </LinearLayout>
-
-            <!-- Expanded Notes Layout -->
-            <LinearLayout
-                android:id="@+id/ll_overlay_expanded_notes"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:visibility="gone">
-
-                <LinearLayout
-                    android:id="@+id/ll_overlay_expanded_list"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical" />
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical|end"
-                    android:layout_marginTop="6dp">
-
-                    <TextView
-                        android:id="@+id/tv_overlay_collapse_button"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Collapse Notes"
-                        android:textColor="@color/accent_indigo"
-                        android:textSize="12sp"
-                        android:textStyle="bold"
-                        android:clickable="true"
-                        android:focusable="true"/>
-                </LinearLayout>
-            </LinearLayout>
-
-            <!-- Recent Call Info Section -->
-            <LinearLayout
-                android:id="@+id/ll_overlay_recent_call_container"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:layout_marginTop="12dp"
-                android:visibility="gone">
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="@color/divider"
-                    android:layout_marginBottom="12dp" />
+                android:background="@drawable/bg_glass_card"
+                android:padding="16dp">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="📞 CALL HISTORY"
-                    android:textColor="@color/text_muted"
+                    android:text="NOTES"
+                    android:textColor="#B7B4E0"
                     android:textSize="10sp"
                     android:textStyle="bold"
-                    android:letterSpacing="0.05"
-                    android:layout_marginBottom="6dp" />
+                    android:letterSpacing="0.08"
+                    android:layout_marginBottom="8dp" />
 
-                <TextView
-                    android:id="@+id/tv_overlay_recent_call"
+                <!-- Default Notes Layout (collapsed view) -->
+                <LinearLayout
+                    android:id="@+id/ll_overlay_collapsed_notes"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="First call - -  |  Recent call - NA"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="12sp" />
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/tv_overlay_notes"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text=""
+                        android:textColor="#E8E7F5"
+                        android:textSize="14sp"
+                        android:lineSpacingMultiplier="1.25" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical|end"
+                        android:layout_marginTop="8dp">
+
+                        <TextView
+                            android:id="@+id/tv_overlay_expand_button"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Expand ⌄"
+                            android:textColor="@color/accent_glow"
+                            android:textSize="12sp"
+                            android:textStyle="bold"
+                            android:clickable="true"
+                            android:focusable="true"/>
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Expanded Notes Layout -->
+                <LinearLayout
+                    android:id="@+id/ll_overlay_expanded_notes"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <LinearLayout
+                        android:id="@+id/ll_overlay_expanded_list"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical|end"
+                        android:layout_marginTop="8dp">
+
+                        <TextView
+                            android:id="@+id/tv_overlay_collapse_button"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Collapse ⌃"
+                            android:textColor="@color/accent_glow"
+                            android:textSize="12sp"
+                            android:textStyle="bold"
+                            android:clickable="true"
+                            android:focusable="true"/>
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Call history (shown inside expand) -->
+                <LinearLayout
+                    android:id="@+id/ll_overlay_recent_call_container"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_marginTop="12dp"
+                    android:visibility="gone">
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="@color/glass_stroke"
+                        android:layout_marginBottom="10dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="📞 CALL HISTORY"
+                        android:textColor="#B7B4E0"
+                        android:textSize="10sp"
+                        android:textStyle="bold"
+                        android:letterSpacing="0.06"
+                        android:layout_marginBottom="6dp" />
+
+                    <TextView
+                        android:id="@+id/tv_overlay_recent_call"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="First call - -  |  Recent call - NA"
+                        android:textColor="#CFCDE8"
+                        android:textSize="12sp" />
+                </LinearLayout>
             </LinearLayout>
 
-            <!-- Skills Match Section -->
+            <!-- Skills Match glass card -->
             <LinearLayout
                 android:id="@+id/ll_overlay_skills_match_container"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:layout_marginTop="12dp"
+                android:background="@drawable/bg_glass_card"
+                android:padding="16dp"
                 android:visibility="gone">
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="@color/divider"
-                    android:layout_marginBottom="12dp" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="🎯 SKILLS MATCH"
-                    android:textColor="@color/text_muted"
+                    android:textColor="#B7B4E0"
                     android:textSize="10sp"
                     android:textStyle="bold"
-                    android:letterSpacing="0.05"
-                    android:layout_marginBottom="6dp" />
+                    android:letterSpacing="0.06"
+                    android:layout_marginBottom="8dp" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Matching"
-                    android:textColor="#4CAF50"
+                    android:textColor="#4ADE80"
                     android:textSize="10sp"
                     android:textStyle="bold" />
 
@@ -243,15 +257,15 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="-"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="12sp"
-                    android:layout_marginBottom="6dp" />
+                    android:textColor="#E8E7F5"
+                    android:textSize="13sp"
+                    android:layout_marginBottom="8dp" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Not Matching"
-                    android:textColor="#E53935"
+                    android:textColor="#FB7185"
                     android:textSize="10sp"
                     android:textStyle="bold" />
 
@@ -260,30 +274,37 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="-"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="12sp" />
+                    android:textColor="#E8E7F5"
+                    android:textSize="13sp" />
             </LinearLayout>
 
-            <!-- Collapsible Note-Taking Edit Panel -->
+            <!-- Structured note-capture panel (glass) -->
             <LinearLayout
                 android:id="@+id/ll_overlay_edit_panel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:layout_marginTop="12dp"
+                android:background="@drawable/bg_glass_card"
+                android:padding="16dp"
                 android:visibility="gone">
 
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="@color/divider"
-                    android:layout_marginBottom="12dp" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="ADD DETAILS"
+                    android:textColor="#B7B4E0"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.08"
+                    android:layout_marginBottom="10dp" />
 
+                <!-- Quick preset chips -->
                 <HorizontalScrollView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:scrollbars="none"
-                    android:layout_marginBottom="8dp">
+                    android:layout_marginBottom="10dp">
 
                     <LinearLayout
                         android:layout_width="wrap_content"
@@ -298,7 +319,9 @@
                             android:layout_marginEnd="6dp"
                             android:text="Shortlisted"
                             android:textColor="@color/white_constant"
-                            app:chipBackgroundColor="@color/primary_light" />
+                            app:chipBackgroundColor="@color/glass_fill_strong"
+                            app:chipStrokeColor="@color/glass_stroke"
+                            app:chipStrokeWidth="1dp" />
 
                         <com.google.android.material.chip.Chip
                             android:id="@+id/chip_preset_tmrw_interview"
@@ -308,7 +331,9 @@
                             android:layout_marginEnd="6dp"
                             android:text="tmrw interview at 12 pm"
                             android:textColor="@color/white_constant"
-                            app:chipBackgroundColor="@color/primary_light" />
+                            app:chipBackgroundColor="@color/glass_fill_strong"
+                            app:chipStrokeColor="@color/glass_stroke"
+                            app:chipStrokeWidth="1dp" />
 
                         <com.google.android.material.chip.Chip
                             android:id="@+id/chip_preset_next_round"
@@ -318,7 +343,9 @@
                             android:layout_marginEnd="6dp"
                             android:text="Next round scheduled"
                             android:textColor="@color/white_constant"
-                            app:chipBackgroundColor="@color/primary_light" />
+                            app:chipBackgroundColor="@color/glass_fill_strong"
+                            app:chipStrokeColor="@color/glass_stroke"
+                            app:chipStrokeWidth="1dp" />
 
                         <com.google.android.material.chip.Chip
                             android:id="@+id/chip_preset_salary"
@@ -327,124 +354,93 @@
                             android:layout_height="wrap_content"
                             android:text="Salary discussed"
                             android:textColor="@color/white_constant"
-                            app:chipBackgroundColor="@color/primary_light" />
+                            app:chipBackgroundColor="@color/glass_fill_strong"
+                            app:chipStrokeColor="@color/glass_stroke"
+                            app:chipStrokeWidth="1dp" />
                     </LinearLayout>
                 </HorizontalScrollView>
 
-                <!-- Text fields: Name, Company, Expected CTC -->
-                <com.google.android.material.textfield.TextInputLayout
+                <EditText
+                    android:id="@+id/et_overlay_name"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_marginBottom="8dp"
+                    android:background="@drawable/bg_glass_field"
+                    android:paddingHorizontal="14dp"
+                    android:hint="Name"
+                    android:textColorHint="#8A88A8"
+                    android:inputType="textPersonName"
+                    android:textColor="@color/white_constant"
+                    android:textSize="14sp" />
+
+                <EditText
+                    android:id="@+id/et_overlay_company"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_marginBottom="8dp"
+                    android:background="@drawable/bg_glass_field"
+                    android:paddingHorizontal="14dp"
+                    android:hint="Company"
+                    android:textColorHint="#8A88A8"
+                    android:inputType="text"
+                    android:textColor="@color/white_constant"
+                    android:textSize="14sp" />
+
+                <EditText
+                    android:id="@+id/et_overlay_expected_ctc"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_marginBottom="8dp"
+                    android:background="@drawable/bg_glass_field"
+                    android:paddingHorizontal="14dp"
+                    android:hint="Expected CTC"
+                    android:textColorHint="#8A88A8"
+                    android:inputType="text"
+                    android:textColor="@color/white_constant"
+                    android:textSize="14sp" />
+
+                <EditText
+                    android:id="@+id/et_overlay_note_input"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="8dp"
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-                    app:boxCornerRadiusTopStart="12dp"
-                    app:boxCornerRadiusTopEnd="12dp"
-                    app:boxCornerRadiusBottomStart="12dp"
-                    app:boxCornerRadiusBottomEnd="12dp"
-                    app:boxStrokeColor="@color/accent_indigo"
-                    app:hintTextColor="@color/accent_indigo">
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/et_overlay_name"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:hint="Name"
-                        android:inputType="textPersonName"
-                        android:textColor="@color/text_primary" />
-                </com.google.android.material.textfield.TextInputLayout>
+                    android:minHeight="64dp"
+                    android:layout_marginBottom="10dp"
+                    android:background="@drawable/bg_glass_field"
+                    android:padding="14dp"
+                    android:gravity="top"
+                    android:hint="Note of the call"
+                    android:textColorHint="#8A88A8"
+                    android:inputType="textMultiLine|textCapSentences"
+                    android:minLines="2"
+                    android:textColor="@color/white_constant"
+                    android:textSize="14sp" />
 
-                <com.google.android.material.textfield.TextInputLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="8dp"
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-                    app:boxCornerRadiusTopStart="12dp"
-                    app:boxCornerRadiusTopEnd="12dp"
-                    app:boxCornerRadiusBottomStart="12dp"
-                    app:boxCornerRadiusBottomEnd="12dp"
-                    app:boxStrokeColor="@color/accent_indigo"
-                    app:hintTextColor="@color/accent_indigo">
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/et_overlay_company"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:hint="Company"
-                        android:inputType="text"
-                        android:textColor="@color/text_primary" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <com.google.android.material.textfield.TextInputLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="8dp"
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-                    app:boxCornerRadiusTopStart="12dp"
-                    app:boxCornerRadiusTopEnd="12dp"
-                    app:boxCornerRadiusBottomStart="12dp"
-                    app:boxCornerRadiusBottomEnd="12dp"
-                    app:boxStrokeColor="@color/accent_indigo"
-                    app:hintTextColor="@color/accent_indigo">
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/et_overlay_expected_ctc"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:hint="Expected CTC"
-                        android:inputType="text"
-                        android:textColor="@color/text_primary" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/til_overlay_notes"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="8dp"
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-                    app:boxCornerRadiusTopStart="12dp"
-                    app:boxCornerRadiusTopEnd="12dp"
-                    app:boxCornerRadiusBottomStart="12dp"
-                    app:boxCornerRadiusBottomEnd="12dp"
-                    app:boxStrokeColor="@color/accent_indigo"
-                    app:hintTextColor="@color/accent_indigo"
-                    app:startIconDrawable="@android:drawable/ic_menu_edit"
-                    app:startIconTint="@color/text_muted">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/et_overlay_note_input"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:hint="Note of the call"
-                        android:inputType="textMultiLine|textCapSentences"
-                        android:minLines="2"
-                        android:textColor="@color/text_primary" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <!-- Dropdowns: Interview Round, Work Mode, Employment Type -->
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Interview Round"
-                    android:textColor="@color/text_muted"
+                    android:textColor="#9C9AC0"
                     android:textSize="10sp"
                     android:textStyle="bold"
                     android:layout_marginBottom="4dp" />
                 <FrameLayout
                     android:layout_width="match_parent"
-                    android:layout_height="46dp"
+                    android:layout_height="48dp"
                     android:layout_marginBottom="8dp"
-                    android:background="@drawable/spinner_border">
+                    android:background="@drawable/bg_glass_field">
                     <Spinner
                         android:id="@+id/spinner_overlay_round"
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
-                        android:paddingHorizontal="12dp"
+                        android:paddingHorizontal="10dp"
                         android:spinnerMode="dropdown" />
                 </FrameLayout>
 
-                <!-- Next Call: tap to pick date/time, with a clear (✕) button -->
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Next Call"
-                    android:textColor="@color/text_muted"
+                    android:textColor="#9C9AC0"
                     android:textSize="10sp"
                     android:textStyle="bold"
                     android:layout_marginBottom="4dp" />
@@ -454,18 +450,19 @@
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="8dp"
                     style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-                    app:boxCornerRadiusTopStart="12dp"
-                    app:boxCornerRadiusTopEnd="12dp"
-                    app:boxCornerRadiusBottomStart="12dp"
-                    app:boxCornerRadiusBottomEnd="12dp"
-                    app:boxStrokeColor="@color/accent_indigo"
-                    app:hintTextColor="@color/accent_indigo"
+                    app:boxBackgroundColor="@color/glass_fill"
+                    app:boxCornerRadiusTopStart="14dp"
+                    app:boxCornerRadiusTopEnd="14dp"
+                    app:boxCornerRadiusBottomStart="14dp"
+                    app:boxCornerRadiusBottomEnd="14dp"
+                    app:boxStrokeColor="@color/glass_stroke"
+                    app:hintTextColor="#9C9AC0"
                     app:startIconDrawable="@android:drawable/ic_menu_my_calendar"
-                    app:startIconTint="@color/text_muted"
+                    app:startIconTint="#9C9AC0"
                     app:endIconMode="custom"
                     app:endIconDrawable="@android:drawable/ic_menu_close_clear_cancel"
                     app:endIconContentDescription="Clear next call"
-                    app:endIconTint="@color/text_muted">
+                    app:endIconTint="#9C9AC0">
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/et_overlay_next_call"
                         android:layout_width="match_parent"
@@ -474,14 +471,14 @@
                         android:inputType="none"
                         android:focusable="false"
                         android:clickable="true"
-                        android:textColor="@color/text_primary" />
+                        android:textColor="@color/white_constant" />
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
-                    android:layout_marginBottom="12dp">
+                    android:layout_marginBottom="14dp">
 
                     <LinearLayout
                         android:layout_width="0dp"
@@ -492,20 +489,20 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Hybrid / Onsite / Remote"
-                            android:textColor="@color/text_muted"
+                            android:text="Work Mode"
+                            android:textColor="#9C9AC0"
                             android:textSize="10sp"
                             android:textStyle="bold"
                             android:layout_marginBottom="4dp" />
                         <FrameLayout
                             android:layout_width="match_parent"
-                            android:layout_height="46dp"
-                            android:background="@drawable/spinner_border">
+                            android:layout_height="48dp"
+                            android:background="@drawable/bg_glass_field">
                             <Spinner
                                 android:id="@+id/spinner_overlay_work_mode"
                                 android:layout_width="match_parent"
                                 android:layout_height="match_parent"
-                                android:paddingHorizontal="12dp"
+                                android:paddingHorizontal="8dp"
                                 android:spinnerMode="dropdown" />
                         </FrameLayout>
                     </LinearLayout>
@@ -519,20 +516,20 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="C2H / Direct Payroll"
-                            android:textColor="@color/text_muted"
+                            android:text="Payroll Type"
+                            android:textColor="#9C9AC0"
                             android:textSize="10sp"
                             android:textStyle="bold"
                             android:layout_marginBottom="4dp" />
                         <FrameLayout
                             android:layout_width="match_parent"
-                            android:layout_height="46dp"
-                            android:background="@drawable/spinner_border">
+                            android:layout_height="48dp"
+                            android:background="@drawable/bg_glass_field">
                             <Spinner
                                 android:id="@+id/spinner_overlay_employment_type"
                                 android:layout_width="match_parent"
                                 android:layout_height="match_parent"
-                                android:paddingHorizontal="12dp"
+                                android:paddingHorizontal="8dp"
                                 android:spinnerMode="dropdown" />
                         </FrameLayout>
                     </LinearLayout>
@@ -544,36 +541,40 @@
                     android:orientation="horizontal"
                     android:gravity="center_vertical|end">
 
-                    <com.google.android.material.button.MaterialButton
+                    <TextView
                         android:id="@+id/btn_overlay_cancel_note"
-                        style="@style/Widget.MaterialComponents.Button.TextButton"
                         android:layout_width="wrap_content"
-                        android:layout_height="40dp"
+                        android:layout_height="44dp"
+                        android:gravity="center"
+                        android:paddingHorizontal="18dp"
                         android:text="Cancel"
-                        android:textColor="@color/text_muted"
+                        android:textColor="#A9A6C9"
                         android:textAllCaps="false"
-                        android:layout_marginStart="8dp"/>
+                        android:textSize="14sp"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:background="?android:attr/selectableItemBackground"/>
 
-                    <com.google.android.material.button.MaterialButton
+                    <TextView
                         android:id="@+id/btn_overlay_save_note"
                         android:layout_width="wrap_content"
-                        android:layout_height="40dp"
+                        android:layout_height="44dp"
+                        android:layout_marginStart="8dp"
+                        android:gravity="center"
+                        android:paddingHorizontal="26dp"
                         android:text="Save"
                         android:textAllCaps="false"
-                        android:textColor="@color/white"
-                        android:backgroundTint="@color/accent_indigo"
-                        app:cornerRadius="8dp"
-                        android:layout_marginStart="4dp"/>
+                        android:textColor="@color/white_constant"
+                        android:textStyle="bold"
+                        android:textSize="14sp"
+                        android:background="@drawable/bg_pill_accent"
+                        android:clickable="true"
+                        android:focusable="true"/>
                 </LinearLayout>
             </LinearLayout>
 
         </LinearLayout>
     </ScrollView>
-
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:background="@color/divider" />
 
     <!-- Incoming-call controls: Decline / Answer -->
     <LinearLayout
@@ -582,30 +583,60 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center"
-        android:paddingVertical="22dp"
+        android:paddingVertical="26dp"
         android:visibility="gone">
 
-        <com.google.android.material.floatingactionbutton.FloatingActionButton
-            android:id="@+id/btn_decline_call"
-            android:layout_width="64dp"
-            android:layout_height="64dp"
-            android:layout_marginHorizontal="28dp"
-            android:src="@android:drawable/ic_menu_close_clear_cancel"
-            app:tint="@color/white_constant"
-            app:backgroundTint="#E53935"
-            app:fabSize="normal"
-            android:contentDescription="Decline" />
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+            <com.google.android.material.floatingactionbutton.FloatingActionButton
+                android:id="@+id/btn_decline_call"
+                android:layout_width="68dp"
+                android:layout_height="68dp"
+                android:src="@android:drawable/ic_menu_close_clear_cancel"
+                app:tint="@color/white_constant"
+                app:backgroundTint="@color/decline_red"
+                app:fabCustomSize="68dp"
+                app:maxImageSize="28dp"
+                app:elevation="8dp"
+                android:contentDescription="Decline" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Decline"
+                android:textColor="#CFCDE8"
+                android:textSize="12sp" />
+        </LinearLayout>
 
-        <com.google.android.material.floatingactionbutton.FloatingActionButton
-            android:id="@+id/btn_answer_call"
-            android:layout_width="64dp"
-            android:layout_height="64dp"
-            android:layout_marginHorizontal="28dp"
-            android:src="@android:drawable/sym_action_call"
-            app:tint="@color/white_constant"
-            app:backgroundTint="#4CAF50"
-            app:fabSize="normal"
-            android:contentDescription="Answer" />
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+            <com.google.android.material.floatingactionbutton.FloatingActionButton
+                android:id="@+id/btn_answer_call"
+                android:layout_width="68dp"
+                android:layout_height="68dp"
+                android:src="@android:drawable/sym_action_call"
+                app:tint="@color/white_constant"
+                app:backgroundTint="@color/answer_green"
+                app:fabCustomSize="68dp"
+                app:maxImageSize="28dp"
+                app:elevation="8dp"
+                android:contentDescription="Answer" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Answer"
+                android:textColor="#CFCDE8"
+                android:textSize="12sp" />
+        </LinearLayout>
     </LinearLayout>
 
     <!-- Active-call controls: Mute / Add Note / Speaker / End -->
@@ -615,7 +646,8 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center"
-        android:paddingVertical="18dp"
+        android:paddingVertical="20dp"
+        android:paddingHorizontal="12dp"
         android:visibility="gone">
 
         <LinearLayout
@@ -626,20 +658,20 @@
             android:gravity="center">
             <ImageView
                 android:id="@+id/btn_toggle_mute"
-                android:layout_width="52dp"
-                android:layout_height="52dp"
-                android:padding="14dp"
+                android:layout_width="58dp"
+                android:layout_height="58dp"
+                android:padding="16dp"
                 android:src="@android:drawable/ic_lock_silent_mode"
                 app:tint="@color/white_constant"
-                android:background="@drawable/spinner_border"
+                android:background="@drawable/bg_glass_circle"
                 android:contentDescription="Mute" />
             <TextView
                 android:id="@+id/tv_mute_label"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="6dp"
                 android:text="Mute"
-                android:textColor="@color/text_secondary"
+                android:textColor="#CFCDE8"
                 android:textSize="11sp" />
         </LinearLayout>
 
@@ -651,19 +683,19 @@
             android:gravity="center">
             <ImageView
                 android:id="@+id/btn_toggle_note"
-                android:layout_width="52dp"
-                android:layout_height="52dp"
-                android:padding="14dp"
+                android:layout_width="58dp"
+                android:layout_height="58dp"
+                android:padding="16dp"
                 android:src="@android:drawable/ic_menu_edit"
                 app:tint="@color/white_constant"
-                android:background="@drawable/spinner_border"
+                android:background="@drawable/bg_glass_circle"
                 android:contentDescription="Add note" />
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="6dp"
                 android:text="Note"
-                android:textColor="@color/text_secondary"
+                android:textColor="#CFCDE8"
                 android:textSize="11sp" />
         </LinearLayout>
 
@@ -675,20 +707,20 @@
             android:gravity="center">
             <ImageView
                 android:id="@+id/btn_toggle_speaker"
-                android:layout_width="52dp"
-                android:layout_height="52dp"
-                android:padding="14dp"
+                android:layout_width="58dp"
+                android:layout_height="58dp"
+                android:padding="16dp"
                 android:src="@android:drawable/ic_lock_silent_mode_off"
                 app:tint="@color/white_constant"
-                android:background="@drawable/spinner_border"
+                android:background="@drawable/bg_glass_circle"
                 android:contentDescription="Speaker" />
             <TextView
                 android:id="@+id/tv_speaker_label"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="6dp"
                 android:text="Speaker"
-                android:textColor="@color/text_secondary"
+                android:textColor="#CFCDE8"
                 android:textSize="11sp" />
         </LinearLayout>
 
@@ -700,19 +732,21 @@
             android:gravity="center">
             <com.google.android.material.floatingactionbutton.FloatingActionButton
                 android:id="@+id/btn_end_call"
-                android:layout_width="52dp"
-                android:layout_height="52dp"
+                android:layout_width="58dp"
+                android:layout_height="58dp"
                 android:src="@android:drawable/ic_menu_close_clear_cancel"
                 app:tint="@color/white_constant"
-                app:backgroundTint="#E53935"
-                app:fabSize="mini"
+                app:backgroundTint="@color/decline_red"
+                app:fabCustomSize="58dp"
+                app:maxImageSize="26dp"
+                app:elevation="6dp"
                 android:contentDescription="End call" />
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="6dp"
                 android:text="End"
-                android:textColor="@color/text_secondary"
+                android:textColor="#CFCDE8"
                 android:textSize="11sp" />
         </LinearLayout>
     </LinearLayout>
