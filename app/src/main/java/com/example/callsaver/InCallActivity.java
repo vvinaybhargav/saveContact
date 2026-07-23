@@ -518,6 +518,13 @@ public class InCallActivity extends AppCompatActivity {
                             .setMessage("This can't be undone.")
                             .setPositiveButton("Delete", (d, w) -> {
                                 new DatabaseHelper(this).deleteNote(noteId, jobCallId);
+                                // The note-input box still holds whatever was last typed
+                                // there (it's separate from the history list) - clear it
+                                // and the auto-save tracker too, otherwise the very next
+                                // auto-save (e.g. when this screen closes) would silently
+                                // re-insert the same text and "undo" the delete.
+                                if (etOverlayNoteInput != null) etOverlayNoteInput.setText("");
+                                lastAutoSavedNoteText = "";
                                 bindNotesAndSkills();
                             })
                             .setNegativeButton("Cancel", null)
@@ -695,7 +702,10 @@ public class InCallActivity extends AppCompatActivity {
         if (chipInterviewScheduled != null) chipInterviewScheduled.setOnClickListener(chipClickListener);
         if (chipRoundCleared != null) chipRoundCleared.setOnClickListener(chipClickListener);
 
-        if (etOverlayNoteInput != null) {
+        // bindNoteEditor() can run more than once (e.g. after deleting a note refreshes
+        // the whole panel) - guard so we don't stack duplicate TextWatchers on re-bind.
+        if (etOverlayNoteInput != null && etOverlayNoteInput.getTag() == null) {
+            etOverlayNoteInput.setTag("watched");
             etOverlayNoteInput.addTextChangedListener(new android.text.TextWatcher() {
                 @Override
                 public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
