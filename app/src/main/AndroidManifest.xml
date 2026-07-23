@@ -10,6 +10,7 @@
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.READ_CALL_LOG" />
     <uses-permission android:name="android.permission.CALL_PHONE" />
+    <uses-permission android:name="android.permission.ANSWER_PHONE_CALLS" />
     <uses-permission android:name="android.permission.INTERNET" />
 
     <!-- Permissions for querying contacts -->
@@ -129,11 +130,18 @@
             android:turnScreenOn="true"
             android:theme="@style/Theme.CallSaver" />
 
-        <!-- InCallService: required for Android OS to list CallSaver in Default Phone App dropdown menu -->
+        <!-- InCallService: required for Android OS to list CallSaver in Default Phone App dropdown menu.
+             The IN_CALL_SERVICE_UI meta-data explicitly declares that this service provides the
+             full call UI (not just a background call-monitoring integration, e.g. a Bluetooth
+             headset app) - some OEM skins (e.g. ColorOS) silently exclude the app from the
+             Default Phone App picker entirely without this flag. -->
         <service
             android:name=".CallSaverInCallService"
             android:permission="android.permission.BIND_INCALL_SERVICE"
             android:exported="true">
+            <meta-data
+                android:name="android.telecom.IN_CALL_SERVICE_UI"
+                android:value="true" />
             <intent-filter>
                 <action android:name="android.telecom.InCallService" />
             </intent-filter>
