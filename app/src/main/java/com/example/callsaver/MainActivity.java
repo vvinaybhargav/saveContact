@@ -210,9 +210,6 @@ public class MainActivity extends AppCompatActivity {
         List<String> perms = new ArrayList<>(Arrays.asList(requiredPermissions));
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             perms.add(Manifest.permission.POST_NOTIFICATIONS);
-            perms.add(Manifest.permission.READ_MEDIA_AUDIO);
-        } else {
-            perms.add(Manifest.permission.READ_EXTERNAL_STORAGE);
         }
         return perms.toArray(new String[0]);
     }
@@ -222,7 +219,7 @@ public class MainActivity extends AppCompatActivity {
             if (!android.provider.Settings.canDrawOverlays(this)) {
                 new androidx.appcompat.app.AlertDialog.Builder(this)
                         .setTitle("Overlay Permission Required")
-                        .setMessage("This app displays a floating Caller ID banner (like Truecaller) on recruiter calls. Tap 'OK' to enable this in settings.")
+                        .setMessage("This app displays a full-screen Caller ID layout on recruiter calls. Tap 'OK' to enable this in settings.")
                         .setPositiveButton("OK", (dialog, which) -> {
                             Intent intent = new Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                                     Uri.parse("package:" + getPackageName()));
@@ -242,39 +239,10 @@ public class MainActivity extends AppCompatActivity {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             RoleManager roleManager = (RoleManager) getSystemService(Context.ROLE_SERVICE);
             if (roleManager != null
-                    && roleManager.isRoleAvailable(RoleManager.ROLE_CALL_SCREENING)) {
-                if (!roleManager.isRoleHeld(RoleManager.ROLE_CALL_SCREENING)) {
-                    Intent intent = roleManager.createRequestRoleIntent(RoleManager.ROLE_CALL_SCREENING);
-                    startActivityForResult(intent, REQ_CODE_SCREENING);
-                } else {
-                    checkStorageManagerPermission();
-                }
-            } else {
-                checkStorageManagerPermission();
-            }
-        } else {
-            checkStorageManagerPermission();
-        }
-    }
-
-    private void checkStorageManagerPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            if (!android.os.Environment.isExternalStorageManager()) {
-                new androidx.appcompat.app.AlertDialog.Builder(this)
-                        .setTitle("All Files Access Required")
-                        .setMessage("On Android 11+, the app needs permission to access call recordings inside your system's folder. Tap 'OK' to enable this in settings.")
-                        .setPositiveButton("OK", (dialog, which) -> {
-                            try {
-                                Intent intent = new Intent(android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
-                                        Uri.parse("package:" + getPackageName()));
-                                startActivityForResult(intent, REQ_CODE_STORAGE_MANAGE);
-                            } catch (Exception e) {
-                                Intent intent = new Intent(android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION);
-                                startActivityForResult(intent, REQ_CODE_STORAGE_MANAGE);
-                            }
-                        })
-                        .setNegativeButton("Cancel", null)
-                        .show();
+                    && roleManager.isRoleAvailable(RoleManager.ROLE_CALL_SCREENING)
+                    && !roleManager.isRoleHeld(RoleManager.ROLE_CALL_SCREENING)) {
+                Intent intent = roleManager.createRequestRoleIntent(RoleManager.ROLE_CALL_SCREENING);
+                startActivityForResult(intent, REQ_CODE_SCREENING);
             }
         }
     }
@@ -284,8 +252,6 @@ public class MainActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == REQ_CODE_OVERLAY) {
             requestCallScreeningRole();
-        } else if (requestCode == REQ_CODE_SCREENING) {
-            checkStorageManagerPermission();
         }
     }
 

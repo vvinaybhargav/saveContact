@@ -59,6 +59,15 @@ public class SettingsActivity extends AppCompatActivity {
         btnClearLogs = findViewById(R.id.btn_clear_logs);
         btnRefreshLogs = findViewById(R.id.btn_refresh_logs);
 
+        // Setup Default Dialer button
+        Button btnSetDefaultDialer = findViewById(R.id.btn_set_default_dialer);
+        TextView tvDefaultDialerStatus = findViewById(R.id.tv_default_dialer_status);
+        updateDefaultDialerStatus(btnSetDefaultDialer, tvDefaultDialerStatus);
+
+        if (btnSetDefaultDialer != null) {
+            btnSetDefaultDialer.setOnClickListener(v -> requestDefaultDialerRole());
+        }
+
         // Load preferences
         if (etOpenAiKey != null) etOpenAiKey.setText(prefs.getString("openai_api_key", ""));
         if (etUserName != null) etUserName.setText(prefs.getString("user_full_name", ""));
@@ -325,5 +334,52 @@ public class SettingsActivity extends AppCompatActivity {
         if (tvStatScreenings != null) tvStatScreenings.setText(String.valueOf(screenings));
         if (tvStatInterviews != null) tvStatInterviews.setText(String.valueOf(interviews));
         if (tvStatOffers != null) tvStatOffers.setText(String.valueOf(offers));
+    }
+
+    private void updateDefaultDialerStatus(Button btn, TextView tvStatus) {
+        android.telecom.TelecomManager tm = (android.telecom.TelecomManager) getSystemService(Context.TELECOM_SERVICE);
+        boolean isDefault = tm != null && getPackageName().equals(tm.getDefaultDialerPackage());
+        if (tvStatus != null) {
+            if (isDefault) {
+                tvStatus.setText("✅ CallSaver is currently set as your Default Phone App.");
+            } else {
+                tvStatus.setText("⚠️ CallSaver is NOT your default phone app. Tap below to set it as default.");
+            }
+        }
+        if (btn != null) {
+            if (isDefault) {
+                btn.setText("✅ Default Phone App Active");
+                btn.setEnabled(false);
+            } else {
+                btn.setText("Set CallSaver as Default Phone App");
+                btn.setEnabled(true);
+            }
+        }
+    }
+
+    private void requestDefaultDialerRole() {
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                android.app.role.RoleManager roleManager = (android.app.role.RoleManager) getSystemService(Context.ROLE_SERVICE);
+                if (roleManager != null && roleManager.isRoleAvailable(android.app.role.RoleManager.ROLE_DIALER)) {
+                    Intent intent = roleManager.createRequestRoleIntent(android.app.role.RoleManager.ROLE_DIALER);
+                    startActivityForResult(intent, 999);
+                }
+            } else {
+                Intent intent = new Intent(android.telecom.TelecomManager.ACTION_CHANGE_DEFAULT_DIALER)
+                        .putExtra(android.telecom.TelecomManager.EXTRA_CHANGE_DEFAULT_DIALER_PACKAGE_NAME, getPackageName());
+                startActivity(intent);
+            }
+        } catch (Exception e) {
+            Toast.makeText(this, "Could not launch Default Phone App settings: " + e.getMessage(), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        Button btnSetDefaultDialer = findViewById(R.id.btn_set_default_dialer);
+        TextView tvDefaultDialerStatus = findViewById(R.id.tv_default_dialer_status);
+        updateDefaultDialerStatus(btnSetDefaultDialer, tvDefaultDialerStatus);
     }
 }
