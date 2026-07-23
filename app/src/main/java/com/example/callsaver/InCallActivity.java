@@ -157,6 +157,19 @@ public class InCallActivity extends AppCompatActivity {
         if (llActiveControls != null) llActiveControls.setVisibility(View.GONE);
         if (tvCallTimer != null) tvCallTimer.setText("Log call details");
         if (llOverlayEditPanel != null) llOverlayEditPanel.setVisibility(View.VISIBLE);
+        View btnClose = findViewById(R.id.btn_overlay_close);
+        if (btnClose != null) {
+            btnClose.setVisibility(View.VISIBLE);
+            // Always works, no matter what - a guaranteed way out of this screen.
+            btnClose.setOnClickListener(v -> {
+                try {
+                    persistNoteAndDetails(false);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                finish();
+            });
+        }
     }
 
     @Override
@@ -642,8 +655,13 @@ public class InCallActivity extends AppCompatActivity {
             btnOverlayCancelNote.setOnClickListener(v -> {
                 // Flush first so nothing typed in the last second is lost, then actually
                 // leave - in review mode there's no call to go back to, so close the screen.
+                // Wrapped in try/catch so a save error can never block leaving the screen.
                 autoSaveHandler.removeCallbacks(autoSaveRunnable);
-                persistNoteAndDetails(false);
+                try {
+                    persistNoteAndDetails(false);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
                 if (reviewMode) {
                     finish();
                 } else {
@@ -692,7 +710,18 @@ public class InCallActivity extends AppCompatActivity {
         if (btnOverlaySaveNote != null && llOverlayEditPanel != null && etOverlayNoteInput != null) {
             btnOverlaySaveNote.setOnClickListener(v -> {
                 autoSaveHandler.removeCallbacks(autoSaveRunnable);
-                persistNoteAndDetails(true);
+                // finally-block guarantees the screen actually closes even if saving
+                // itself hits an error, instead of leaving Save looking like it did
+                // nothing.
+                try {
+                    persistNoteAndDetails(true);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    Toast.makeText(this, "Saved with an error, please check Tracker", Toast.LENGTH_LONG).show();
+                } finally {
+                    if (llOverlayEditPanel != null) llOverlayEditPanel.setVisibility(View.GONE);
+                    if (reviewMode && !isFinishing()) finish();
+                }
             });
         }
     }

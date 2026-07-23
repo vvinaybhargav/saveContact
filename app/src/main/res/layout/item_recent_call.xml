@@ -105,65 +105,26 @@
                     android:contentDescription="Call" />
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Message Button -->
+            <!-- More actions (Message, Copy) - shown as a popup menu -->
             <com.google.android.material.card.MaterialCardView
-                android:id="@+id/btn_action_message"
+                android:id="@+id/btn_action_more"
                 android:layout_width="38dp"
                 android:layout_height="38dp"
-                android:layout_marginEnd="8dp"
-                app:cardCornerRadius="19dp"
-                app:cardElevation="0dp"
-                app:strokeWidth="1dp"
-                app:strokeColor="@color/accent_glow"
-                app:cardBackgroundColor="@color/glass_fill">
-
-                <ImageView
-                    android:layout_width="18dp"
-                    android:layout_height="18dp"
-                    android:layout_gravity="center"
-                    android:src="@drawable/ic_message"
-                    app:tint="@color/accent_glow"
-                    android:contentDescription="Message" />
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- Copy Number Button -->
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/btn_action_copy"
-                android:layout_width="38dp"
-                android:layout_height="38dp"
-                android:layout_marginEnd="8dp"
                 app:cardCornerRadius="19dp"
                 app:cardElevation="0dp"
                 app:strokeWidth="1dp"
                 app:strokeColor="@color/text_secondary"
                 app:cardBackgroundColor="@color/glass_fill">
 
-                <ImageView
-                    android:layout_width="18dp"
-                    android:layout_height="18dp"
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
                     android:layout_gravity="center"
-                    android:src="@drawable/ic_copy"
-                    app:tint="@color/text_secondary"
-                    android:contentDescription="Copy number" />
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- Quick Log Button -->
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/btn_action_track"
-                android:layout_width="38dp"
-                android:layout_height="38dp"
-                app:cardCornerRadius="19dp"
-                app:cardElevation="0dp"
-                app:strokeWidth="0dp"
-                app:cardBackgroundColor="@color/status_blue_bg">
-
-                <ImageView
-                    android:layout_width="18dp"
-                    android:layout_height="18dp"
-                    android:layout_gravity="center"
-                    android:src="@android:drawable/ic_input_add"
-                    app:tint="@color/status_blue"
-                    android:contentDescription="Track job call" />
+                    android:text="⋮"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:contentDescription="More actions" />
             </com.google.android.material.card.MaterialCardView>
 
         </LinearLayout>

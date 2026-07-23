@@ -7,6 +7,26 @@
     android:background="@drawable/bg_incall_gradient">
 
     <!-- Header: Avatar, Caller Name, Status, Call Timer -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <!-- Always-visible close button - a guaranteed way out of a review-mode log
+             screen, independent of the Cancel/Save buttons further down. -->
+        <ImageView
+            android:id="@+id/btn_overlay_close"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_gravity="top|start"
+            android:layout_marginStart="12dp"
+            android:layout_marginTop="40dp"
+            android:padding="8dp"
+            android:src="@android:drawable/ic_menu_close_clear_cancel"
+            app:tint="@color/white_constant"
+            android:background="@drawable/bg_glass_circle"
+            android:visibility="gone"
+            android:contentDescription="Close" />
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -97,6 +117,7 @@
             android:textSize="14sp"
             android:letterSpacing="0.02" />
     </LinearLayout>
+    </FrameLayout>
 
     <!-- Scrollable notes / skills-match / call-history / note-editor content -->
     <ScrollView

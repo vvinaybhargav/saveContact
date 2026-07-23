@@ -101,22 +101,33 @@ public class RecentsAdapter extends RecyclerView.Adapter<RecentsAdapter.ViewHold
             }
         });
 
-        holder.btnActionTrack.setOnClickListener(v -> {
+        // Tapping the row itself opens the log (same as the old dedicated "+" button).
+        holder.itemView.setOnClickListener(v -> {
             if (listener != null) {
                 listener.onTrackClick(call.number);
             }
         });
 
-        holder.btnActionMessage.setOnClickListener(v -> {
-            if (listener != null) {
-                listener.onMessageClick(call.number);
-            }
-        });
-
-        holder.btnActionCopy.setOnClickListener(v -> {
-            if (listener != null) {
-                listener.onCopyClick(call.number);
-            }
+        // Message/Copy are secondary actions - tucked into a popup menu off the small
+        // "more" button instead of being separate hard-to-tap icons.
+        holder.btnActionMore.setOnClickListener(v -> {
+            androidx.appcompat.widget.PopupMenu popup = new androidx.appcompat.widget.PopupMenu(context, v);
+            popup.getMenu().add("Message");
+            popup.getMenu().add("Copy number");
+            popup.getMenu().add("Log this call");
+            popup.setOnMenuItemClickListener(item -> {
+                if (listener == null) return true;
+                String title = item.getTitle().toString();
+                if ("Message".equals(title)) {
+                    listener.onMessageClick(call.number);
+                } else if ("Copy number".equals(title)) {
+                    listener.onCopyClick(call.number);
+                } else {
+                    listener.onTrackClick(call.number);
+                }
+                return true;
+            });
+            popup.show();
         });
     }
 
@@ -184,7 +195,7 @@ public class RecentsAdapter extends RecyclerView.Adapter<RecentsAdapter.ViewHold
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
         TextView tvCallerTitle, tvCallTypeLabel, tvCallTime;
-        MaterialCardView cardCallTypeBg, btnActionDial, btnActionTrack, btnActionMessage, btnActionCopy;
+        MaterialCardView cardCallTypeBg, btnActionDial, btnActionMore;
         ImageView imgCallTypeIcon;
 
         public ViewHolder(@NonNull View itemView) {
@@ -194,9 +205,7 @@ public class RecentsAdapter extends RecyclerView.Adapter<RecentsAdapter.ViewHold
             tvCallTime = itemView.findViewById(R.id.tv_call_time);
             cardCallTypeBg = itemView.findViewById(R.id.card_call_type_bg);
             btnActionDial = itemView.findViewById(R.id.btn_action_dial);
-            btnActionTrack = itemView.findViewById(R.id.btn_action_track);
-            btnActionMessage = itemView.findViewById(R.id.btn_action_message);
-            btnActionCopy = itemView.findViewById(R.id.btn_action_copy);
+            btnActionMore = itemView.findViewById(R.id.btn_action_more);
             imgCallTypeIcon = itemView.findViewById(R.id.img_call_type_icon);
         }
     }
