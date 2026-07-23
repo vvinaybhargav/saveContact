@@ -505,10 +505,8 @@ public class InCallActivity extends AppCompatActivity {
             });
         }
 
-        View chipShortlisted = findViewById(R.id.chip_preset_shortlisted);
-        View chipTmrw = findViewById(R.id.chip_preset_tmrw_interview);
+        View chipFirstCall = findViewById(R.id.chip_preset_first_call);
         View chipNextRound = findViewById(R.id.chip_preset_next_round);
-        View chipSalary = findViewById(R.id.chip_preset_salary);
         View chipRole = findViewById(R.id.chip_preset_role);
         View chipHybrid = findViewById(R.id.chip_preset_hybrid);
         View chipC2h = findViewById(R.id.chip_preset_c2h);
@@ -527,10 +525,8 @@ public class InCallActivity extends AppCompatActivity {
                 etOverlayNoteInput.setSelection(etOverlayNoteInput.getText().length());
             }
         };
-        if (chipShortlisted != null) chipShortlisted.setOnClickListener(chipClickListener);
-        if (chipTmrw != null) chipTmrw.setOnClickListener(chipClickListener);
+        if (chipFirstCall != null) chipFirstCall.setOnClickListener(chipClickListener);
         if (chipNextRound != null) chipNextRound.setOnClickListener(chipClickListener);
-        if (chipSalary != null) chipSalary.setOnClickListener(chipClickListener);
         if (chipRole != null) chipRole.setOnClickListener(chipClickListener);
         if (chipHybrid != null) chipHybrid.setOnClickListener(chipClickListener);
         if (chipC2h != null) chipC2h.setOnClickListener(chipClickListener);

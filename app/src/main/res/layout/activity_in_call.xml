@@ -312,24 +312,12 @@
                         android:orientation="horizontal">
 
                         <com.google.android.material.chip.Chip
-                            android:id="@+id/chip_preset_shortlisted"
+                            android:id="@+id/chip_preset_first_call"
                             style="@style/Widget.MaterialComponents.Chip.Action"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginEnd="6dp"
-                            android:text="Shortlisted"
-                            android:textColor="@color/white_constant"
-                            app:chipBackgroundColor="@color/glass_fill_strong"
-                            app:chipStrokeColor="@color/glass_stroke"
-                            app:chipStrokeWidth="1dp" />
-
-                        <com.google.android.material.chip.Chip
-                            android:id="@+id/chip_preset_tmrw_interview"
-                            style="@style/Widget.MaterialComponents.Chip.Action"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginEnd="6dp"
-                            android:text="tmrw interview at 12 pm"
+                            android:text="First Call"
                             android:textColor="@color/white_constant"
                             app:chipBackgroundColor="@color/glass_fill_strong"
                             app:chipStrokeColor="@color/glass_stroke"
@@ -342,18 +330,6 @@
                             android:layout_height="wrap_content"
                             android:layout_marginEnd="6dp"
                             android:text="Next round scheduled"
-                            android:textColor="@color/white_constant"
-                            app:chipBackgroundColor="@color/glass_fill_strong"
-                            app:chipStrokeColor="@color/glass_stroke"
-                            app:chipStrokeWidth="1dp" />
-
-                        <com.google.android.material.chip.Chip
-                            android:id="@+id/chip_preset_salary"
-                            style="@style/Widget.MaterialComponents.Chip.Action"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginEnd="6dp"
-                            android:text="Salary discussed"
                             android:textColor="@color/white_constant"
                             app:chipBackgroundColor="@color/glass_fill_strong"
                             app:chipStrokeColor="@color/glass_stroke"
