@@ -43,13 +43,13 @@ public class MainActivity extends AppCompatActivity {
     private TrackerFragment trackerFragment;
     private UpcomingFragment upcomingFragment;
 
+    // GET_ACCOUNTS left out on purpose - see TrackerFragment.requiredPermissions for why.
     private final String[] requiredPermissions = {
             Manifest.permission.READ_PHONE_STATE,
             Manifest.permission.READ_CALL_LOG,
             Manifest.permission.READ_CONTACTS,
             Manifest.permission.CALL_PHONE,
-            Manifest.permission.ANSWER_PHONE_CALLS,
-            Manifest.permission.GET_ACCOUNTS
+            Manifest.permission.ANSWER_PHONE_CALLS
     };
 
     @Override

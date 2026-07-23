@@ -123,12 +123,16 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
     private TextView[] chips;
     private final String[] statuses = {"All", "Unlogged", "First time", "Screening", "Interested", "1st Round", "2nd Round", "Final Round", "HR / Salary", "Offered", "Not Interested", "Negative"};
 
+    // WRITE_CONTACTS/GET_ACCOUNTS are intentionally NOT in this list: on some OEM
+    // Settings UIs (confirmed on at least one ColorOS device) they never appear as a
+    // separate grantable toggle even though "Contacts" shows Allowed, so requiring them
+    // here left the banner permanently stuck for those users. They're only needed by
+    // the (optional) "save as device contact" feature, which checks for them itself
+    // right when it's actually used.
     private final String[] requiredPermissions = {
             Manifest.permission.READ_PHONE_STATE,
             Manifest.permission.READ_CALL_LOG,
-            Manifest.permission.READ_CONTACTS,
-            Manifest.permission.WRITE_CONTACTS,
-            Manifest.permission.GET_ACCOUNTS
+            Manifest.permission.READ_CONTACTS
     };
 
     /**

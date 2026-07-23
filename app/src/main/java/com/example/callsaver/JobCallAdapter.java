@@ -246,9 +246,34 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
     }
 
     private void callDirectly(String number) {
+        // ACTION_DIAL just opens a dialer app to pre-fill the number - since CallSaver
+        // IS the default dialer, that resolves back to this app's own Recents tab
+        // instead of placing the call. Place it directly via Telecom instead, same as
+        // RecentsFragment.onDialClick.
+        Uri uri = Uri.fromParts("tel", number.trim(), null);
+        boolean canCall = androidx.core.content.ContextCompat.checkSelfPermission(context,
+                android.Manifest.permission.CALL_PHONE) == android.content.pm.PackageManager.PERMISSION_GRANTED;
+        if (canCall) {
+            try {
+                android.telecom.TelecomManager tm = (android.telecom.TelecomManager) context.getSystemService(Context.TELECOM_SERVICE);
+                if (tm != null) {
+                    tm.placeCall(uri, null);
+                    return;
+                }
+            } catch (SecurityException e) {
+                e.printStackTrace();
+            }
+            try {
+                Intent call = new Intent(Intent.ACTION_CALL, uri);
+                call.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(call);
+                return;
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
         try {
-            Intent dialIntent = new Intent(Intent.ACTION_DIAL);
-            dialIntent.setData(Uri.parse("tel:" + number.trim()));
+            Intent dialIntent = new Intent(Intent.ACTION_DIAL, uri);
             dialIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             context.startActivity(dialIntent);
         } catch (Exception e) {

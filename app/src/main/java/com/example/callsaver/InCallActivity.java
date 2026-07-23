@@ -49,6 +49,7 @@ public class InCallActivity extends AppCompatActivity {
     private long jobCallId;
     private String recruiter;
     private String contactName;
+    private String simLabel;
     // True when this number is a plain saved phone-contact with no recruiter/job-lead
     // data of its own - no point showing the notes/skills tracker UI for a friend or
     // family member, so we hide it and just show name + number.
@@ -136,6 +137,7 @@ public class InCallActivity extends AppCompatActivity {
         jobCallId = intent.getLongExtra("job_call_id", -1);
         recruiter = intent.getStringExtra("recruiter_name");
         contactName = intent.getStringExtra("contact_name");
+        simLabel = intent.getStringExtra("sim_label");
         reviewMode = "review".equals(intent.getStringExtra("mode"));
         int initialState = intent.getIntExtra("initial_state", Call.STATE_ACTIVE);
 
@@ -409,6 +411,9 @@ public class InCallActivity extends AppCompatActivity {
             if (notEmpty(phoneNumber)) {
                 statusText += "  •  " + phoneNumber;
             }
+        }
+        if (notEmpty(simLabel) && !reviewMode) {
+            statusText += "  •  " + simLabel.trim();
         }
         tvCallerStatus.setText(statusText);
 

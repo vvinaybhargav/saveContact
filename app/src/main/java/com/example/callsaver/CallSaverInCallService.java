@@ -174,6 +174,26 @@ public class CallSaverInCallService extends InCallService {
         return "";
     }
 
+    /** Resolves which SIM a call is on (dual-SIM devices), e.g. "SIM 1" / "SIM 2". */
+    private String resolveSimLabel(Call call) {
+        try {
+            if (call == null || call.getDetails() == null) return "";
+            android.telecom.PhoneAccountHandle handle = call.getDetails().getAccountHandle();
+            if (handle == null) return "";
+            android.telecom.TelecomManager tm = (android.telecom.TelecomManager) getSystemService(TELECOM_SERVICE);
+            if (tm == null) return "";
+            java.util.List<android.telecom.PhoneAccountHandle> allHandles = tm.getCallCapablePhoneAccounts();
+            if (allHandles != null) {
+                int index = allHandles.indexOf(handle);
+                if (index >= 0) return "SIM " + (index + 1);
+            }
+            android.telecom.PhoneAccount account = tm.getPhoneAccount(handle);
+            if (account != null && account.getLabel() != null) return account.getLabel().toString();
+        } catch (SecurityException ignored) {
+        }
+        return "";
+    }
+
     private Intent buildInCallIntent(Call call) {
         String phoneNumber = resolvePhoneNumber(call);
         DatabaseHelper db = new DatabaseHelper(this);
@@ -182,6 +202,7 @@ public class CallSaverInCallService extends InCallService {
         Intent intent = new Intent(this, InCallActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         intent.putExtra("phone_number", phoneNumber);
+        intent.putExtra("sim_label", resolveSimLabel(call));
         intent.putExtra("initial_state", call != null ? call.getState() : Call.STATE_ACTIVE);
         if (matchedCall != null) {
             intent.putExtra("company_name", matchedCall.getCompanyName());
@@ -245,8 +266,10 @@ public class CallSaverInCallService extends InCallService {
         DatabaseHelper db = new DatabaseHelper(this);
         JobCall matchedCall = phoneNumber.isEmpty() ? null : db.getJobCallByNumber(this, phoneNumber);
         String title = phoneNumber.isEmpty() ? "Incoming call" : resolveNameAndNumber(phoneNumber, matchedCall);
+        String simLabel = resolveSimLabel(call);
         String content = matchedCall != null && matchedCall.getRoundStatus() != null && !matchedCall.getRoundStatus().isEmpty()
                 ? "Incoming call - " + matchedCall.getRoundStatus() : "Incoming call";
+        if (!simLabel.isEmpty()) content += "  ·  " + simLabel;
 
         int piFlags = PendingIntent.FLAG_UPDATE_CURRENT;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) piFlags |= PendingIntent.FLAG_IMMUTABLE;
@@ -309,6 +332,7 @@ public class CallSaverInCallService extends InCallService {
         DatabaseHelper db = new DatabaseHelper(this);
         JobCall matchedCall = phoneNumber.isEmpty() ? null : db.getJobCallByNumber(this, phoneNumber);
         String label = resolveNameAndNumber(phoneNumber, matchedCall);
+        String simLabel = resolveSimLabel(call);
 
         Intent tapIntent = buildInCallIntent(call);
         int piFlags = PendingIntent.FLAG_UPDATE_CURRENT;
@@ -319,7 +343,7 @@ public class CallSaverInCallService extends InCallService {
         Notification notification = new NotificationCompat.Builder(this, ONGOING_CALL_CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.sym_action_call)
                 .setContentTitle("Call in progress - " + label)
-                .setContentText("Tap to return to the call screen")
+                .setContentText(simLabel.isEmpty() ? "Tap to return to the call screen" : "Tap to return  ·  " + simLabel)
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 .setCategory(NotificationCompat.CATEGORY_CALL)
                 .setOngoing(true)
