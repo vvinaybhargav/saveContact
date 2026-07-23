@@ -292,6 +292,7 @@ public class InCallActivity extends AppCompatActivity {
         tvSpeakerLabel = findViewById(R.id.tv_speaker_label);
         btnToggleNote = findViewById(R.id.btn_toggle_note);
         llOverlayEditPanel = findViewById(R.id.ll_overlay_edit_panel);
+        bindDialpad();
 
         FloatingActionButton btnAnswer = findViewById(R.id.btn_answer_call);
         FloatingActionButton btnDecline = findViewById(R.id.btn_decline_call);
@@ -336,15 +337,76 @@ public class InCallActivity extends AppCompatActivity {
         }
     }
 
+    /** In-call DTMF keypad, for entering extensions/IVR digits mid-call. */
+    private void bindDialpad() {
+        View btnToggleDialpad = findViewById(R.id.btn_toggle_dialpad);
+        View llDialpad = findViewById(R.id.ll_overlay_dialpad);
+        TextView tvDigits = findViewById(R.id.tv_overlay_dialpad_digits);
+        android.widget.LinearLayout grid = findViewById(R.id.ll_overlay_dialpad_grid);
+        View btnClose = findViewById(R.id.tv_overlay_dialpad_close);
+        if (llDialpad == null || grid == null) return;
+
+        float density = getResources().getDisplayMetrics().density;
+        int keySize = Math.round(58 * density);
+        int keyMargin = Math.round(10 * density);
+        String[][] rows = {{"1", "2", "3"}, {"4", "5", "6"}, {"7", "8", "9"}, {"*", "0", "#"}};
+        for (String[] rowKeys : rows) {
+            android.widget.LinearLayout row = new android.widget.LinearLayout(this);
+            row.setOrientation(android.widget.LinearLayout.HORIZONTAL);
+            row.setGravity(android.view.Gravity.CENTER);
+            for (String key : rowKeys) {
+                TextView keyTv = new TextView(this);
+                keyTv.setText(key);
+                keyTv.setTextColor(androidx.core.content.ContextCompat.getColor(this, R.color.white_constant));
+                keyTv.setTextSize(22);
+                keyTv.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+                keyTv.setGravity(android.view.Gravity.CENTER);
+                keyTv.setBackgroundResource(R.drawable.bg_glass_circle);
+                keyTv.setClickable(true);
+                keyTv.setFocusable(true);
+                android.widget.LinearLayout.LayoutParams lp = new android.widget.LinearLayout.LayoutParams(keySize, keySize);
+                lp.setMargins(keyMargin, keyMargin, keyMargin, keyMargin);
+                keyTv.setLayoutParams(lp);
+                keyTv.setOnClickListener(v -> {
+                    char digit = key.charAt(0);
+                    CallSaverInCallService.playDtmfTone(digit);
+                    CallSaverInCallService.stopDtmfTone();
+                    if (tvDigits != null) tvDigits.append(key);
+                });
+                row.addView(keyTv);
+            }
+            grid.addView(row);
+        }
+
+        if (btnToggleDialpad != null) {
+            btnToggleDialpad.setOnClickListener(v -> {
+                boolean visible = llDialpad.getVisibility() == View.VISIBLE;
+                llDialpad.setVisibility(visible ? View.GONE : View.VISIBLE);
+                if (!visible && tvDigits != null) tvDigits.setText("");
+            });
+        }
+        if (btnClose != null) {
+            btnClose.setOnClickListener(v -> llDialpad.setVisibility(View.GONE));
+        }
+    }
+
     private void updateMuteSpeakerUi() {
         boolean muted = CallSaverInCallService.isMuted();
         boolean speaker = CallSaverInCallService.isSpeakerOn();
         if (tvMuteLabel != null) tvMuteLabel.setText(muted ? "Muted" : "Mute");
         if (tvSpeakerLabel != null) tvSpeakerLabel.setText(speaker ? "Speaker On" : "Speaker");
-        int activeColor = androidx.core.content.ContextCompat.getColor(this, R.color.accent_indigo);
-        int inactiveColor = android.graphics.Color.parseColor("#FFFFFF");
-        if (btnToggleMute != null) btnToggleMute.setColorFilter(muted ? activeColor : inactiveColor);
-        if (btnToggleSpeaker != null) btnToggleSpeaker.setColorFilter(speaker ? activeColor : inactiveColor);
+        // ON = solid white circle with a dark icon (like the stock phone app), so it's
+        // obvious at a glance instead of just a subtle tint change.
+        int darkIcon = android.graphics.Color.parseColor("#1C1C1E");
+        int whiteIcon = android.graphics.Color.parseColor("#FFFFFF");
+        if (btnToggleMute != null) {
+            btnToggleMute.setBackgroundResource(muted ? R.drawable.bg_glass_circle_active : R.drawable.bg_glass_circle);
+            btnToggleMute.setColorFilter(muted ? darkIcon : whiteIcon);
+        }
+        if (btnToggleSpeaker != null) {
+            btnToggleSpeaker.setBackgroundResource(speaker ? R.drawable.bg_glass_circle_active : R.drawable.bg_glass_circle);
+            btnToggleSpeaker.setColorFilter(speaker ? darkIcon : whiteIcon);
+        }
     }
 
     private void bindCallerInfo() {
@@ -887,7 +949,20 @@ public class InCallActivity extends AppCompatActivity {
 
         if (!noteText.isEmpty()) {
             final long finalJobId = targetJobId;
-            OpenAiClient.extractFields(this, noteText, new OpenAiClient.OpenAiCallback() {
+            // Feed the AI the full note history for this lead, not just the latest
+            // snippet - round/CTC/work-mode/agenda can be mentioned in an earlier call
+            // and this way a later save won't lose track of it.
+            List<CallNote> allNotesForAi = db.getNotesForJob(finalJobId);
+            StringBuilder combinedTranscript = new StringBuilder();
+            List<CallNote> chronological = new ArrayList<>(allNotesForAi);
+            Collections.reverse(chronological);
+            for (CallNote n : chronological) {
+                if (n.note == null || n.note.trim().isEmpty()) continue;
+                if (combinedTranscript.length() > 0) combinedTranscript.append("\n");
+                combinedTranscript.append(n.note.trim());
+            }
+            String transcriptForAi = combinedTranscript.length() > 0 ? combinedTranscript.toString() : noteText;
+            OpenAiClient.extractFields(this, transcriptForAi, new OpenAiClient.OpenAiCallback() {
                 @Override
                 public void onSuccess(org.json.JSONObject result) {
                     try {

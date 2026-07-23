@@ -402,4 +402,13 @@ public class CallSaverInCallService extends InCallService {
         }
         return false;
     }
+
+    /** Sends a DTMF tone for the given key (e.g. for IVR menus/extensions mid-call). */
+    public static void playDtmfTone(char digit) {
+        if (activeCall != null) activeCall.playDtmfTone(digit);
+    }
+
+    public static void stopDtmfTone() {
+        if (activeCall != null) activeCall.stopDtmfTone();
+    }
 }

@@ -315,6 +315,51 @@
                     android:textSize="13sp" />
             </LinearLayout>
 
+            <!-- In-call DTMF dial pad (glass) -->
+            <LinearLayout
+                android:id="@+id/ll_overlay_dialpad"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/bg_glass_card"
+                android:padding="16dp"
+                android:gravity="center"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/tv_overlay_dialpad_digits"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    android:text=""
+                    android:textColor="@color/white_constant"
+                    android:textSize="22sp"
+                    android:textStyle="bold"
+                    android:gravity="center"
+                    android:maxLines="1"
+                    android:ellipsize="start" />
+
+                <LinearLayout
+                    android:id="@+id/ll_overlay_dialpad_grid"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+
+                <TextView
+                    android:id="@+id/tv_overlay_dialpad_close"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:padding="8dp"
+                    android:text="Close"
+                    android:textColor="@color/accent_glow"
+                    android:textStyle="bold"
+                    android:textSize="13sp"
+                    android:clickable="true"
+                    android:focusable="true" />
+            </LinearLayout>
+
             <!-- Structured note-capture panel (glass) -->
             <LinearLayout
                 android:id="@+id/ll_overlay_edit_panel"
@@ -589,6 +634,54 @@
         </LinearLayout>
     </ScrollView>
 
+    <!-- DTMF keypad - send touch-tones mid-call (IVR menus etc). Hidden by default,
+         toggled by the Keypad button in the active-controls row. Digit buttons are
+         built programmatically in InCallActivity.bindDialpad() into ll_overlay_dialpad_grid. -->
+    <LinearLayout
+        android:id="@+id/ll_overlay_dialpad"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@drawable/bg_glass_card"
+        android:layout_marginHorizontal="18dp"
+        android:layout_marginBottom="12dp"
+        android:padding="12dp"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/tv_overlay_dialpad_digits"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text=" "
+            android:textColor="@color/white_constant"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.1"
+            android:layout_marginBottom="8dp" />
+
+        <LinearLayout
+            android:id="@+id/ll_overlay_dialpad_grid"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center" />
+
+        <TextView
+            android:id="@+id/tv_overlay_dialpad_close"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginTop="6dp"
+            android:padding="8dp"
+            android:text="Hide keypad"
+            android:textColor="@color/accent_glow"
+            android:textStyle="bold"
+            android:textSize="13sp"
+            android:clickable="true"
+            android:focusable="true" />
+    </LinearLayout>
+
     <!-- Incoming-call controls: Decline / Answer -->
     <LinearLayout
         android:id="@+id/ll_incoming_controls"
@@ -709,6 +802,30 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
                 android:text="Note"
+                android:textColor="#C7C7CC"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+            <ImageView
+                android:id="@+id/btn_toggle_dialpad"
+                android:layout_width="58dp"
+                android:layout_height="58dp"
+                android:padding="16dp"
+                android:src="@drawable/ic_dialpad"
+                app:tint="@color/white_constant"
+                android:background="@drawable/bg_glass_circle"
+                android:contentDescription="Dial pad" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="Keypad"
                 android:textColor="#C7C7CC"
                 android:textSize="11sp" />
         </LinearLayout>
