@@ -113,12 +113,10 @@
             </intent-filter>
         </receiver>
 
-        <!-- Service for drawing the custom Caller ID Overlay (legacy - no longer
-             triggered now that InCallActivity provides the full-screen call UI) -->
-        <service
-            android:name=".CallerIdService"
-            android:exported="false"
-            android:foregroundServiceType="dataSync" />
+        <!-- Handles Answer/Decline tapped from the incoming-call heads-up notification -->
+        <receiver
+            android:name=".CallNotificationActionReceiver"
+            android:exported="false" />
 
         <!-- Full-screen in-call UI, launched by CallSaverInCallService for every call -->
         <activity
@@ -141,7 +139,8 @@
             </intent-filter>
         </service>
 
-        <!-- CallScreeningService: automatically screen calls and launch Caller ID overlays on Android 10+ -->
+        <!-- CallScreeningService: lets calls proceed normally on Android 10+, letting
+             CallSaverInCallService's onCallAdded own the call UI -->
         <service
             android:name=".CallSaverScreeningService"
             android:permission="android.permission.BIND_SCREENING_SERVICE"

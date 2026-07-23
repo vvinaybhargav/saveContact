@@ -25,6 +25,9 @@ public class JobCall {
     private String jdLink = "";
     private String jdImagePath = "";
     private String interestRating = "";
+    private String expectedCtc = "";
+    private String workMode = "";
+    private String employmentType = "";
 
     private static String clean(String val) {
         if (val == null || val.trim().equalsIgnoreCase("null")) {
@@ -237,5 +240,29 @@ public class JobCall {
 
     public void setInterestRating(String interestRating) {
         this.interestRating = clean(interestRating);
+    }
+
+    public String getExpectedCtc() {
+        return expectedCtc;
+    }
+
+    public void setExpectedCtc(String expectedCtc) {
+        this.expectedCtc = clean(expectedCtc);
+    }
+
+    public String getWorkMode() {
+        return workMode;
+    }
+
+    public void setWorkMode(String workMode) {
+        this.workMode = clean(workMode);
+    }
+
+    public String getEmploymentType() {
+        return employmentType;
+    }
+
+    public void setEmploymentType(String employmentType) {
+        this.employmentType = clean(employmentType);
     }
 }

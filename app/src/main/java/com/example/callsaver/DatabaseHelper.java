@@ -13,7 +13,7 @@ import java.util.List;
 public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "JobTracker.db";
-    private static final int DATABASE_VERSION = 12; // V12: add interest_rating
+    private static final int DATABASE_VERSION = 13; // V13: add expected_ctc, work_mode, employment_type
 
     public static final String TABLE_NAME = "job_calls";
     public static final String COLUMN_ID = "id";
@@ -45,6 +45,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     // V12 columns
     public static final String COLUMN_INTEREST_RATING = "interest_rating";
+
+    // V13 columns: structured in-call quick-capture fields
+    public static final String COLUMN_EXPECTED_CTC = "expected_ctc";
+    public static final String COLUMN_WORK_MODE = "work_mode"; // Hybrid / Onsite / Remote
+    public static final String COLUMN_EMPLOYMENT_TYPE = "employment_type"; // C2H / Direct Payroll
 
     // V4: individual timestamped notes, one row per note, linked to a job call.
     public static final String TABLE_NOTES = "call_notes";
@@ -98,7 +103,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 + COLUMN_NOT_MATCHING_SKILLS + " TEXT,"
                 + COLUMN_JD_LINK + " TEXT,"
                 + COLUMN_JD_IMAGE_PATH + " TEXT,"
-                + COLUMN_INTEREST_RATING + " TEXT"
+                + COLUMN_INTEREST_RATING + " TEXT,"
+                + COLUMN_EXPECTED_CTC + " TEXT,"
+                + COLUMN_WORK_MODE + " TEXT,"
+                + COLUMN_EMPLOYMENT_TYPE + " TEXT"
                 + ")";
         db.execSQL(CREATE_TABLE);
         db.execSQL(createNotesTableSql());
@@ -158,6 +166,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         }
         if (oldVersion < 12) {
             db.execSQL("ALTER TABLE " + TABLE_NAME + " ADD COLUMN " + COLUMN_INTEREST_RATING + " TEXT");
+        }
+        if (oldVersion < 13) {
+            db.execSQL("ALTER TABLE " + TABLE_NAME + " ADD COLUMN " + COLUMN_EXPECTED_CTC + " TEXT");
+            db.execSQL("ALTER TABLE " + TABLE_NAME + " ADD COLUMN " + COLUMN_WORK_MODE + " TEXT");
+            db.execSQL("ALTER TABLE " + TABLE_NAME + " ADD COLUMN " + COLUMN_EMPLOYMENT_TYPE + " TEXT");
         }
     }
 
@@ -261,6 +274,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         values.put(COLUMN_JD_LINK, jobCall.getJdLink());
         values.put(COLUMN_JD_IMAGE_PATH, jobCall.getJdImagePath());
         values.put(COLUMN_INTEREST_RATING, jobCall.getInterestRating());
+        values.put(COLUMN_EXPECTED_CTC, jobCall.getExpectedCtc());
+        values.put(COLUMN_WORK_MODE, jobCall.getWorkMode());
+        values.put(COLUMN_EMPLOYMENT_TYPE, jobCall.getEmploymentType());
 
         long id = db.insert(TABLE_NAME, null, values);
         if (id != -1) {
@@ -308,6 +324,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 call.setJdLink(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_JD_LINK)));
                 call.setJdImagePath(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_JD_IMAGE_PATH)));
                 call.setInterestRating(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_INTEREST_RATING)));
+                call.setExpectedCtc(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_EXPECTED_CTC)));
+                call.setWorkMode(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_WORK_MODE)));
+                call.setEmploymentType(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_EMPLOYMENT_TYPE)));
                 call.setRecruiterName(getRecruiterNameForJob(call.getId()));
                 callsList.add(call);
             } while (cursor.moveToNext());
@@ -359,6 +378,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 call.setJdLink(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_JD_LINK)));
                 call.setJdImagePath(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_JD_IMAGE_PATH)));
                 call.setInterestRating(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_INTEREST_RATING)));
+                call.setExpectedCtc(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_EXPECTED_CTC)));
+                call.setWorkMode(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_WORK_MODE)));
+                call.setEmploymentType(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_EMPLOYMENT_TYPE)));
                 call.setRecruiterName(getRecruiterNameForJob(call.getId()));
                 callsList.add(call);
             } while (cursor.moveToNext());
@@ -438,6 +460,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         values.put(COLUMN_JD_LINK, jobCall.getJdLink());
         values.put(COLUMN_JD_IMAGE_PATH, jobCall.getJdImagePath());
         values.put(COLUMN_INTEREST_RATING, jobCall.getInterestRating());
+        values.put(COLUMN_EXPECTED_CTC, jobCall.getExpectedCtc());
+        values.put(COLUMN_WORK_MODE, jobCall.getWorkMode());
+        values.put(COLUMN_EMPLOYMENT_TYPE, jobCall.getEmploymentType());
 
         int count = db.update(TABLE_NAME, values, COLUMN_ID + " = ?",
                 new String[]{String.valueOf(jobCall.getId())});
@@ -708,6 +733,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 call.setJdLink(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_JD_LINK)));
                 call.setJdImagePath(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_JD_IMAGE_PATH)));
                 call.setInterestRating(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_INTEREST_RATING)));
+                call.setExpectedCtc(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_EXPECTED_CTC)));
+                call.setWorkMode(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_WORK_MODE)));
+                call.setEmploymentType(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_EMPLOYMENT_TYPE)));
                     cursor.close();
                     db.close();
                     return call;
@@ -761,6 +789,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 call.setJdLink(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_JD_LINK)));
                 call.setJdImagePath(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_JD_IMAGE_PATH)));
                 call.setInterestRating(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_INTEREST_RATING)));
+                call.setExpectedCtc(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_EXPECTED_CTC)));
+                call.setWorkMode(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_WORK_MODE)));
+                call.setEmploymentType(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_EMPLOYMENT_TYPE)));
             }
             cursor.close();
         }

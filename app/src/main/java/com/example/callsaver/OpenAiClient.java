@@ -107,7 +107,10 @@ public class OpenAiClient {
                     "  \"next_steps\": string,\n" +
                     "  \"matching_skills\": [string],\n" +
                     "  \"not_matching_skills\": [string],\n" +
-                    "  \"interest_rating\": string or null (An integer score from 0 to 10 based on discussion positive/negative signals, or null if cannot be inferred)\n" +
+                    "  \"interest_rating\": string or null (An integer score from 0 to 10 based on discussion positive/negative signals, or null if cannot be inferred),\n" +
+                    "  \"expected_ctc\": string or null (compensation/CTC figure discussed, e.g. \"12 LPA\" or \"15-18 LPA\"),\n" +
+                    "  \"work_mode\": string or null (one of exactly \"Hybrid\", \"Onsite\", \"Remote\" if mentioned, else null),\n" +
+                    "  \"employment_type\": string or null (one of exactly \"C2H\", \"Direct Payroll\" if mentioned, else null)\n" +
                     "}");
             messages.put(systemMsg);
 

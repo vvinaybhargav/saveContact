@@ -861,6 +861,9 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         EditText etNextSteps = null;
 
         Spinner spinnerInterestStatus = dialogView.findViewById(R.id.spinner_interest_status);
+        EditText etExpectedCtc = dialogView.findViewById(R.id.et_expected_ctc);
+        Spinner spinnerWorkMode = dialogView.findViewById(R.id.spinner_work_mode);
+        Spinner spinnerEmploymentType = dialogView.findViewById(R.id.spinner_employment_type);
 
         activeEtCandidateName = etCandidateName;
         activeEtCompany = etCompany;
@@ -943,6 +946,23 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             spinnerInterestStatus.setAdapter(interestAdapter);
         }
 
+        // Bind work mode / employment type choices
+        String[] workModeOptions = {"", "Hybrid", "Onsite", "Remote"};
+        ArrayAdapter<String> workModeAdapter = new ArrayAdapter<>(requireContext(),
+                android.R.layout.simple_spinner_item, workModeOptions);
+        workModeAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        if (spinnerWorkMode != null) {
+            spinnerWorkMode.setAdapter(workModeAdapter);
+        }
+
+        String[] employmentTypeOptions = {"", "C2H", "Direct Payroll"};
+        ArrayAdapter<String> employmentTypeAdapter = new ArrayAdapter<>(requireContext(),
+                android.R.layout.simple_spinner_item, employmentTypeOptions);
+        employmentTypeAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        if (spinnerEmploymentType != null) {
+            spinnerEmploymentType.setAdapter(employmentTypeAdapter);
+        }
+
         final AlertDialog alertDialog = builder.create();
         alertDialog.setOnDismissListener(dialog -> {
             activeDialogView = null;
@@ -977,6 +997,15 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             if (spinnerInterestStatus != null) {
                 int pos = interestAdapter.getPosition(editCall.getInterestRating());
                 spinnerInterestStatus.setSelection(pos >= 0 ? pos : 0);
+            }
+            if (etExpectedCtc != null) etExpectedCtc.setText(editCall.getExpectedCtc());
+            if (spinnerWorkMode != null) {
+                int pos = workModeAdapter.getPosition(editCall.getWorkMode());
+                spinnerWorkMode.setSelection(pos >= 0 ? pos : 0);
+            }
+            if (spinnerEmploymentType != null) {
+                int pos = employmentTypeAdapter.getPosition(editCall.getEmploymentType());
+                spinnerEmploymentType.setSelection(pos >= 0 ? pos : 0);
             }
 
             // Calls + notes are shown as a merged timeline below; the field adds a new note.
@@ -1030,6 +1059,15 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                         int pos = interestAdapter.getPosition(existingCall.getInterestRating());
                         spinnerInterestStatus.setSelection(pos >= 0 ? pos : 0);
                     }
+                    if (etExpectedCtc != null) etExpectedCtc.setText(existingCall.getExpectedCtc());
+                    if (spinnerWorkMode != null) {
+                        int pos = workModeAdapter.getPosition(existingCall.getWorkMode());
+                        spinnerWorkMode.setSelection(pos >= 0 ? pos : 0);
+                    }
+                    if (spinnerEmploymentType != null) {
+                        int pos = employmentTypeAdapter.getPosition(existingCall.getEmploymentType());
+                        spinnerEmploymentType.setSelection(pos >= 0 ? pos : 0);
+                    }
                 }
             }
         }
@@ -1076,6 +1114,9 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             String role = etAppliedRole.getText().toString().trim();
             String schedule = etTentativeSchedule.getText().toString().trim();
             String interestRatingVal = spinnerInterestStatus != null ? spinnerInterestStatus.getSelectedItem().toString() : "";
+            String expectedCtcVal = etExpectedCtc != null ? etExpectedCtc.getText().toString().trim() : "";
+            String workModeVal = spinnerWorkMode != null && spinnerWorkMode.getSelectedItem() != null ? spinnerWorkMode.getSelectedItem().toString() : "";
+            String employmentTypeVal = spinnerEmploymentType != null && spinnerEmploymentType.getSelectedItem() != null ? spinnerEmploymentType.getSelectedItem().toString() : "";
             String noteSource = activeDialogManualUploadUsed
                     ? DatabaseHelper.NOTE_SOURCE_MANUAL : DatabaseHelper.NOTE_SOURCE_CALL;
 
@@ -1106,6 +1147,9 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                 editCall.setTentativeSchedule(schedule);
                 editCall.setJdImagePath(screenshotsVal);
                 editCall.setInterestRating(interestRatingVal);
+                editCall.setExpectedCtc(expectedCtcVal);
+                editCall.setWorkMode(workModeVal);
+                editCall.setEmploymentType(employmentTypeVal);
 
                 dbHelper.updateJobCall(editCall);
                 dbHelper.linkPhoneToJob(editCall.getId(), phone, recruiter);
@@ -1152,6 +1196,9 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                     }
                     existingCall.setJdImagePath(screenshotsVal);
                     existingCall.setInterestRating(interestRatingVal);
+                    existingCall.setExpectedCtc(expectedCtcVal);
+                    existingCall.setWorkMode(workModeVal);
+                    existingCall.setEmploymentType(employmentTypeVal);
                     dbHelper.updateJobCall(existingCall);
                     
                     Toast.makeText(requireContext(), "Linked to existing company " + existingCall.getCompanyName(), Toast.LENGTH_LONG).show();
@@ -1170,6 +1217,9 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                     newCall.setKeyDiscussionPoints(noteToAdd);
                     newCall.setJdImagePath(screenshotsVal);
                     newCall.setInterestRating(interestRatingVal);
+                    newCall.setExpectedCtc(expectedCtcVal);
+                    newCall.setWorkMode(workModeVal);
+                    newCall.setEmploymentType(employmentTypeVal);
 
                     long newId = dbHelper.insertJobCall(newCall);
                     if (newId != -1 && !noteToAdd.isEmpty()) {
@@ -1505,6 +1555,23 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                     String rating = optClean(result, "interest_rating", "");
                     if (!rating.isEmpty()) {
                         current.setInterestRating(rating);
+                        dbHelper.updateJobCall(current);
+                    }
+
+                    // Fill-if-blank: never overwrite what the user explicitly typed/picked.
+                    String ctc = optClean(result, "expected_ctc", "");
+                    if (!ctc.isEmpty() && current.getExpectedCtc().isEmpty()) {
+                        current.setExpectedCtc(ctc);
+                        dbHelper.updateJobCall(current);
+                    }
+                    String workMode = optClean(result, "work_mode", "");
+                    if (!workMode.isEmpty() && current.getWorkMode().isEmpty()) {
+                        current.setWorkMode(workMode);
+                        dbHelper.updateJobCall(current);
+                    }
+                    String employmentType = optClean(result, "employment_type", "");
+                    if (!employmentType.isEmpty() && current.getEmploymentType().isEmpty()) {
+                        current.setEmploymentType(employmentType);
                         dbHelper.updateJobCall(current);
                     }
 

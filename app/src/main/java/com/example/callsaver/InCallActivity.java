@@ -20,6 +20,11 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.textfield.TextInputLayout;
+
+import android.app.DatePickerDialog;
+import android.app.TimePickerDialog;
+import java.util.Calendar;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -420,9 +425,37 @@ public class InCallActivity extends AppCompatActivity {
 
     private void bindNoteEditor(TextView tvNotesTimeline, TextView tvCallerStatus) {
         EditText etOverlayNoteInput = findViewById(R.id.et_overlay_note_input);
+        EditText etOverlayName = findViewById(R.id.et_overlay_name);
+        EditText etOverlayCompany = findViewById(R.id.et_overlay_company);
+        EditText etOverlayExpectedCtc = findViewById(R.id.et_overlay_expected_ctc);
+        EditText etOverlayNextCall = findViewById(R.id.et_overlay_next_call);
+        TextInputLayout tilOverlayNextCall = findViewById(R.id.til_overlay_next_call);
         Spinner spinnerOverlayRound = findViewById(R.id.spinner_overlay_round);
+        Spinner spinnerOverlayWorkMode = findViewById(R.id.spinner_overlay_work_mode);
+        Spinner spinnerOverlayEmploymentType = findViewById(R.id.spinner_overlay_employment_type);
         View btnOverlayCancelNote = findViewById(R.id.btn_overlay_cancel_note);
         View btnOverlaySaveNote = findViewById(R.id.btn_overlay_save_note);
+
+        // Prefill from the latest DB state (falls back to what CallSaverInCallService passed in).
+        JobCall currentForPrefill = jobCallId != -1 ? new DatabaseHelper(this).getJobCallById(jobCallId) : null;
+        String prefillName = currentForPrefill != null ? currentForPrefill.getRecruiterName() : recruiter;
+        String prefillCompany = currentForPrefill != null ? currentForPrefill.getCompanyName() : company;
+        String prefillCtc = currentForPrefill != null ? currentForPrefill.getExpectedCtc() : "";
+        String prefillNextCall = currentForPrefill != null ? currentForPrefill.getTentativeSchedule() : "";
+        String prefillWorkMode = currentForPrefill != null ? currentForPrefill.getWorkMode() : "";
+        String prefillEmploymentType = currentForPrefill != null ? currentForPrefill.getEmploymentType() : "";
+        String prefillRound = currentForPrefill != null ? currentForPrefill.getRoundStatus() : roundStatus;
+
+        if (etOverlayName != null) etOverlayName.setText(prefillName);
+        if (etOverlayCompany != null) etOverlayCompany.setText(prefillCompany);
+        if (etOverlayExpectedCtc != null) etOverlayExpectedCtc.setText(prefillCtc);
+        if (etOverlayNextCall != null) {
+            etOverlayNextCall.setText(prefillNextCall);
+            etOverlayNextCall.setOnClickListener(v -> showDateTimePicker(etOverlayNextCall));
+        }
+        if (tilOverlayNextCall != null && etOverlayNextCall != null) {
+            tilOverlayNextCall.setEndIconOnClickListener(v -> etOverlayNextCall.setText(""));
+        }
 
         if (spinnerOverlayRound != null) {
             ArrayAdapter<String> roundAdapter = new ArrayAdapter<>(this,
@@ -430,14 +463,32 @@ public class InCallActivity extends AppCompatActivity {
                     new String[]{"First time", "1st Round", "2nd Round", "Final Round", "HR / Salary", "Offered", "Not Interested", "Negative"});
             roundAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
             spinnerOverlayRound.setAdapter(roundAdapter);
-            if (roundStatus != null) {
+            if (prefillRound != null) {
                 for (int i = 0; i < roundAdapter.getCount(); i++) {
-                    if (roundAdapter.getItem(i).equalsIgnoreCase(roundStatus)) {
+                    if (roundAdapter.getItem(i).equalsIgnoreCase(prefillRound)) {
                         spinnerOverlayRound.setSelection(i);
                         break;
                     }
                 }
             }
+        }
+        final int prefillRoundPosition = spinnerOverlayRound != null ? spinnerOverlayRound.getSelectedItemPosition() : -1;
+
+        if (spinnerOverlayWorkMode != null) {
+            ArrayAdapter<String> workModeAdapter = new ArrayAdapter<>(this,
+                    android.R.layout.simple_spinner_item, new String[]{"", "Hybrid", "Onsite", "Remote"});
+            workModeAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+            spinnerOverlayWorkMode.setAdapter(workModeAdapter);
+            int pos = workModeAdapter.getPosition(prefillWorkMode != null ? prefillWorkMode : "");
+            spinnerOverlayWorkMode.setSelection(pos >= 0 ? pos : 0);
+        }
+        if (spinnerOverlayEmploymentType != null) {
+            ArrayAdapter<String> employmentAdapter = new ArrayAdapter<>(this,
+                    android.R.layout.simple_spinner_item, new String[]{"", "C2H", "Direct Payroll"});
+            employmentAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+            spinnerOverlayEmploymentType.setAdapter(employmentAdapter);
+            int pos = employmentAdapter.getPosition(prefillEmploymentType != null ? prefillEmploymentType : "");
+            spinnerOverlayEmploymentType.setSelection(pos >= 0 ? pos : 0);
         }
 
         if (btnOverlayCancelNote != null && llOverlayEditPanel != null) {
@@ -474,21 +525,58 @@ public class InCallActivity extends AppCompatActivity {
                 String noteText = etOverlayNoteInput.getText().toString().trim();
                 String selectedRound = spinnerOverlayRound != null && spinnerOverlayRound.getSelectedItem() != null
                         ? spinnerOverlayRound.getSelectedItem().toString() : "First time";
+                // The user explicitly picking a round in this dropdown always wins over
+                // whatever the AI later infers from the note text.
+                boolean userChangedRound = spinnerOverlayRound != null
+                        && spinnerOverlayRound.getSelectedItemPosition() != prefillRoundPosition;
+
+                String nameVal = etOverlayName != null ? etOverlayName.getText().toString().trim() : "";
+                String companyVal = etOverlayCompany != null ? etOverlayCompany.getText().toString().trim() : "";
+                String ctcVal = etOverlayExpectedCtc != null ? etOverlayExpectedCtc.getText().toString().trim() : "";
+                String nextCallVal = etOverlayNextCall != null ? etOverlayNextCall.getText().toString().trim() : "";
+                String workModeVal = spinnerOverlayWorkMode != null && spinnerOverlayWorkMode.getSelectedItem() != null
+                        ? spinnerOverlayWorkMode.getSelectedItem().toString() : "";
+                String employmentTypeVal = spinnerOverlayEmploymentType != null && spinnerOverlayEmploymentType.getSelectedItem() != null
+                        ? spinnerOverlayEmploymentType.getSelectedItem().toString() : "";
+
+                DatabaseHelper db = new DatabaseHelper(this);
+                long targetJobId = jobCallId;
+
+                if (targetJobId == -1) {
+                    String leadCompany = !companyVal.isEmpty() ? companyVal : "Unknown Recruiter";
+                    JobCall newLead = new JobCall(phoneNumber, leadCompany, selectedRound, "", noteText, 0, System.currentTimeMillis());
+                    newLead.setRecruiterName(nameVal);
+                    newLead.setExpectedCtc(ctcVal);
+                    newLead.setTentativeSchedule(nextCallVal);
+                    newLead.setWorkMode(workModeVal);
+                    newLead.setEmploymentType(employmentTypeVal);
+                    targetJobId = db.insertJobCall(newLead);
+                    jobCallId = targetJobId;
+                    company = leadCompany;
+                    recruiter = nameVal;
+                } else {
+                    JobCall current = db.getJobCallById(targetJobId);
+                    if (current != null) {
+                        if (!nameVal.isEmpty()) current.setRecruiterName(nameVal);
+                        if (!companyVal.isEmpty()) current.setCompanyName(companyVal);
+                        current.setExpectedCtc(ctcVal);
+                        current.setTentativeSchedule(nextCallVal);
+                        current.setWorkMode(workModeVal);
+                        current.setEmploymentType(employmentTypeVal);
+                        current.setRoundStatus(selectedRound);
+                        db.updateJobCall(current);
+                        company = current.getCompanyName();
+                        recruiter = current.getRecruiterName();
+                    } else {
+                        db.updateRoundStatus(targetJobId, selectedRound);
+                    }
+                    if (!noteText.isEmpty()) {
+                        db.insertNote(targetJobId, noteText, System.currentTimeMillis());
+                    }
+                    db.refreshNotesPreview(targetJobId);
+                }
 
                 if (!noteText.isEmpty()) {
-                    DatabaseHelper db = new DatabaseHelper(this);
-                    long targetJobId = jobCallId;
-
-                    if (targetJobId == -1) {
-                        JobCall newLead = new JobCall(phoneNumber, "Unknown Recruiter", selectedRound, "", noteText, 0, System.currentTimeMillis());
-                        targetJobId = db.insertJobCall(newLead);
-                        jobCallId = targetJobId;
-                    } else {
-                        db.insertNote(targetJobId, noteText, System.currentTimeMillis());
-                        db.updateRoundStatus(targetJobId, selectedRound);
-                        db.refreshNotesPreview(targetJobId);
-                    }
-
                     final long finalJobId = targetJobId;
                     OpenAiClient.extractFields(this, noteText, new OpenAiClient.OpenAiCallback() {
                         @Override
@@ -497,13 +585,24 @@ public class InCallActivity extends AppCompatActivity {
                                 JobCall existingCall = db.getJobCallById(finalJobId);
                                 if (existingCall != null) {
                                     String sched = result.optString("tentative_schedule", "").trim();
-                                    if (!sched.isEmpty()) existingCall.setTentativeSchedule(sched);
-                                    String round = OpenAiClient.normalizeRoundStatus(result.optString("present_round", ""), selectedRound);
-                                    if (OpenAiClient.shouldUpdateRoundStatus(existingCall.getRoundStatus(), round)) {
-                                        existingCall.setRoundStatus(round);
+                                    if (!sched.isEmpty() && nextCallVal.isEmpty()) {
+                                        existingCall.setTentativeSchedule(sched);
+                                    }
+                                    if (!userChangedRound) {
+                                        String round = OpenAiClient.normalizeRoundStatus(result.optString("present_round", ""), selectedRound);
+                                        if (OpenAiClient.shouldUpdateRoundStatus(existingCall.getRoundStatus(), round)) {
+                                            existingCall.setRoundStatus(round);
+                                        }
                                     }
                                     String agenda = result.optString("main_agenda", "").trim();
                                     if (!agenda.isEmpty()) existingCall.setMainAgenda(agenda);
+                                    // Fill-if-blank: never overwrite what the user explicitly typed/picked.
+                                    String ctc = result.optString("expected_ctc", "").trim();
+                                    if (!ctc.isEmpty() && existingCall.getExpectedCtc().isEmpty()) existingCall.setExpectedCtc(ctc);
+                                    String wm = result.optString("work_mode", "").trim();
+                                    if (!wm.isEmpty() && existingCall.getWorkMode().isEmpty()) existingCall.setWorkMode(wm);
+                                    String et = result.optString("employment_type", "").trim();
+                                    if (!et.isEmpty() && existingCall.getEmploymentType().isEmpty()) existingCall.setEmploymentType(et);
                                     db.updateJobCall(existingCall);
                                     FollowUpNotifier.checkAndNotify(InCallActivity.this);
                                 }
@@ -516,27 +615,44 @@ public class InCallActivity extends AppCompatActivity {
                         public void onError(String error) {
                         }
                     });
-
-                    List<CallNote> freshNotesList = db.getNotesForJob(targetJobId);
-                    if (!freshNotesList.isEmpty()) {
-                        StringBuilder sb = new StringBuilder();
-                        int count = 0;
-                        for (CallNote note : freshNotesList) {
-                            if (count >= 5) break;
-                            count++;
-                            sb.append("• ").append(note.note).append("\n");
-                        }
-                        if (sb.length() > 0) sb.setLength(sb.length() - 1);
-                        tvNotesTimeline.setText(sb.toString());
-                    }
-                    tvCallerStatus.setText("Stage: " + selectedRound);
                 }
+
+                List<CallNote> freshNotesList = db.getNotesForJob(targetJobId);
+                if (!freshNotesList.isEmpty()) {
+                    StringBuilder sb = new StringBuilder();
+                    int count = 0;
+                    for (CallNote note : freshNotesList) {
+                        if (count >= 5) break;
+                        count++;
+                        sb.append("• ").append(note.note).append("\n");
+                    }
+                    if (sb.length() > 0) sb.setLength(sb.length() - 1);
+                    tvNotesTimeline.setText(sb.toString());
+                }
+                tvCallerStatus.setText("Stage: " + selectedRound);
+                bindCallerInfo();
 
                 llOverlayEditPanel.setVisibility(View.GONE);
                 etOverlayNoteInput.setText("");
-                Toast.makeText(this, "Notes saved & analyzed!", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Saved!", Toast.LENGTH_SHORT).show();
             });
         }
+    }
+
+    private void showDateTimePicker(final EditText etTarget) {
+        final Calendar calendar = Calendar.getInstance();
+        new DatePickerDialog(this, (view, year, month, dayOfMonth) -> {
+            calendar.set(Calendar.YEAR, year);
+            calendar.set(Calendar.MONTH, month);
+            calendar.set(Calendar.DAY_OF_MONTH, dayOfMonth);
+
+            new TimePickerDialog(this, (timeView, hourOfDay, minute) -> {
+                calendar.set(Calendar.HOUR_OF_DAY, hourOfDay);
+                calendar.set(Calendar.MINUTE, minute);
+                java.text.SimpleDateFormat format = new java.text.SimpleDateFormat("yyyy-MM-dd 'at' hh:mm a", Locale.getDefault());
+                etTarget.setText(format.format(calendar.getTime()));
+            }, calendar.get(Calendar.HOUR_OF_DAY), calendar.get(Calendar.MINUTE), false).show();
+        }, calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH)).show();
     }
 
     private String cleanNoteText(String rawText) {
