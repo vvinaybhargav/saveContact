@@ -864,6 +864,10 @@ public class InCallActivity extends AppCompatActivity {
                 current.setRoundStatus(selectedRound);
                 current.setTags(tagsValue);
                 db.updateJobCall(current);
+                // Recruiter name lives in a separate phone-number table (job_phones),
+                // not the job_calls row updateJobCall() just wrote - without this call
+                // an edited name here never actually persisted.
+                db.linkPhoneToJob(targetJobId, phoneNumber, nameVal, true);
                 company = current.getCompanyName();
                 recruiter = current.getRecruiterName();
             } else {
