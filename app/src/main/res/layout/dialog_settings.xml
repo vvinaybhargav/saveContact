@@ -20,34 +20,10 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Configure Deepgram and OpenAI credentials for automated transcribing and structured summary generation."
+        android:text="Configure OpenAI credentials for structured summary generation."
         android:textColor="@color/text_muted"
         android:textSize="12sp"
         android:layout_marginBottom="20dp" />
-
-    <!-- Deepgram Key -->
-    <com.google.android.material.textfield.TextInputLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="Deepgram API Key"
-        android:layout_marginBottom="12dp"
-        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-        app:boxCornerRadiusTopStart="8dp"
-        app:boxCornerRadiusTopEnd="8dp"
-        app:boxCornerRadiusBottomStart="8dp"
-        app:boxCornerRadiusBottomEnd="8dp"
-        app:boxStrokeColor="@color/accent_indigo"
-        app:hintTextColor="@color/accent_indigo"
-        app:endIconMode="password_toggle">
-
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/et_settings_deepgram_key"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:inputType="textPassword"
-            android:maxLines="1"
-            android:singleLine="true"/>
-    </com.google.android.material.textfield.TextInputLayout>
 
     <!-- OpenAI Key -->
     <com.google.android.material.textfield.TextInputLayout

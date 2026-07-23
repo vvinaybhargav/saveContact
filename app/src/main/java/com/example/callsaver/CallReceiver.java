@@ -228,7 +228,7 @@ public class CallReceiver extends BroadcastReceiver {
                 .setCategory(NotificationCompat.CATEGORY_RECOMMENDATION)
                 .setAutoCancel(true)
                 .setContentIntent(pendingIntent)
-                .addAction(android.R.drawable.ic_menu_save, "Quick Save & Transcribe", quickActionPendingIntent)
+                .addAction(android.R.drawable.ic_menu_save, "Quick Save & Note", quickActionPendingIntent)
                 .build();
 
         try {

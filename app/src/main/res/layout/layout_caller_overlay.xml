@@ -288,12 +288,58 @@
                 android:layout_marginTop="12dp"
                 android:visibility="gone">
 
-                <!-- Divider -->
-                <View
+                <!-- Quick Note Presets ScrollView -->
+                <HorizontalScrollView
                     android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="@color/divider"
-                    android:layout_marginBottom="12dp" />
+                    android:layout_height="wrap_content"
+                    android:scrollbars="none"
+                    android:layout_marginBottom="8dp">
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chip_preset_shortlisted"
+                            style="@style/Widget.MaterialComponents.Chip.Action"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginEnd="6dp"
+                            android:text="Shortlisted"
+                            android:textColor="@color/white_constant"
+                            app:chipBackgroundColor="@color/primary_light" />
+
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chip_preset_tmrw_interview"
+                            style="@style/Widget.MaterialComponents.Chip.Action"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginEnd="6dp"
+                            android:text="tmrw interview at 12 pm"
+                            android:textColor="@color/white_constant"
+                            app:chipBackgroundColor="@color/primary_light" />
+
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chip_preset_next_round"
+                            style="@style/Widget.MaterialComponents.Chip.Action"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginEnd="6dp"
+                            android:text="Next round scheduled"
+                            android:textColor="@color/white_constant"
+                            app:chipBackgroundColor="@color/primary_light" />
+
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chip_preset_salary"
+                            style="@style/Widget.MaterialComponents.Chip.Action"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Salary discussed"
+                            android:textColor="@color/white_constant"
+                            app:chipBackgroundColor="@color/primary_light" />
+                    </LinearLayout>
+                </HorizontalScrollView>
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/til_overlay_notes"

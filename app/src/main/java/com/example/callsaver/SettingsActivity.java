@@ -21,13 +21,9 @@ import java.util.Locale;
 public class SettingsActivity extends AppCompatActivity {
 
     private EditText etOpenAiKey;
-    private EditText etDeepgramKey;
     private EditText etUserName;
     private EditText etUserInterests;
-    private EditText etRecordingFolder;
     private static final int REQ_CODE_INTERESTS_SPEECH = 700;
-    private static final int REQ_CODE_BROWSE_FOLDER = 701;
-    private SwitchMaterial switchAutoTranscribe;
     private Button btnSave;
     private Button btnAnalytics;
     private Button btnClearCache;
@@ -53,13 +49,9 @@ public class SettingsActivity extends AppCompatActivity {
         toolbar.setNavigationOnClickListener(v -> finish());
 
         etOpenAiKey = findViewById(R.id.settings_openai_key);
-        etDeepgramKey = findViewById(R.id.settings_deepgram_key);
         etUserName = findViewById(R.id.settings_user_name);
         etUserInterests = findViewById(R.id.settings_user_interests);
         com.google.android.material.textfield.TextInputLayout tilInterests = findViewById(R.id.til_settings_interests);
-        etRecordingFolder = findViewById(R.id.settings_recording_folder);
-        Button btnBrowseFolder = findViewById(R.id.btn_browse_recording_folder);
-        switchAutoTranscribe = findViewById(R.id.switch_auto_transcribe);
         btnSave = findViewById(R.id.btn_settings_save_keys);
         btnAnalytics = findViewById(R.id.btn_settings_analytics);
         btnClearCache = findViewById(R.id.btn_settings_clear_cache);
@@ -68,44 +60,26 @@ public class SettingsActivity extends AppCompatActivity {
         btnRefreshLogs = findViewById(R.id.btn_refresh_logs);
 
         // Load preferences
-        etOpenAiKey.setText(prefs.getString("openai_api_key", ""));
-        etDeepgramKey.setText(prefs.getString("deepgram_api_key", ""));
-        etUserName.setText(prefs.getString("user_full_name", ""));
-        etUserInterests.setText(prefs.getString("user_talking_points", ""));
-        etRecordingFolder.setText(prefs.getString("custom_recording_folder", ""));
-        switchAutoTranscribe.setChecked(prefs.getBoolean("auto_transcribe_background", true));
+        if (etOpenAiKey != null) etOpenAiKey.setText(prefs.getString("openai_api_key", ""));
+        if (etUserName != null) etUserName.setText(prefs.getString("user_full_name", ""));
+        if (etUserInterests != null) etUserInterests.setText(prefs.getString("user_talking_points", ""));
 
         // Setup save action
-        btnSave.setOnClickListener(v -> {
-            String openAi = etOpenAiKey.getText().toString().trim();
-            String deepgram = etDeepgramKey.getText().toString().trim();
-            String userName = etUserName.getText().toString().trim();
-            String interests = etUserInterests.getText().toString().trim();
-            String recordingFolder = etRecordingFolder.getText().toString().trim();
-            boolean autoTranscribe = switchAutoTranscribe.isChecked();
+        if (btnSave != null) {
+            btnSave.setOnClickListener(v -> {
+                String openAi = etOpenAiKey != null ? etOpenAiKey.getText().toString().trim() : "";
+                String userName = etUserName != null ? etUserName.getText().toString().trim() : "";
+                String interests = etUserInterests != null ? etUserInterests.getText().toString().trim() : "";
 
-            prefs.edit()
-                    .putString("openai_api_key", openAi)
-                    .putString("deepgram_api_key", deepgram)
-                    .putString("user_full_name", userName)
-                    .putString("user_talking_points", interests)
-                    .putString("custom_recording_folder", recordingFolder)
-                    .putBoolean("auto_transcribe_background", autoTranscribe)
-                    .apply();
+                prefs.edit()
+                        .putString("openai_api_key", openAi)
+                        .putString("user_full_name", userName)
+                        .putString("user_talking_points", interests)
+                        .apply();
 
-            Toast.makeText(this, "Settings saved successfully!", Toast.LENGTH_SHORT).show();
-        });
-
-        // Browse for the recording folder using the system folder picker.
-        btnBrowseFolder.setOnClickListener(v -> {
-            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
-            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            try {
-                startActivityForResult(intent, REQ_CODE_BROWSE_FOLDER);
-            } catch (Exception e) {
-                Toast.makeText(this, "No file picker available on this device.", Toast.LENGTH_SHORT).show();
-            }
-        });
+                Toast.makeText(this, "Settings saved successfully!", Toast.LENGTH_SHORT).show();
+            });
+        }
 
         // Mic input for My Interests
         if (tilInterests != null) {
@@ -131,7 +105,7 @@ public class SettingsActivity extends AppCompatActivity {
         // Setup clear cache button
         updateCacheSizeButton();
         btnClearCache.setOnClickListener(v -> {
-            File cacheDir = CallRecorderService.recordingsDir(this);
+            File cacheDir = getCacheDir();
             File[] files = cacheDir.listFiles();
             int deletedCount = 0;
             if (files != null) {
@@ -166,7 +140,7 @@ public class SettingsActivity extends AppCompatActivity {
     }
 
     private void updateCacheSizeButton() {
-        File cacheDir = CallRecorderService.recordingsDir(this);
+        File cacheDir = getCacheDir();
         File[] files = cacheDir.listFiles();
         long totalSize = 0;
         if (files != null) {

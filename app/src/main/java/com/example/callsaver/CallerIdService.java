@@ -388,6 +388,30 @@ public class CallerIdService extends Service {
             });
         }
 
+        // Bind preset chips
+        View chipShortlisted = overlayView.findViewById(R.id.chip_preset_shortlisted);
+        View chipTmrw = overlayView.findViewById(R.id.chip_preset_tmrw_interview);
+        View chipNextRound = overlayView.findViewById(R.id.chip_preset_next_round);
+        View chipSalary = overlayView.findViewById(R.id.chip_preset_salary);
+
+        View.OnClickListener chipClickListener = v -> {
+            if (v instanceof com.google.android.material.chip.Chip && etOverlayNoteInput != null) {
+                String presetText = ((com.google.android.material.chip.Chip) v).getText().toString();
+                String curr = etOverlayNoteInput.getText().toString();
+                if (curr.trim().isEmpty()) {
+                    etOverlayNoteInput.setText(presetText);
+                } else {
+                    etOverlayNoteInput.setText(curr.trim() + " • " + presetText);
+                }
+                etOverlayNoteInput.setSelection(etOverlayNoteInput.getText().length());
+            }
+        };
+
+        if (chipShortlisted != null) chipShortlisted.setOnClickListener(chipClickListener);
+        if (chipTmrw != null) chipTmrw.setOnClickListener(chipClickListener);
+        if (chipNextRound != null) chipNextRound.setOnClickListener(chipClickListener);
+        if (chipSalary != null) chipSalary.setOnClickListener(chipClickListener);
+
         if (btnOverlaySaveNote != null && llOverlayEditPanel != null && etOverlayNoteInput != null) {
             btnOverlaySaveNote.setOnClickListener(v -> {
                 String noteText = etOverlayNoteInput.getText().toString().trim();
@@ -397,17 +421,50 @@ public class CallerIdService extends Service {
                     DatabaseHelper db = new DatabaseHelper(this);
                     long targetJobId = jobCallId;
                     
-                    // If this call isn't saved yet, auto-create a lead so notes can link to it
+                    // Save note in-app database
                     if (targetJobId == -1) {
                         JobCall newLead = new JobCall(phoneNumber, "Unknown Recruiter", selectedRound, "", noteText, 0, System.currentTimeMillis());
                         targetJobId = db.insertJobCall(newLead);
                         jobCallId = targetJobId;
                     } else {
-                        // Insert note and update status for existing lead
                         db.insertNote(targetJobId, noteText, System.currentTimeMillis());
                         db.updateRoundStatus(targetJobId, selectedRound);
                         db.refreshNotesPreview(targetJobId);
                     }
+
+                    final long finalJobId = targetJobId;
+
+                    // Trigger OpenAI field extraction asynchronously to analyze relative dates & summaries
+                    OpenAiClient.extractFields(this, noteText, new OpenAiClient.OpenAiCallback() {
+                        @Override
+                        public void onSuccess(org.json.JSONObject result) {
+                            try {
+                                JobCall existingCall = db.getJobCallById(finalJobId);
+                                if (existingCall != null) {
+                                    String sched = result.optString("tentative_schedule", "").trim();
+                                    if (!sched.isEmpty()) {
+                                        existingCall.setTentativeSchedule(sched);
+                                        existingCall.setNextCallDate(sched);
+                                    }
+                                    String round = OpenAiClient.normalizeRoundStatus(result.optString("present_round", ""), selectedRound);
+                                    if (OpenAiClient.shouldUpdateRoundStatus(existingCall.getRoundStatus(), round)) {
+                                        existingCall.setRoundStatus(round);
+                                    }
+                                    String agenda = result.optString("main_agenda", "").trim();
+                                    if (!agenda.isEmpty()) {
+                                        existingCall.setMainAgenda(agenda);
+                                    }
+                                    db.updateJobCall(existingCall);
+                                    FollowUpNotifier.checkAndNotify(CallerIdService.this);
+                                }
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                        }
+
+                        @Override
+                        public void onError(String error) {}
+                    });
 
                     // Refresh notes timeline on the banner dynamically
                     List<CallNote> freshNotesList = db.getNotesForJob(targetJobId);
@@ -417,13 +474,12 @@ public class CallerIdService extends Service {
                         for (CallNote note : freshNotesList) {
                             if (count >= 5) break;
                             count++;
-                            sb.append(count).append(". ").append(note.note).append("\n");
+                            sb.append("• ").append(note.note).append("\n");
                         }
                         if (sb.length() > 0) sb.setLength(sb.length() - 1);
                         tvNotesTimeline.setText(sb.toString());
                     }
                     
-                    // If we created a new lead, update local stage status text as well
                     tvCallerStatus.setText("Stage: " + selectedRound);
                 }
 
@@ -436,7 +492,7 @@ public class CallerIdService extends Service {
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
-                Toast.makeText(this, "Notes logged successfully!", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Notes saved & analyzed!", Toast.LENGTH_SHORT).show();
             });
         }
 

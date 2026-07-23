@@ -49,7 +49,7 @@ public class MainActivity extends AppCompatActivity {
             Manifest.permission.READ_PHONE_STATE,
             Manifest.permission.READ_CALL_LOG,
             Manifest.permission.READ_CONTACTS,
-            Manifest.permission.WRITE_CONTACTS,
+            Manifest.permission.CALL_PHONE,
             Manifest.permission.GET_ACCOUNTS
     };
 
@@ -90,8 +90,11 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // Load Tracker fragment by default
-        bottomNavigation.setSelectedItemId(R.id.navigation_tracker);
+        // Load Recents / Dialer fragment by default
+        bottomNavigation.setSelectedItemId(R.id.navigation_recents);
+
+        // Offer system Default Dialer role prompt
+        offerDefaultDialer();
 
         // Auto check/request permissions on first launch
         requestRequiredPermissionsIfMissing();
@@ -121,12 +124,30 @@ public class MainActivity extends AppCompatActivity {
 
     private void handleOpenTabIntent(Intent intent) {
         if (intent == null) return;
+        
+        // Handle incoming dial/tel intents directly
+        if (Intent.ACTION_DIAL.equals(intent.getAction()) || Intent.ACTION_VIEW.equals(intent.getAction())) {
+            Uri data = intent.getData();
+            if (data != null && "tel".equals(data.getScheme())) {
+                String number = data.getSchemeSpecificPart();
+                if (bottomNavigation != null) {
+                    bottomNavigation.setSelectedItemId(R.id.navigation_recents);
+                }
+                if (recentsFragment != null) {
+                    recentsFragment.setDialedNumber(number);
+                }
+                return;
+            }
+        }
+
         String openTab = intent.getStringExtra("open_tab");
         if (bottomNavigation == null) return;
         if ("upcoming".equals(openTab)) {
             bottomNavigation.setSelectedItemId(R.id.navigation_upcoming);
         } else if ("tracker".equals(openTab)) {
             bottomNavigation.setSelectedItemId(R.id.navigation_tracker);
+        } else if ("recents".equals(openTab)) {
+            bottomNavigation.setSelectedItemId(R.id.navigation_recents);
         }
     }
 

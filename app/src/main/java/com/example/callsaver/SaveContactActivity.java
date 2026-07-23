@@ -350,55 +350,18 @@ public class SaveContactActivity extends AppCompatActivity {
             }
             btnAutoTranscribe.setEnabled(false);
 
-            // Notify other app components that we are actively transcribing
-            SharedPreferences prefs = getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE);
-            prefs.edit()
-                    .putBoolean("is_transcribing", true)
-                    .putString("transcribing_number", phoneNumber)
-                    .apply();
+            if (tvTranscriptionStatus != null) {
+                tvTranscriptionStatus.setText("✨ Analyzing notes using OpenAI...");
+            }
 
-            DebugLogger.log(this, "[Activity] Starting transcription for file: " + (recordingFile != null ? recordingFile.getName() : "null"));
-
-            Transcriber.transcribeCallRecording(this, recordingFile, new Transcriber.TranscriptionCallback() {
+            OpenAiClient.extractFields(SaveContactActivity.this, text, new OpenAiClient.OpenAiCallback() {
                 @Override
-                public void onSuccess(String text) {
-                    if (text == null || text.trim().isEmpty()) {
-                        prefs.edit().putBoolean("is_transcribing", false).remove("transcribing_number").apply();
-                        pbTranscribe.setVisibility(View.GONE);
-                        btnAutoTranscribe.setEnabled(true);
-                        return;
-                    }
-
-                    // Check OpenAI API Key
-                    String openAiKey = getSharedPreferences("CallSaverPrefs", MODE_PRIVATE).getString("openai_api_key", "").trim();
-                    if (openAiKey.isEmpty()) {
-                        // Fallback: No OpenAI key -> Save transcription raw
-                        prefs.edit().putBoolean("is_transcribing", false).remove("transcribing_number").apply();
-                        pbTranscribe.setVisibility(View.GONE);
-                        if (tvTranscriptionStatus != null) {
-                            tvTranscriptionStatus.setText("✅ Transcribed successfully!");
-                        }
-                        btnAutoTranscribe.setEnabled(true);
-                        
-                        String currentNotes = etNotes.getText().toString().trim();
-                        etNotes.setText(currentNotes.isEmpty() ? text : currentNotes + "\n" + text);
-                        Toast.makeText(SaveContactActivity.this, "Transcription success! Saved raw.", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-
-                    // Query OpenAI
+                public void onSuccess(JSONObject result) {
+                    pbTranscribe.setVisibility(View.GONE);
                     if (tvTranscriptionStatus != null) {
-                        tvTranscriptionStatus.setText("✨ Extracting fields using OpenAI...");
+                        tvTranscriptionStatus.setText("✅ Processed successfully!");
                     }
-                    OpenAiClient.extractFields(SaveContactActivity.this, text, new OpenAiClient.OpenAiCallback() {
-                        @Override
-                        public void onSuccess(JSONObject result) {
-                            prefs.edit().putBoolean("is_transcribing", false).remove("transcribing_number").apply();
-                            pbTranscribe.setVisibility(View.GONE);
-                            if (tvTranscriptionStatus != null) {
-                                tvTranscriptionStatus.setText("✅ Processed successfully!");
-                            }
-                            btnAutoTranscribe.setEnabled(true);
+                    btnAutoTranscribe.setEnabled(true);
                             
                             try {
                                  String candidate = optClean(result, "candidate_name", "");
@@ -506,48 +469,11 @@ public class SaveContactActivity extends AppCompatActivity {
             ((View) playBtn.getParent()).setVisibility(View.GONE);
         }
 
-        DebugLogger.log(this, "[Activity] Scanning call recordings for caller " + phoneNumber + ", timestamp=" + callTimestamp);
-
-        new Handler().postDelayed(() -> {
-            recordingFile = CallRecordingScanner.findLatestCallRecording(this, phoneNumber, callTimestamp);
-            if (recordingFile == null) {
-                DebugLogger.log(this, "[Activity] Call recording timestamp search empty, trying fallback matching...");
-                recordingFile = CallRecordingScanner.findLatestCallRecording(this, phoneNumber, 0);
-            }
-
-            if (recordingFile != null) {
-                DebugLogger.log(this, "[Activity] Call recording found: " + recordingFile.getAbsolutePath() + " (" + recordingFile.length() + " bytes)");
-                setupAudioPlayer();
-                // Show player controls
-                if (playBtn != null && playBtn.getParent() instanceof View) {
-                    ((View) playBtn.getParent()).setVisibility(View.VISIBLE);
-                }
-                btnAutoTranscribe.setVisibility(View.VISIBLE);
-
-                if (!savedKey.isEmpty()) {
-                    btnAutoTranscribe.performClick();
-                } else {
-                    pbTranscribe.setVisibility(View.GONE);
-                    if (tvTranscriptionStatus != null) {
-                        tvTranscriptionStatus.setText("✅ Recording located. Tap Auto-Transcribe.");
-                    }
-                }
-            } else {
-                DebugLogger.log(this, "[Activity] No matching recording file found inside storage.");
-                pbTranscribe.setVisibility(View.GONE);
-                if (tvTranscriptionStatus != null) {
-                    String msg;
-                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R
-                            && !android.os.Environment.isExternalStorageManager()) {
-                        msg = "❌ No recording found. Grant 'All files access' in Settings so the app can read the OnePlus call recordings.";
-                    } else {
-                        msg = "❌ No recording found for this call. Enable call recording (auto-record) in the OnePlus Phone app, then call again.";
-                    }
-                    tvTranscriptionStatus.setText(msg);
-                    Toast.makeText(this, msg, Toast.LENGTH_LONG).show();
-                }
-            }
-        }, 1500); // 1.5 seconds delay guarantees file system synchronization
+        pbTranscribe.setVisibility(View.GONE);
+        btnAutoTranscribe.setVisibility(View.VISIBLE);
+        if (tvTranscriptionStatus != null) {
+            tvTranscriptionStatus.setText("💡 Type call notes & tap 'Analyze Notes with AI'.");
+        }
 
         // Fetch accounts
         List<String> accountNames = new ArrayList<>();

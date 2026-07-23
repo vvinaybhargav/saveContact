@@ -969,35 +969,19 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
         new AlertDialog.Builder(requireContext())
                 .setTitle("Select Call Recording File")
                 .setItems(fileNames, (dialog, which) -> {
-                    File selectedFile = audioFiles.get(which);
-                    Toast.makeText(requireContext(), "⌛ Transcribing selected file: " + selectedFile.getName(), Toast.LENGTH_LONG).show();
+                    String notesText = etNotesField.getText().toString().trim();
+                    if (notesText.isEmpty()) {
+                        Toast.makeText(requireContext(), "Please enter notes first to analyze.", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
                     if (activeLlTranscriptionProgress != null) {
                         activeLlTranscriptionProgress.setVisibility(View.VISIBLE);
                     }
                     if (activeTvTranscriptionStatus != null) {
-                        activeTvTranscriptionStatus.setText("✨ Transcribing call recording via Deepgram...");
+                        activeTvTranscriptionStatus.setText("✨ Extracting fields using OpenAI...");
                     }
-
-                    Transcriber.transcribeCallRecording(requireContext(), selectedFile, new Transcriber.TranscriptionCallback() {
-                        @Override
-                        public void onSuccess(String text) {
-                            if (!isAdded() || text == null || text.trim().isEmpty()) return;
-
-                            activeDialogManualUploadUsed = true;
-                            String openAiKey = requireContext().getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE).getString("openai_api_key", "").trim();
-                            if (openAiKey.isEmpty()) {
-                                activeDialogManualUploadAIFailed = true;
-                                if (activeLlTranscriptionProgress != null) {
-                                    activeLlTranscriptionProgress.setVisibility(View.GONE);
-                                }
-                                String currentNotes = etNotesField.getText().toString().trim();
-                                etNotesField.setText(currentNotes.isEmpty() ? text : currentNotes + "\n" + text);
-                                Toast.makeText(requireContext(), "Transcription success! Saved raw.", Toast.LENGTH_SHORT).show();
-                                return;
-                            }
-
-                            if (activeTvTranscriptionStatus != null) {
-                                activeTvTranscriptionStatus.setText("✨ Extracting fields using OpenAI...");
+                    Toast.makeText(requireContext(), "✨ Running AI analysis...", Toast.LENGTH_SHORT).show();
+                    OpenAiClient.extractFields(requireContext(), notesText, new OpenAiClient.OpenAiCallback() {
                             }
                             Toast.makeText(requireContext(), "✨ Running AI analysis...", Toast.LENGTH_SHORT).show();
                             OpenAiClient.extractFields(requireContext(), text, new OpenAiClient.OpenAiCallback() {

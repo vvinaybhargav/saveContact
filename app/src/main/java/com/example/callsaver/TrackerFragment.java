@@ -1517,42 +1517,19 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                     
                     // Show feedback
                     Toast.makeText(requireContext(), "⌛ Transcribing selected file: " + selectedFile.getName(), Toast.LENGTH_LONG).show();
+                    String notesText = etNotesField.getText().toString().trim();
+                    if (notesText.isEmpty()) {
+                        Toast.makeText(requireContext(), "Please enter notes first to analyze.", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
                     if (activeLlTranscriptionProgress != null) {
                         activeLlTranscriptionProgress.setVisibility(View.VISIBLE);
                     }
                     if (activeTvTranscriptionStatus != null) {
-                        activeTvTranscriptionStatus.setText("✨ Transcribing call recording via Deepgram...");
+                        activeTvTranscriptionStatus.setText("✨ Extracting fields using OpenAI...");
                     }
-                    
-                    Transcriber.transcribeCallRecording(requireContext(), selectedFile, new Transcriber.TranscriptionCallback() {
-                        @Override
-                        public void onSuccess(String text) {
-                            if (!isAdded() || text == null || text.trim().isEmpty()) return;
-
-                            // This dialog session now has a manual-upload transcription in
-                            // the Notes field, so whatever gets saved is tagged "manual".
-                            activeDialogManualUploadUsed = true;
-
-                            // Check OpenAI API Key
-                            String openAiKey = requireContext().getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE).getString("openai_api_key", "").trim();
-                            if (openAiKey.isEmpty()) {
-                                // Fallback: No OpenAI key -> Save transcription raw
-                                activeDialogManualUploadAIFailed = true;
-                                if (activeLlTranscriptionProgress != null) {
-                                    activeLlTranscriptionProgress.setVisibility(View.GONE);
-                                }
-                                String currentNotes = etNotesField.getText().toString().trim();
-                                etNotesField.setText(currentNotes.isEmpty() ? text : currentNotes + "\n" + text);
-                                Toast.makeText(requireContext(), "Transcription success! Saved raw.", Toast.LENGTH_SHORT).show();
-                                return;
-                            }
-
-                            // Query OpenAI
-                            if (activeTvTranscriptionStatus != null) {
-                                activeTvTranscriptionStatus.setText("✨ Extracting fields using OpenAI...");
-                            }
-                            Toast.makeText(requireContext(), "✨ Running AI analysis...", Toast.LENGTH_SHORT).show();
-                            OpenAiClient.extractFields(requireContext(), text, new OpenAiClient.OpenAiCallback() {
+                    Toast.makeText(requireContext(), "✨ Running AI analysis...", Toast.LENGTH_SHORT).show();
+                    OpenAiClient.extractFields(requireContext(), notesText, new OpenAiClient.OpenAiCallback() {
                                 @Override
                                 public void onSuccess(JSONObject result) {
                                     if (!isAdded()) return;

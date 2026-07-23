@@ -49,9 +49,68 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:paddingHorizontal="16dp"
-            android:paddingTop="16dp"
+            android:paddingTop="12dp"
             android:paddingBottom="8dp"
             android:background="@color/bg_light">
+
+            <!-- Clipboard Banner (shows auto-detected copied numbers) -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_clipboard_banner"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="10dp"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="2dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="@color/accent_indigo"
+                app:cardBackgroundColor="@color/primary_dark"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:padding="12dp"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:id="@+id/tv_clipboard_text"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="📋 Copied: +1234567890"
+                        android:textColor="@color/white_constant"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        android:maxLines="1"
+                        android:ellipsize="end" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_clipboard_paste_dial"
+                        android:layout_width="wrap_content"
+                        android:layout_height="36dp"
+                        android:text="Dial"
+                        android:textColor="@color/white"
+                        android:textSize="12sp"
+                        android:textAllCaps="false"
+                        android:backgroundTint="@color/status_green"
+                        app:cornerRadius="8dp"
+                        android:layout_marginEnd="6dp"
+                        style="@style/Widget.MaterialComponents.Button.UnelevatedButton"/>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_clipboard_track"
+                        android:layout_width="wrap_content"
+                        android:layout_height="36dp"
+                        android:text="Track"
+                        android:textColor="@color/white"
+                        android:textSize="12sp"
+                        android:textAllCaps="false"
+                        android:backgroundTint="@color/accent_indigo"
+                        app:cornerRadius="8dp"
+                        style="@style/Widget.MaterialComponents.Button.UnelevatedButton"/>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
 
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/til_search_recents"
