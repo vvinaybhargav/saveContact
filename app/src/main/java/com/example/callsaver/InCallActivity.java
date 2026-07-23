@@ -724,17 +724,14 @@ public class InCallActivity extends AppCompatActivity {
         if (btnOverlaySaveNote != null && llOverlayEditPanel != null && etOverlayNoteInput != null) {
             btnOverlaySaveNote.setOnClickListener(v -> {
                 autoSaveHandler.removeCallbacks(autoSaveRunnable);
-                // finally-block guarantees the screen actually closes even if saving
-                // itself hits an error, instead of leaving Save looking like it did
-                // nothing.
+                // Save just persists and confirms - it stays on this screen (doesn't
+                // close it) so the user can keep adding details. Use Cancel/back/X to
+                // actually leave.
                 try {
                     persistNoteAndDetails(true);
                 } catch (Exception e) {
                     e.printStackTrace();
                     Toast.makeText(this, "Saved with an error, please check Tracker", Toast.LENGTH_LONG).show();
-                } finally {
-                    if (llOverlayEditPanel != null) llOverlayEditPanel.setVisibility(View.GONE);
-                    if (reviewMode && !isFinishing()) finish();
                 }
             });
         }
@@ -931,11 +928,10 @@ public class InCallActivity extends AppCompatActivity {
         bindCallerInfo();
 
         if (showFeedback) {
-            if (llOverlayEditPanel != null) llOverlayEditPanel.setVisibility(View.GONE);
+            // Save confirms and stays on this screen (doesn't close the panel or the
+            // activity) - Cancel/back/X are what actually leave.
             etOverlayNoteInput.setText("");
-            Toast.makeText(this, "Saved!", Toast.LENGTH_SHORT).show();
-            // In review mode there's no live call to return to - close after saving.
-            if (reviewMode) finish();
+            Toast.makeText(this, "Updated", Toast.LENGTH_SHORT).show();
         }
     }
 
