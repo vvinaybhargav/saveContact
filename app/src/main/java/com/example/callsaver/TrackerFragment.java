@@ -1036,28 +1036,21 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
 
         btnCancel.setOnClickListener(v -> alertDialog.dismiss());
 
-        // Preview the in-call banner using whatever is currently in the dialog's fields
+        // Preview the full-screen in-call UI using whatever is currently in the dialog's fields
         btnShowBanner.setOnClickListener(v -> {
             if (editCall == null || editCall.getId() <= 0) return;
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !android.provider.Settings.canDrawOverlays(requireContext())) {
-                Toast.makeText(requireContext(), "Overlay permission is required to show the banner. Enable it in Settings.", Toast.LENGTH_LONG).show();
-                return;
-            }
             String previewPhone = etPhone.getText().toString().trim();
             if (previewPhone.isEmpty()) previewPhone = editCall.getPhoneNumber();
-            Intent overlayIntent = new Intent(requireContext(), CallerIdService.class);
-            overlayIntent.putExtra("phone_number", previewPhone);
-            overlayIntent.putExtra("company_name", etCompany.getText().toString().trim());
-            overlayIntent.putExtra("round_status", spinnerRound.getSelectedItem() != null ? spinnerRound.getSelectedItem().toString() : editCall.getRoundStatus());
-            overlayIntent.putExtra("tags", etTags != null ? etTags.getText().toString().trim() : editCall.getTags());
-            overlayIntent.putExtra("job_call_id", (long) editCall.getId());
-            overlayIntent.putExtra("recruiter_name", etRecruiter.getText().toString().trim());
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                requireContext().startForegroundService(overlayIntent);
-            } else {
-                requireContext().startService(overlayIntent);
-            }
-            Toast.makeText(requireContext(), "Showing banner preview - swipe it away or tap its notification to dismiss.", Toast.LENGTH_LONG).show();
+            Intent previewIntent = new Intent(requireContext(), InCallActivity.class);
+            previewIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            previewIntent.putExtra("phone_number", previewPhone);
+            previewIntent.putExtra("company_name", etCompany.getText().toString().trim());
+            previewIntent.putExtra("round_status", spinnerRound.getSelectedItem() != null ? spinnerRound.getSelectedItem().toString() : editCall.getRoundStatus());
+            previewIntent.putExtra("tags", etTags != null ? etTags.getText().toString().trim() : editCall.getTags());
+            previewIntent.putExtra("job_call_id", (long) editCall.getId());
+            previewIntent.putExtra("recruiter_name", etRecruiter.getText().toString().trim());
+            previewIntent.putExtra("initial_state", android.telecom.Call.STATE_ACTIVE);
+            startActivity(previewIntent);
         });
 
         // Delete click action

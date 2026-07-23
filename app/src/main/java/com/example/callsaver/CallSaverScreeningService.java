@@ -1,6 +1,5 @@
 package com.example.callsaver;
 
-import android.content.Intent;
 import android.os.Build;
 import android.telecom.Call;
 import android.telecom.CallScreeningService;
@@ -33,31 +32,9 @@ public class CallSaverScreeningService extends CallScreeningService {
                         .putBoolean("answered", isOutgoing)
                         .apply();
 
-                // Show overlay banner for all calls
-                DatabaseHelper db = new DatabaseHelper(this);
-                JobCall jobCall = db.getJobCallByNumber(this, phoneNumber);
-
-                Intent overlayIntent = new Intent(this, CallerIdService.class);
-                overlayIntent.putExtra("phone_number", phoneNumber);
-                if (jobCall != null) {
-                    overlayIntent.putExtra("company_name", jobCall.getCompanyName());
-                    overlayIntent.putExtra("round_status", jobCall.getRoundStatus());
-                    overlayIntent.putExtra("tags", jobCall.getTags());
-                    overlayIntent.putExtra("job_call_id", (long) jobCall.getId());
-                    overlayIntent.putExtra("recruiter_name", jobCall.getRecruiterName());
-                } else {
-                    overlayIntent.putExtra("company_name", "Unknown Recruiter");
-                    overlayIntent.putExtra("round_status", "Not Saved");
-                    overlayIntent.putExtra("tags", "");
-                    overlayIntent.putExtra("job_call_id", -1L);
-                    overlayIntent.putExtra("recruiter_name", "");
-                }
-
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    startForegroundService(overlayIntent);
-                } else {
-                    startService(overlayIntent);
-                }
+                // Call UI is now handled exclusively by CallSaverInCallService's
+                // onCallAdded(), which launches the full-screen InCallActivity - no
+                // separate overlay banner needed here anymore.
             }
 
             // Respond to the system to let the call proceed normally

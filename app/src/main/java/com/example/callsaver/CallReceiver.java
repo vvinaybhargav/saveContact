@@ -15,11 +15,9 @@ import android.provider.ContactsContract;
 import android.telecom.TelecomManager;
 import android.telephony.TelephonyManager;
 import android.util.Log;
-import android.widget.Toast;
 
 import androidx.core.app.NotificationCompat;
 
-import java.io.File;
 import java.util.List;
 import java.util.ArrayList;
 
@@ -50,33 +48,9 @@ public class CallReceiver extends BroadcastReceiver {
                         .putString(KEY_LAST_STATE, "OUTGOING")
                         .apply();
                 Log.d(TAG, "Outgoing call detected to: " + outgoingNumber);
-                Toast.makeText(context, "CallSaver Diagnostic: Outgoing to " + outgoingNumber, Toast.LENGTH_LONG).show();
-
-                // Show overlay banner for all calls
-                DatabaseHelper db = new DatabaseHelper(context);
-                JobCall call = db.getJobCallByNumber(context, outgoingNumber);
-                Intent overlayIntent = new Intent(context, CallerIdService.class);
-                overlayIntent.putExtra("phone_number", outgoingNumber);
-                if (call != null) {
-                    Toast.makeText(context, "Match found for " + call.getCompanyName() + "! Showing overlay...", Toast.LENGTH_SHORT).show();
-                    overlayIntent.putExtra("company_name", call.getCompanyName());
-                    overlayIntent.putExtra("round_status", call.getRoundStatus());
-                    overlayIntent.putExtra("tags", call.getTags());
-                    overlayIntent.putExtra("job_call_id", (long) call.getId());
-                    overlayIntent.putExtra("recruiter_name", call.getRecruiterName());
-                } else {
-                    Toast.makeText(context, "Unsaved number: Showing overlay...", Toast.LENGTH_SHORT).show();
-                    overlayIntent.putExtra("company_name", "Unknown Recruiter");
-                    overlayIntent.putExtra("round_status", "Not Saved");
-                    overlayIntent.putExtra("tags", "");
-                    overlayIntent.putExtra("job_call_id", -1L);
-                    overlayIntent.putExtra("recruiter_name", "");
-                }
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    context.startForegroundService(overlayIntent);
-                } else {
-                    context.startService(overlayIntent);
-                }
+                // Call UI is now handled exclusively by CallSaverInCallService's
+                // onCallAdded(), which launches the full-screen InCallActivity - no
+                // separate overlay banner needed here anymore.
             }
             return;
         }
@@ -102,33 +76,9 @@ public class CallReceiver extends BroadcastReceiver {
                 editor.putString(KEY_INCOMING_NUMBER, incomingNumber);
                 Log.d(TAG, "Incoming call detected from number: " + incomingNumber);
                 DebugLogger.log(context, "[Receiver] Incoming call number: " + incomingNumber);
-                Toast.makeText(context, "CallSaver Diagnostic: Incoming from " + incomingNumber, Toast.LENGTH_LONG).show();
-
-                // Show overlay banner for all calls
-                DatabaseHelper db = new DatabaseHelper(context);
-                JobCall call = db.getJobCallByNumber(context, incomingNumber);
-                Intent overlayIntent = new Intent(context, CallerIdService.class);
-                overlayIntent.putExtra("phone_number", incomingNumber);
-                if (call != null) {
-                    Toast.makeText(context, "Match found for " + call.getCompanyName() + "! Showing overlay...", Toast.LENGTH_SHORT).show();
-                    overlayIntent.putExtra("company_name", call.getCompanyName());
-                    overlayIntent.putExtra("round_status", call.getRoundStatus());
-                    overlayIntent.putExtra("tags", call.getTags());
-                    overlayIntent.putExtra("job_call_id", (long) call.getId());
-                    overlayIntent.putExtra("recruiter_name", call.getRecruiterName());
-                } else {
-                    Toast.makeText(context, "Unsaved number: Showing overlay...", Toast.LENGTH_SHORT).show();
-                    overlayIntent.putExtra("company_name", "Unknown Recruiter");
-                    overlayIntent.putExtra("round_status", "Not Saved");
-                    overlayIntent.putExtra("tags", "");
-                    overlayIntent.putExtra("job_call_id", -1L);
-                    overlayIntent.putExtra("recruiter_name", "");
-                }
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    context.startForegroundService(overlayIntent);
-                } else {
-                    context.startService(overlayIntent);
-                }
+                // Call UI is now handled exclusively by CallSaverInCallService's
+                // onCallAdded(), which launches the full-screen InCallActivity - no
+                // separate overlay banner needed here anymore.
             } else {
                 DebugLogger.log(context, "[Receiver] Incoming call (No Number Extra)");
             }
@@ -143,9 +93,7 @@ public class CallReceiver extends BroadcastReceiver {
             Log.d(TAG, "Call active (OFFHOOK). Answered incoming: " + answeredIncoming);
             DebugLogger.log(context, "[Receiver] Offhook active. answeredIncoming: " + answeredIncoming);
         } else if (stateStr.equals(TelephonyManager.EXTRA_STATE_IDLE)) {
-            // Dismiss overlay banner immediately
-            context.stopService(new Intent(context, CallerIdService.class));
-            DebugLogger.log(context, "[Receiver] Idle transition. Dismissed overlay. Scanning Call Log in background...");
+            DebugLogger.log(context, "[Receiver] Idle transition. Scanning Call Log in background...");
 
             final String incomingNumber = prefs.getString(KEY_INCOMING_NUMBER, null);
 

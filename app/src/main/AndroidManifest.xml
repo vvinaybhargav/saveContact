@@ -113,11 +113,23 @@
             </intent-filter>
         </receiver>
 
-        <!-- Service for drawing the custom Caller ID Overlay -->
+        <!-- Service for drawing the custom Caller ID Overlay (legacy - no longer
+             triggered now that InCallActivity provides the full-screen call UI) -->
         <service
             android:name=".CallerIdService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
+
+        <!-- Full-screen in-call UI, launched by CallSaverInCallService for every call -->
+        <activity
+            android:name=".InCallActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:taskAffinity=""
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:theme="@style/Theme.CallSaver" />
 
         <!-- InCallService: required for Android OS to list CallSaver in Default Phone App dropdown menu -->
         <service
