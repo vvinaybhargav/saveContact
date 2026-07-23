@@ -140,8 +140,12 @@ public class InCallActivity extends AppCompatActivity {
         int initialState = intent.getIntExtra("initial_state", Call.STATE_ACTIVE);
 
         bindCallerInfo();
-        bindNotesAndSkills();
+        // bindControls() must run before bindNotesAndSkills(): it's what assigns
+        // llOverlayEditPanel, and bindNotesAndSkills() -> bindNoteEditor() wires the
+        // Cancel/Save buttons only if llOverlayEditPanel is already non-null - with the
+        // old order that check always failed, so those two buttons silently did nothing.
         bindControls();
+        bindNotesAndSkills();
 
         if (reviewMode) {
             enterReviewMode();
