@@ -725,16 +725,10 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             }
         }
 
-        boolean overlayGranted = true;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            overlayGranted = Settings.canDrawOverlays(requireContext());
-        }
-
-        if (allGranted && overlayGranted) {
-            cardPermissionsBanner.setVisibility(View.GONE);
-        } else {
-            cardPermissionsBanner.setVisibility(View.VISIBLE);
-        }
+        // The floating overlay banner (and its "display over other apps" permission) is
+        // gone now that CallSaver is a full-screen default dialer - only the runtime
+        // permissions above matter for the banner.
+        cardPermissionsBanner.setVisibility(allGranted ? View.GONE : View.VISIBLE);
     }
 
     /**
@@ -753,11 +747,6 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             ActivityCompat.requestPermissions(requireActivity(),
                     listPermissionsNeeded.toArray(new String[0]),
                     ALL_PERMISSIONS_REQUEST_CODE);
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(requireContext())) {
-            Toast.makeText(requireContext(), "Please enable 'Display over other apps' to allow popup logs.", Toast.LENGTH_LONG).show();
-            Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                    Uri.parse("package:" + requireContext().getPackageName()));
-            startActivity(intent);
         }
     }
 
