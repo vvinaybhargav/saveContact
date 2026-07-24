@@ -592,6 +592,23 @@
                         android:textColor="@color/white_constant" />
                 </com.google.android.material.textfield.TextInputLayout>
 
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="JD SCREENSHOTS"
+                    android:textColor="#9C9CA3"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.08"
+                    android:layout_marginBottom="6dp" />
+
+                <LinearLayout
+                    android:id="@+id/ll_overlay_jd_row"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="12dp" />
+
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -745,140 +762,155 @@
         </LinearLayout>
     </LinearLayout>
 
-    <!-- Active-call controls: Mute / Add Note / Speaker / End -->
+    <!-- Active-call controls: Mute / Speaker / Keypad on row 1, Note / End on row 2 -->
     <LinearLayout
         android:id="@+id/ll_active_controls"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
+        android:orientation="vertical"
         android:gravity="center"
-        android:paddingVertical="20dp"
+        android:paddingVertical="16dp"
         android:paddingHorizontal="12dp"
         android:visibility="gone">
 
         <LinearLayout
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical"
-            android:gravity="center">
-            <ImageView
-                android:id="@+id/btn_toggle_mute"
-                android:layout_width="58dp"
-                android:layout_height="58dp"
-                android:padding="16dp"
-                android:src="@android:drawable/ic_lock_silent_mode"
-                app:tint="@color/white_constant"
-                android:background="@drawable/bg_glass_circle"
-                android:contentDescription="Mute" />
-            <TextView
-                android:id="@+id/tv_mute_label"
-                android:layout_width="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:paddingBottom="14dp">
+
+            <LinearLayout
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:text="Mute"
-                android:textColor="#C7C7CC"
-                android:textSize="11sp" />
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center">
+                <ImageView
+                    android:id="@+id/btn_toggle_mute"
+                    android:layout_width="58dp"
+                    android:layout_height="58dp"
+                    android:padding="16dp"
+                    android:src="@android:drawable/ic_lock_silent_mode"
+                    app:tint="@color/white_constant"
+                    android:background="@drawable/bg_glass_circle"
+                    android:contentDescription="Mute" />
+                <TextView
+                    android:id="@+id/tv_mute_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="Mute"
+                    android:textColor="#C7C7CC"
+                    android:textSize="11sp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center">
+                <ImageView
+                    android:id="@+id/btn_toggle_speaker"
+                    android:layout_width="58dp"
+                    android:layout_height="58dp"
+                    android:padding="16dp"
+                    android:src="@android:drawable/ic_lock_silent_mode_off"
+                    app:tint="@color/white_constant"
+                    android:background="@drawable/bg_glass_circle"
+                    android:contentDescription="Speaker" />
+                <TextView
+                    android:id="@+id/tv_speaker_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="Speaker"
+                    android:textColor="#C7C7CC"
+                    android:textSize="11sp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center">
+                <ImageView
+                    android:id="@+id/btn_toggle_dialpad"
+                    android:layout_width="58dp"
+                    android:layout_height="58dp"
+                    android:padding="16dp"
+                    android:src="@drawable/ic_dialpad"
+                    app:tint="@color/white_constant"
+                    android:background="@drawable/bg_glass_circle"
+                    android:contentDescription="Dial pad" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="Keypad"
+                    android:textColor="#C7C7CC"
+                    android:textSize="11sp" />
+            </LinearLayout>
         </LinearLayout>
 
         <LinearLayout
-            android:id="@+id/ll_toggle_note_column"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical"
+            android:orientation="horizontal"
             android:gravity="center">
-            <ImageView
-                android:id="@+id/btn_toggle_note"
-                android:layout_width="58dp"
-                android:layout_height="58dp"
-                android:padding="16dp"
-                android:src="@android:drawable/ic_menu_edit"
-                app:tint="@color/white_constant"
-                android:background="@drawable/bg_glass_circle"
-                android:contentDescription="Add note" />
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:text="Note"
-                android:textColor="#C7C7CC"
-                android:textSize="11sp" />
-        </LinearLayout>
 
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical"
-            android:gravity="center">
-            <ImageView
-                android:id="@+id/btn_toggle_dialpad"
-                android:layout_width="58dp"
-                android:layout_height="58dp"
-                android:padding="16dp"
-                android:src="@drawable/ic_dialpad"
-                app:tint="@color/white_constant"
-                android:background="@drawable/bg_glass_circle"
-                android:contentDescription="Dial pad" />
-            <TextView
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:id="@+id/ll_toggle_note_column"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:text="Keypad"
-                android:textColor="#C7C7CC"
-                android:textSize="11sp" />
-        </LinearLayout>
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center">
+                <ImageView
+                    android:id="@+id/btn_toggle_note"
+                    android:layout_width="58dp"
+                    android:layout_height="58dp"
+                    android:padding="16dp"
+                    android:src="@android:drawable/ic_menu_edit"
+                    app:tint="@color/white_constant"
+                    android:background="@drawable/bg_glass_circle"
+                    android:contentDescription="Add note" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="Note"
+                    android:textColor="#C7C7CC"
+                    android:textSize="11sp" />
+            </LinearLayout>
 
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical"
-            android:gravity="center">
-            <ImageView
-                android:id="@+id/btn_toggle_speaker"
-                android:layout_width="58dp"
-                android:layout_height="58dp"
-                android:padding="16dp"
-                android:src="@android:drawable/ic_lock_silent_mode_off"
-                app:tint="@color/white_constant"
-                android:background="@drawable/bg_glass_circle"
-                android:contentDescription="Speaker" />
-            <TextView
-                android:id="@+id/tv_speaker_label"
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:text="Speaker"
-                android:textColor="#C7C7CC"
-                android:textSize="11sp" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical"
-            android:gravity="center">
-            <com.google.android.material.floatingactionbutton.FloatingActionButton
-                android:id="@+id/btn_end_call"
-                android:layout_width="58dp"
-                android:layout_height="58dp"
-                android:src="@android:drawable/ic_menu_close_clear_cancel"
-                app:tint="@color/white_constant"
-                app:backgroundTint="@color/decline_red"
-                app:fabCustomSize="58dp"
-                app:maxImageSize="26dp"
-                app:elevation="6dp"
-                android:contentDescription="End call" />
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:text="End"
-                android:textColor="#C7C7CC"
-                android:textSize="11sp" />
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center">
+                <com.google.android.material.floatingactionbutton.FloatingActionButton
+                    android:id="@+id/btn_end_call"
+                    android:layout_width="58dp"
+                    android:layout_height="58dp"
+                    android:src="@android:drawable/ic_menu_close_clear_cancel"
+                    app:tint="@color/white_constant"
+                    app:backgroundTint="@color/decline_red"
+                    app:fabCustomSize="58dp"
+                    app:maxImageSize="26dp"
+                    app:elevation="6dp"
+                    android:contentDescription="End call" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="End"
+                    android:textColor="#C7C7CC"
+                    android:textSize="11sp" />
+            </LinearLayout>
         </LinearLayout>
     </LinearLayout>
 

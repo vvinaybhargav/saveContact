@@ -71,6 +71,10 @@ public class InCallActivity extends AppCompatActivity {
     private View llOverlayEditPanel;
     private android.os.PowerManager.WakeLock proximityWakeLock;
 
+    // Up to 3 JD screenshots (comma-joined into JobCall.jdImagePath for storage).
+    private static final int REQ_CODE_PICK_JD_SCREENSHOT = 9001;
+    private final String[] jdPaths = new String[3];
+
     // Note-editor fields, promoted to instance state so notes can auto-save (debounced
     // while typing, and immediately when the call ends / screen is destroyed) instead
     // of requiring an explicit Save tap that's easy to miss before a call disconnects.
@@ -516,7 +520,12 @@ public class InCallActivity extends AppCompatActivity {
         List<CallNote> notesList = new ArrayList<>();
         if (jobCallId != -1) {
             notesList = dbHelper.getNotesForJob(jobCallId);
-            for (CallNote note : notesList) {
+            // getNotesForJob returns newest-first - build the collapsed preview in
+            // chronological (oldest -> newest) order instead, so a just-added note
+            // appears at the bottom/last, not jumping to the top as "most recent".
+            List<CallNote> chronoForCollapsed = new ArrayList<>(notesList);
+            Collections.reverse(chronoForCollapsed);
+            for (CallNote note : chronoForCollapsed) {
                 String cleaned = cleanNoteText(note.note);
                 for (String line : cleaned.split("\n")) {
                     String lineTrimmed = line.trim();
@@ -534,8 +543,10 @@ public class InCallActivity extends AppCompatActivity {
             tvNotesTimeline.setText("• Not saved in Tracker yet.");
         } else {
             StringBuilder collapsedSb = new StringBuilder();
-            int pointsToShow = Math.min(allCleanedPoints.size(), 3);
-            for (int i = 0; i < pointsToShow; i++) {
+            int total = allCleanedPoints.size();
+            int pointsToShow = Math.min(total, 3);
+            int startIdx = total - pointsToShow;
+            for (int i = startIdx; i < total; i++) {
                 if (collapsedSb.length() > 0) collapsedSb.append("\n");
                 collapsedSb.append(allCleanedPoints.get(i));
             }
@@ -699,6 +710,17 @@ public class InCallActivity extends AppCompatActivity {
         tagsValue = currentForPrefill != null && notEmpty(currentForPrefill.getTags()) ? currentForPrefill.getTags() : tags;
         if (tagsValue == null) tagsValue = "";
         renderTagsRow();
+
+        java.util.Arrays.fill(jdPaths, null);
+        String prefillJd = currentForPrefill != null ? currentForPrefill.getJdImagePath() : null;
+        if (notEmpty(prefillJd)) {
+            String[] split = prefillJd.split(",");
+            for (int i = 0; i < split.length && i < 3; i++) {
+                String p = split[i].trim();
+                if (!p.isEmpty()) jdPaths[i] = p;
+            }
+        }
+        renderJdRow();
 
         if (etOverlayName != null) etOverlayName.setText(prefillName);
         if (etOverlayCompany != null) etOverlayCompany.setText(prefillCompany);
@@ -872,6 +894,172 @@ public class InCallActivity extends AppCompatActivity {
         hsvTags.setVisibility(View.VISIBLE);
     }
 
+    /** Renders up to 3 JD screenshot thumbnails plus an "Add" tile if there's room. */
+    private void renderJdRow() {
+        android.widget.LinearLayout row = findViewById(R.id.ll_overlay_jd_row);
+        if (row == null) return;
+        row.removeAllViews();
+        int density = Math.round(getResources().getDisplayMetrics().density);
+        int size = 64 * density;
+        int margin = 8 * density;
+
+        for (int i = 0; i < 3; i++) {
+            final int index = i;
+            String path = jdPaths[i];
+            android.widget.FrameLayout tile = new android.widget.FrameLayout(this);
+            android.widget.LinearLayout.LayoutParams tileLp = new android.widget.LinearLayout.LayoutParams(size, size);
+            tileLp.setMarginEnd(margin);
+            tile.setLayoutParams(tileLp);
+
+            if (notEmpty(path)) {
+                ImageView thumb = new ImageView(this);
+                thumb.setLayoutParams(new android.widget.FrameLayout.LayoutParams(size, size));
+                thumb.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                thumb.setBackgroundResource(R.drawable.bg_glass_card);
+                try {
+                    thumb.setImageURI(android.net.Uri.fromFile(new java.io.File(path)));
+                } catch (Exception ignored) {
+                }
+                thumb.setClickable(true);
+                thumb.setOnClickListener(v -> showFullScreenImage(path));
+                tile.addView(thumb);
+
+                TextView remove = new TextView(this);
+                remove.setText("✕");
+                remove.setTextColor(androidx.core.content.ContextCompat.getColor(this, R.color.white_constant));
+                remove.setTextSize(12);
+                remove.setBackgroundResource(R.drawable.bg_glass_circle);
+                remove.setGravity(android.view.Gravity.CENTER);
+                int removeSize = 22 * density;
+                android.widget.FrameLayout.LayoutParams removeLp = new android.widget.FrameLayout.LayoutParams(removeSize, removeSize);
+                removeLp.gravity = android.view.Gravity.TOP | android.view.Gravity.END;
+                remove.setLayoutParams(removeLp);
+                remove.setClickable(true);
+                remove.setOnClickListener(v -> {
+                    jdPaths[index] = null;
+                    renderJdRow();
+                    autoSaveHandler.removeCallbacks(autoSaveRunnable);
+                    autoSaveHandler.postDelayed(autoSaveRunnable, 400);
+                });
+                tile.addView(remove);
+            } else {
+                TextView addTile = new TextView(this);
+                addTile.setText("+");
+                addTile.setTextColor(androidx.core.content.ContextCompat.getColor(this, R.color.text_secondary));
+                addTile.setTextSize(24);
+                addTile.setGravity(android.view.Gravity.CENTER);
+                addTile.setBackgroundResource(R.drawable.bg_glass_field);
+                addTile.setLayoutParams(new android.widget.FrameLayout.LayoutParams(size, size));
+                addTile.setClickable(true);
+                addTile.setOnClickListener(v -> pickJdScreenshot());
+                tile.addView(addTile);
+            }
+            row.addView(tile);
+        }
+    }
+
+    private void pickJdScreenshot() {
+        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+        intent.setType("image/*");
+        try {
+            startActivityForResult(intent, REQ_CODE_PICK_JD_SCREENSHOT);
+        } catch (Exception e) {
+            Toast.makeText(this, "No image picker found", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQ_CODE_PICK_JD_SCREENSHOT && resultCode == RESULT_OK && data != null && data.getData() != null) {
+            String path = copyUriToInternalStorage(data.getData());
+            if (path != null) {
+                for (int i = 0; i < 3; i++) {
+                    if (jdPaths[i] == null) {
+                        jdPaths[i] = path;
+                        break;
+                    }
+                }
+                renderJdRow();
+                autoSaveHandler.removeCallbacks(autoSaveRunnable);
+                autoSaveHandler.postDelayed(autoSaveRunnable, 400);
+            } else {
+                Toast.makeText(this, "Couldn't load that image", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+    private String copyUriToInternalStorage(android.net.Uri uri) {
+        try {
+            java.io.InputStream is = getContentResolver().openInputStream(uri);
+            if (is == null) return null;
+            java.io.File dir = new java.io.File(getFilesDir(), "jd_screenshots");
+            if (!dir.exists()) dir.mkdirs();
+            java.io.File file = new java.io.File(dir, "jd_" + System.currentTimeMillis() + ".png");
+            java.io.FileOutputStream os = new java.io.FileOutputStream(file);
+            byte[] buffer = new byte[1024];
+            int bytesRead;
+            while ((bytesRead = is.read(buffer)) != -1) {
+                os.write(buffer, 0, bytesRead);
+            }
+            os.close();
+            is.close();
+            return file.getAbsolutePath();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    /** Full-screen JD screenshot viewer with pinch-to-zoom and a close button. */
+    private void showFullScreenImage(String path) {
+        if (path == null || path.isEmpty()) return;
+        android.app.Dialog dialog = new android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen);
+        dialog.setContentView(R.layout.dialog_full_screen_image);
+        ImageView iv = dialog.findViewById(R.id.iv_full_screen);
+        View btnClose = dialog.findViewById(R.id.btn_close_full_screen);
+        iv.setImageURI(android.net.Uri.fromFile(new java.io.File(path)));
+        if (btnClose != null) btnClose.setOnClickListener(v -> dialog.dismiss());
+
+        final float[] scaleFactor = {1.0f};
+        final float[] lastTouchX = {0f};
+        final float[] lastTouchY = {0f};
+        final float[] posX = {0f};
+        final float[] posY = {0f};
+        android.view.ScaleGestureDetector scaleDetector = new android.view.ScaleGestureDetector(this,
+                new android.view.ScaleGestureDetector.SimpleOnScaleGestureListener() {
+                    @Override
+                    public boolean onScale(android.view.ScaleGestureDetector detector) {
+                        scaleFactor[0] *= detector.getScaleFactor();
+                        scaleFactor[0] = Math.max(0.5f, Math.min(scaleFactor[0], 5.0f));
+                        iv.setScaleX(scaleFactor[0]);
+                        iv.setScaleY(scaleFactor[0]);
+                        return true;
+                    }
+                });
+        iv.setOnTouchListener((v, event) -> {
+            scaleDetector.onTouchEvent(event);
+            switch (event.getActionMasked()) {
+                case android.view.MotionEvent.ACTION_DOWN:
+                    lastTouchX[0] = event.getX();
+                    lastTouchY[0] = event.getY();
+                    break;
+                case android.view.MotionEvent.ACTION_MOVE:
+                    if (scaleFactor[0] > 1.0f) {
+                        posX[0] += event.getX() - lastTouchX[0];
+                        posY[0] += event.getY() - lastTouchY[0];
+                        iv.setTranslationX(posX[0]);
+                        iv.setTranslationY(posY[0]);
+                        lastTouchX[0] = event.getX();
+                        lastTouchY[0] = event.getY();
+                    }
+                    break;
+            }
+            return true;
+        });
+        dialog.show();
+    }
+
     /**
      * Saves whatever is currently in the note-editor fields. Called both from the Save
      * button (with UI feedback + closes the panel) and silently - debounced while typing,
@@ -904,6 +1092,15 @@ public class InCallActivity extends AppCompatActivity {
         DatabaseHelper db = new DatabaseHelper(this);
         long targetJobId = jobCallId;
 
+        StringBuilder jdJoined = new StringBuilder();
+        for (String p : jdPaths) {
+            if (p != null && !p.trim().isEmpty()) {
+                if (jdJoined.length() > 0) jdJoined.append(",");
+                jdJoined.append(p.trim());
+            }
+        }
+        String jdImagePathVal = jdJoined.toString();
+
         if (targetJobId == -1) {
             // Leave company blank if it wasn't filled in - no placeholder text like
             // "Unsaved Number"; the display logic elsewhere already falls back to
@@ -914,6 +1111,7 @@ public class InCallActivity extends AppCompatActivity {
             newLead.setRecruiterName(nameVal);
             newLead.setExpectedCtc(ctcVal);
             newLead.setTentativeSchedule(nextCallVal);
+            newLead.setJdImagePath(jdImagePathVal);
             targetJobId = db.insertJobCall(newLead);
             jobCallId = targetJobId;
             company = leadCompany;
@@ -930,6 +1128,7 @@ public class InCallActivity extends AppCompatActivity {
                 current.setTentativeSchedule(nextCallVal);
                 current.setRoundStatus(selectedRound);
                 current.setTags(tagsValue);
+                current.setJdImagePath(jdImagePathVal);
                 db.updateJobCall(current);
                 // Recruiter name lives in a separate phone-number table (job_phones),
                 // not the job_calls row updateJobCall() just wrote - without this call
