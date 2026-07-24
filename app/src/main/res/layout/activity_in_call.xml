@@ -94,20 +94,14 @@
                         android:maxLines="1"
                         android:ellipsize="end" />
 
-                    <HorizontalScrollView
-                        android:id="@+id/hsv_overlay_tags"
-                        android:layout_width="wrap_content"
+                    <com.google.android.material.chip.ChipGroup
+                        android:id="@+id/ll_overlay_tags_row"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:scrollbars="none"
-                        android:visibility="gone">
-
-                        <LinearLayout
-                            android:id="@+id/ll_overlay_tags_row"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:orientation="horizontal" />
-                    </HorizontalScrollView>
+                        android:gravity="center_horizontal"
+                        app:chipSpacingHorizontal="6dp"
+                        app:chipSpacingVertical="6dp" />
 
                     <TextView
                         android:id="@+id/tv_call_timer"
@@ -775,16 +769,16 @@
         android:visibility="gone">
 
         <LinearLayout
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:gravity="center"
-            android:paddingBottom="14dp">
+            android:layout_gravity="center"
+            android:paddingBottom="18dp">
 
             <LinearLayout
-                android:layout_width="0dp"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
+                android:layout_marginHorizontal="16dp"
                 android:orientation="vertical"
                 android:gravity="center">
                 <ImageView
@@ -792,7 +786,7 @@
                     android:layout_width="58dp"
                     android:layout_height="58dp"
                     android:padding="16dp"
-                    android:src="@android:drawable/ic_lock_silent_mode"
+                    android:src="@drawable/ic_mic"
                     app:tint="@color/white_constant"
                     android:background="@drawable/bg_glass_circle"
                     android:contentDescription="Mute" />
@@ -807,9 +801,9 @@
             </LinearLayout>
 
             <LinearLayout
-                android:layout_width="0dp"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
+                android:layout_marginHorizontal="16dp"
                 android:orientation="vertical"
                 android:gravity="center">
                 <ImageView
@@ -817,7 +811,7 @@
                     android:layout_width="58dp"
                     android:layout_height="58dp"
                     android:padding="16dp"
-                    android:src="@android:drawable/ic_lock_silent_mode_off"
+                    android:src="@drawable/ic_volume_up"
                     app:tint="@color/white_constant"
                     android:background="@drawable/bg_glass_circle"
                     android:contentDescription="Speaker" />
@@ -832,9 +826,9 @@
             </LinearLayout>
 
             <LinearLayout
-                android:layout_width="0dp"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
+                android:layout_marginHorizontal="16dp"
                 android:orientation="vertical"
                 android:gravity="center">
                 <ImageView
@@ -857,16 +851,16 @@
         </LinearLayout>
 
         <LinearLayout
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:gravity="center">
+            android:layout_gravity="center">
 
             <LinearLayout
                 android:id="@+id/ll_toggle_note_column"
-                android:layout_width="0dp"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
+                android:layout_marginHorizontal="20dp"
                 android:orientation="vertical"
                 android:gravity="center">
                 <ImageView
@@ -888,9 +882,9 @@
             </LinearLayout>
 
             <LinearLayout
-                android:layout_width="0dp"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
+                android:layout_marginHorizontal="20dp"
                 android:orientation="vertical"
                 android:gravity="center">
                 <com.google.android.material.floatingactionbutton.FloatingActionButton

@@ -10,8 +10,8 @@ android {
         applicationId "com.example.callsaver"
         minSdk 23
         targetSdk 34
-        versionCode 88
-        versionName "4.28"
+        versionCode 89
+        versionName "4.29"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }

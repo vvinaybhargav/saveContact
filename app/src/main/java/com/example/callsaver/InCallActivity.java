@@ -406,10 +406,12 @@ public class InCallActivity extends AppCompatActivity {
         if (btnToggleMute != null) {
             btnToggleMute.setBackgroundResource(muted ? R.drawable.bg_glass_circle_active : R.drawable.bg_glass_circle);
             btnToggleMute.setColorFilter(muted ? darkIcon : whiteIcon);
+            btnToggleMute.setImageResource(muted ? R.drawable.ic_mic_off : R.drawable.ic_mic);
         }
         if (btnToggleSpeaker != null) {
             btnToggleSpeaker.setBackgroundResource(speaker ? R.drawable.bg_glass_circle_active : R.drawable.bg_glass_circle);
             btnToggleSpeaker.setColorFilter(speaker ? darkIcon : whiteIcon);
+            btnToggleSpeaker.setImageResource(speaker ? R.drawable.ic_volume_up : R.drawable.ic_volume_off);
         }
     }
 
@@ -863,54 +865,46 @@ public class InCallActivity extends AppCompatActivity {
         autoSaveHandler.postDelayed(autoSaveRunnable, 400);
     }
 
-    /** Renders tagsValue as a row of small tap-to-remove boxes next to the call status pill. */
+    /**
+     * Renders tagsValue as Material Chips under the caller name - a ChipGroup wraps
+     * onto multiple lines on its own, so every tag is visible without swiping.
+     */
     private void renderTagsRow() {
-        View hsvTags = findViewById(R.id.hsv_overlay_tags);
-        android.widget.LinearLayout llTagsRow = findViewById(R.id.ll_overlay_tags_row);
-        if (hsvTags == null || llTagsRow == null) return;
-        llTagsRow.removeAllViews();
+        com.google.android.material.chip.ChipGroup chipGroup = findViewById(R.id.ll_overlay_tags_row);
+        if (chipGroup == null) return;
+        chipGroup.removeAllViews();
 
         if (notEmpty(tagsValue)) {
             for (String tag : tagsValue.split(",")) {
                 String trimmed = tag.trim();
                 if (trimmed.isEmpty()) continue;
-                TextView box = new TextView(this);
-                box.setText(trimmed + "  ✕");
-                box.setTextColor(androidx.core.content.ContextCompat.getColor(this, R.color.white_constant));
-                box.setTextSize(11);
-                box.setBackgroundResource(R.drawable.bg_glass_card);
-                box.setPadding(24, 10, 24, 10);
-                box.setClickable(true);
-                box.setFocusable(true);
-                // Tap = remove, long-press = rename - both act on tags shown right under
-                // the caller name, per the request to add/modify/delete them there.
-                box.setOnClickListener(v -> removeTag(trimmed));
-                box.setOnLongClickListener(v -> {
-                    promptEditTag(trimmed);
-                    return true;
-                });
-                android.widget.LinearLayout.LayoutParams lp = new android.widget.LinearLayout.LayoutParams(
-                        android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT);
-                lp.setMarginEnd(8);
-                box.setLayoutParams(lp);
-                llTagsRow.addView(box);
+                com.google.android.material.chip.Chip chip = new com.google.android.material.chip.Chip(this);
+                chip.setText(trimmed);
+                chip.setTextColor(androidx.core.content.ContextCompat.getColor(this, R.color.white_constant));
+                chip.setChipBackgroundColor(androidx.core.content.ContextCompat.getColorStateList(this, R.color.glass_fill_strong));
+                chip.setChipStrokeColorResource(R.color.glass_stroke);
+                chip.setChipStrokeWidth(1f);
+                chip.setCloseIconEnabled(true);
+                chip.setCloseIconTint(androidx.core.content.ContextCompat.getColorStateList(this, R.color.white_constant));
+                // Tap the body to rename, tap the close (x) icon to remove.
+                chip.setOnClickListener(v -> promptEditTag(trimmed));
+                chip.setOnCloseIconClickListener(v -> removeTag(trimmed));
+                chipGroup.addView(chip);
             }
         }
 
-        // Always-present "+" tile so a tag can be added manually, not just via the
+        // Always-present "+ Tag" chip so a tag can be added manually, not just via the
         // preset chips further down in the note editor.
-        TextView addTag = new TextView(this);
+        com.google.android.material.chip.Chip addTag = new com.google.android.material.chip.Chip(this);
         addTag.setText("+ Tag");
         addTag.setTextColor(androidx.core.content.ContextCompat.getColor(this, R.color.accent_glow));
-        addTag.setTextSize(11);
-        addTag.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
-        addTag.setBackgroundResource(R.drawable.bg_glass_field);
-        addTag.setPadding(24, 10, 24, 10);
-        addTag.setClickable(true);
+        addTag.setChipBackgroundColor(androidx.core.content.ContextCompat.getColorStateList(this, R.color.glass_fill));
+        addTag.setChipStrokeColorResource(R.color.accent_glow);
+        addTag.setChipStrokeWidth(1f);
         addTag.setOnClickListener(v -> promptAddTag());
-        llTagsRow.addView(addTag);
+        chipGroup.addView(addTag);
 
-        hsvTags.setVisibility(View.VISIBLE);
+        chipGroup.setVisibility(View.VISIBLE);
     }
 
     /** Simple text-input dialog for adding a brand-new custom tag. */
