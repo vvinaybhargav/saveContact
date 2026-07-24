@@ -6,138 +6,122 @@
     android:orientation="vertical"
     android:background="@drawable/bg_incall_gradient">
 
-    <!-- Header: Avatar, Caller Name, Status, Call Timer -->
+    <!-- Header + notes/skills/note-editor content all scroll together now (swiping up
+         used to do nothing on the header since it lived outside the ScrollView) - the
+         close button floats on top via FrameLayout so it's always reachable regardless
+         of scroll position. -->
     <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
-
-        <!-- Always-visible close button - a guaranteed way out of a review-mode log
-             screen, independent of the Cancel/Save buttons further down. -->
-        <ImageView
-            android:id="@+id/btn_overlay_close"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:layout_gravity="top|start"
-            android:layout_marginStart="12dp"
-            android:layout_marginTop="40dp"
-            android:padding="8dp"
-            android:src="@android:drawable/ic_menu_close_clear_cancel"
-            app:tint="@color/white_constant"
-            android:background="@drawable/bg_glass_circle"
-            android:visibility="gone"
-            android:contentDescription="Close" />
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:gravity="center_horizontal"
-        android:paddingHorizontal="24dp"
-        android:paddingTop="44dp"
-        android:paddingBottom="18dp">
-
-        <FrameLayout
-            android:layout_width="104dp"
-            android:layout_height="104dp"
-            android:layout_marginBottom="18dp"
-            android:background="@drawable/bg_avatar_glow">
-
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/card_overlay_avatar"
-                android:layout_width="80dp"
-                android:layout_height="80dp"
-                android:layout_gravity="center"
-                app:cardCornerRadius="40dp"
-                app:cardElevation="0dp"
-                app:strokeWidth="0dp"
-                app:cardBackgroundColor="@color/accent_indigo">
-
-                <TextView
-                    android:id="@+id/tv_overlay_avatar_letter"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:gravity="center"
-                    android:text="R"
-                    android:textColor="@color/white_constant"
-                    android:textSize="32sp"
-                    android:textStyle="bold" />
-            </com.google.android.material.card.MaterialCardView>
-        </FrameLayout>
-
-        <TextView
-            android:id="@+id/tv_overlay_caller_name"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Recruiter @ Company"
-            android:textColor="@color/white_constant"
-            android:textSize="24sp"
-            android:textStyle="bold"
-            android:letterSpacing="0.01"
-            android:maxLines="2"
-            android:gravity="center"
-            android:ellipsize="end" />
-
-        <TextView
-            android:id="@+id/tv_overlay_caller_status"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:paddingHorizontal="14dp"
-            android:paddingVertical="5dp"
-            android:background="@drawable/bg_glass_card"
-            android:text="First time"
-            android:textColor="#E8E8EA"
-            android:textSize="12sp"
-            android:textStyle="bold"
-            android:maxLines="1"
-            android:ellipsize="end" />
-
-        <HorizontalScrollView
-            android:id="@+id/hsv_overlay_tags"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:scrollbars="none"
-            android:visibility="gone">
-
-            <LinearLayout
-                android:id="@+id/ll_overlay_tags_row"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal" />
-        </HorizontalScrollView>
-
-        <TextView
-            android:id="@+id/tv_call_timer"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:text="Ringing…"
-            android:textColor="#A0A0A5"
-            android:textSize="14sp"
-            android:letterSpacing="0.02" />
-    </LinearLayout>
-    </FrameLayout>
-
-    <!-- Scrollable notes / skills-match / call-history / note-editor content -->
-    <ScrollView
-        android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:fillViewport="true"
-        android:clipToPadding="false"
-        android:paddingHorizontal="18dp"
-        android:paddingTop="4dp"
-        android:paddingBottom="8dp"
-        android:scrollbars="none">
+        android:layout_weight="1">
 
-        <LinearLayout
+        <ScrollView
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:layout_height="match_parent"
+            android:fillViewport="true"
+            android:clipToPadding="false"
+            android:paddingHorizontal="18dp"
+            android:paddingBottom="8dp"
+            android:scrollbars="none">
 
-            <!-- Notes glass card -->
             <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <!-- Header: Avatar, Caller Name, Status, Call Timer -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:gravity="center_horizontal"
+                    android:paddingTop="44dp"
+                    android:paddingBottom="18dp">
+
+                    <FrameLayout
+                        android:layout_width="104dp"
+                        android:layout_height="104dp"
+                        android:layout_marginBottom="18dp"
+                        android:background="@drawable/bg_avatar_glow">
+
+                        <com.google.android.material.card.MaterialCardView
+                            android:id="@+id/card_overlay_avatar"
+                            android:layout_width="80dp"
+                            android:layout_height="80dp"
+                            android:layout_gravity="center"
+                            app:cardCornerRadius="40dp"
+                            app:cardElevation="0dp"
+                            app:strokeWidth="0dp"
+                            app:cardBackgroundColor="@color/accent_indigo">
+
+                            <TextView
+                                android:id="@+id/tv_overlay_avatar_letter"
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:gravity="center"
+                                android:text="R"
+                                android:textColor="@color/white_constant"
+                                android:textSize="32sp"
+                                android:textStyle="bold" />
+                        </com.google.android.material.card.MaterialCardView>
+                    </FrameLayout>
+
+                    <TextView
+                        android:id="@+id/tv_overlay_caller_name"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Recruiter @ Company"
+                        android:textColor="@color/white_constant"
+                        android:textSize="24sp"
+                        android:textStyle="bold"
+                        android:letterSpacing="0.01"
+                        android:maxLines="2"
+                        android:gravity="center"
+                        android:ellipsize="end" />
+
+                    <TextView
+                        android:id="@+id/tv_overlay_caller_status"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:paddingHorizontal="14dp"
+                        android:paddingVertical="5dp"
+                        android:background="@drawable/bg_glass_card"
+                        android:text="First time"
+                        android:textColor="#E8E8EA"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:maxLines="1"
+                        android:ellipsize="end" />
+
+                    <HorizontalScrollView
+                        android:id="@+id/hsv_overlay_tags"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:scrollbars="none"
+                        android:visibility="gone">
+
+                        <LinearLayout
+                            android:id="@+id/ll_overlay_tags_row"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal" />
+                    </HorizontalScrollView>
+
+                    <TextView
+                        android:id="@+id/tv_call_timer"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:text="Ringing…"
+                        android:textColor="#A0A0A5"
+                        android:textSize="14sp"
+                        android:letterSpacing="0.02" />
+                </LinearLayout>
+
+                <!-- Notes glass card -->
+                <LinearLayout
                 android:id="@+id/ll_overlay_notes_card"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -649,7 +633,24 @@
             </LinearLayout>
 
         </LinearLayout>
-    </ScrollView>
+        </ScrollView>
+
+        <!-- Always-visible close button - a guaranteed way out of a review-mode log
+             screen, independent of the Cancel/Save buttons further down. Floats on top
+             of the ScrollView so it stays reachable no matter how far you've scrolled. -->
+        <ImageView
+            android:id="@+id/btn_overlay_close"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_gravity="top|start"
+            android:layout_margin="12dp"
+            android:padding="8dp"
+            android:src="@android:drawable/ic_menu_close_clear_cancel"
+            app:tint="@color/white_constant"
+            android:background="@drawable/bg_glass_circle"
+            android:visibility="gone"
+            android:contentDescription="Close" />
+    </FrameLayout>
 
     <!-- DTMF keypad - send touch-tones mid-call (IVR menus etc). Hidden by default,
          toggled by the Keypad button in the active-controls row. Digit buttons are

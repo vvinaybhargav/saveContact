@@ -869,29 +869,80 @@ public class InCallActivity extends AppCompatActivity {
         android.widget.LinearLayout llTagsRow = findViewById(R.id.ll_overlay_tags_row);
         if (hsvTags == null || llTagsRow == null) return;
         llTagsRow.removeAllViews();
-        if (!notEmpty(tagsValue)) {
-            hsvTags.setVisibility(View.GONE);
-            return;
+
+        if (notEmpty(tagsValue)) {
+            for (String tag : tagsValue.split(",")) {
+                String trimmed = tag.trim();
+                if (trimmed.isEmpty()) continue;
+                TextView box = new TextView(this);
+                box.setText(trimmed + "  ✕");
+                box.setTextColor(androidx.core.content.ContextCompat.getColor(this, R.color.white_constant));
+                box.setTextSize(11);
+                box.setBackgroundResource(R.drawable.bg_glass_card);
+                box.setPadding(24, 10, 24, 10);
+                box.setClickable(true);
+                box.setFocusable(true);
+                // Tap = remove, long-press = rename - both act on tags shown right under
+                // the caller name, per the request to add/modify/delete them there.
+                box.setOnClickListener(v -> removeTag(trimmed));
+                box.setOnLongClickListener(v -> {
+                    promptEditTag(trimmed);
+                    return true;
+                });
+                android.widget.LinearLayout.LayoutParams lp = new android.widget.LinearLayout.LayoutParams(
+                        android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT);
+                lp.setMarginEnd(8);
+                box.setLayoutParams(lp);
+                llTagsRow.addView(box);
+            }
         }
-        for (String tag : tagsValue.split(",")) {
-            String trimmed = tag.trim();
-            if (trimmed.isEmpty()) continue;
-            TextView box = new TextView(this);
-            box.setText(trimmed + "  ✕");
-            box.setTextColor(androidx.core.content.ContextCompat.getColor(this, R.color.white_constant));
-            box.setTextSize(11);
-            box.setBackgroundResource(R.drawable.bg_glass_card);
-            box.setPadding(24, 10, 24, 10);
-            box.setClickable(true);
-            box.setFocusable(true);
-            box.setOnClickListener(v -> removeTag(trimmed));
-            android.widget.LinearLayout.LayoutParams lp = new android.widget.LinearLayout.LayoutParams(
-                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT);
-            lp.setMarginEnd(8);
-            box.setLayoutParams(lp);
-            llTagsRow.addView(box);
-        }
+
+        // Always-present "+" tile so a tag can be added manually, not just via the
+        // preset chips further down in the note editor.
+        TextView addTag = new TextView(this);
+        addTag.setText("+ Tag");
+        addTag.setTextColor(androidx.core.content.ContextCompat.getColor(this, R.color.accent_glow));
+        addTag.setTextSize(11);
+        addTag.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        addTag.setBackgroundResource(R.drawable.bg_glass_field);
+        addTag.setPadding(24, 10, 24, 10);
+        addTag.setClickable(true);
+        addTag.setOnClickListener(v -> promptAddTag());
+        llTagsRow.addView(addTag);
+
         hsvTags.setVisibility(View.VISIBLE);
+    }
+
+    /** Simple text-input dialog for adding a brand-new custom tag. */
+    private void promptAddTag() {
+        EditText input = new EditText(this);
+        input.setHint("Tag name");
+        new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("Add tag")
+                .setView(input)
+                .setPositiveButton("Add", (d, w) -> {
+                    String value = input.getText().toString().trim();
+                    if (!value.isEmpty()) addTag(value);
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    /** Renaming a tag = remove the old text, add the edited one. */
+    private void promptEditTag(String currentTag) {
+        EditText input = new EditText(this);
+        input.setText(currentTag);
+        input.setSelection(input.getText().length());
+        new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("Edit tag")
+                .setView(input)
+                .setPositiveButton("Save", (d, w) -> {
+                    String value = input.getText().toString().trim();
+                    removeTag(currentTag);
+                    if (!value.isEmpty()) addTag(value);
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     /** Renders up to 3 JD screenshot thumbnails plus an "Add" tile if there's room. */
