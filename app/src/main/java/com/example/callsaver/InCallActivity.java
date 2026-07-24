@@ -220,6 +220,14 @@ public class InCallActivity extends AppCompatActivity {
         }
     }
 
+    /** Called by CallSaverInCallService once Telecom confirms the real mute/speaker
+     *  state - the click handlers request a change, this is what actually reflects it. */
+    public static void notifyAudioStateChanged() {
+        if (instance != null) {
+            instance.runOnUiThread(instance::updateMuteSpeakerUi);
+        }
+    }
+
     public static void finishIfOpen() {
         // Only close a live-call screen; a review/logging screen isn't tied to a call.
         if (instance != null && !instance.reviewMode) {

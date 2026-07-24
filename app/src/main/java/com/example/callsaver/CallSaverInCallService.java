@@ -75,6 +75,17 @@ public class CallSaverInCallService extends InCallService {
     }
 
     @Override
+    public void onCallAudioStateChanged(CallAudioState audioState) {
+        super.onCallAudioStateChanged(audioState);
+        // setMuted()/setAudioRoute() are requests, not instant changes - the real state
+        // only updates once Telecom confirms it via this callback. Reading
+        // getCallAudioState() right after calling setMuted/setAudioRoute (as the mute
+        // and speaker button clicks used to rely on) can catch the state BEFORE this
+        // fires, making the buttons look like they didn't do anything.
+        InCallActivity.notifyAudioStateChanged();
+    }
+
+    @Override
     public void onCallAdded(Call call) {
         super.onCallAdded(call);
         if (call == null) return;
