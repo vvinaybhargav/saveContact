@@ -350,13 +350,32 @@ public class CallSaverInCallService extends InCallService {
                 .setContentIntent(pendingIntent)
                 .build();
 
+        // setOngoing(true) alone isn't reliably swipe-proof on every OEM notification
+        // shade (confirmed swipeable on at least one device) - running this as a real
+        // foreground service notification is what the OS actually won't let the user
+        // dismiss, since removing it would kill the "service."
         try {
-            nm.notify(ONGOING_CALL_NOTIFICATION_ID, notification);
-        } catch (SecurityException ignored) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(ONGOING_CALL_NOTIFICATION_ID, notification,
+                        android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL);
+            } else {
+                startForeground(ONGOING_CALL_NOTIFICATION_ID, notification);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            try {
+                nm.notify(ONGOING_CALL_NOTIFICATION_ID, notification);
+            } catch (SecurityException ignored) {
+            }
         }
     }
 
     private void cancelOngoingCallNotification() {
+        try {
+            stopForeground(true);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         if (nm != null) nm.cancel(ONGOING_CALL_NOTIFICATION_ID);
     }

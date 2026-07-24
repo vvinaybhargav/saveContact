@@ -483,7 +483,7 @@ public class RecentsFragment extends Fragment implements RecentsAdapter.OnCallAc
 
                     allCallLogsList.add(model);
                     count++;
-                } while (cursor.moveToNext() && count < 80); // Capped at 80 logs
+                } while (cursor.moveToNext() && count < 300); // Capped at 300 logs
             }
         } catch (Exception e) {
             e.printStackTrace();

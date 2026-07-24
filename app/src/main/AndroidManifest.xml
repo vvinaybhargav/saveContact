@@ -31,6 +31,7 @@
 
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_PHONE_CALL" />
 
     <application
         android:allowBackup="true"
@@ -137,7 +138,8 @@
         <service
             android:name=".CallSaverInCallService"
             android:permission="android.permission.BIND_INCALL_SERVICE"
-            android:exported="true">
+            android:exported="true"
+            android:foregroundServiceType="phoneCall">
             <meta-data
                 android:name="android.telecom.IN_CALL_SERVICE_UI"
                 android:value="true" />
