@@ -29,7 +29,10 @@ public class CallSaverInCallService extends InCallService {
 
     private static final String CHANNEL_ID = "incoming_call_channel";
     private static final String POST_CALL_CHANNEL_ID = "post_call_log_channel";
-    private static final String ONGOING_CALL_CHANNEL_ID = "ongoing_call_channel";
+    // "_v2" because notification channels are immutable once created on-device - bumping
+    // importance in code alone wouldn't affect an already-installed app's existing
+    // channel, so this needs a fresh id to actually take effect.
+    private static final String ONGOING_CALL_CHANNEL_ID = "ongoing_call_channel_v2";
     private static final int ONGOING_CALL_NOTIFICATION_ID = 8001;
 
     private static CallSaverInCallService instance;
@@ -323,8 +326,9 @@ public class CallSaverInCallService extends InCallService {
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
-                    ONGOING_CALL_CHANNEL_ID, "Call in progress", NotificationManager.IMPORTANCE_DEFAULT);
+                    ONGOING_CALL_CHANNEL_ID, "Call in progress", NotificationManager.IMPORTANCE_HIGH);
             channel.setDescription("Ongoing notification while a call is active - tap to return to the call screen.");
+            channel.setShowBadge(false);
             nm.createNotificationChannel(channel);
         }
 
@@ -344,7 +348,7 @@ public class CallSaverInCallService extends InCallService {
                 .setSmallIcon(android.R.drawable.sym_action_call)
                 .setContentTitle("Call in progress - " + label)
                 .setContentText(simLabel.isEmpty() ? "Tap to return to the call screen" : "Tap to return  ·  " + simLabel)
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setCategory(NotificationCompat.CATEGORY_CALL)
                 .setOngoing(true)
                 .setContentIntent(pendingIntent)
