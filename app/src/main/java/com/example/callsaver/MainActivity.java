@@ -171,7 +171,9 @@ public class MainActivity extends AppCompatActivity {
         // these in the manifest, but was previously only handling ACTION_DIAL/VIEW
         // (which just pre-fill the dialer for the user to confirm) - so calls placed
         // this way from outside the app silently went nowhere.
-        if (Intent.ACTION_CALL.equals(intent.getAction()) || Intent.ACTION_CALL_PRIVILEGED.equals(intent.getAction())) {
+        // ACTION_CALL_PRIVILEGED has no public Intent.* constant in the SDK (it's a
+        // hidden/system field) - use the literal action string instead.
+        if (Intent.ACTION_CALL.equals(intent.getAction()) || "android.intent.action.CALL_PRIVILEGED".equals(intent.getAction())) {
             Uri data = intent.getData();
             if (data != null && "tel".equals(data.getScheme())) {
                 String number = data.getSchemeSpecificPart();
