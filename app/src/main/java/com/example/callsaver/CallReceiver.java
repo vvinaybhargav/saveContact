@@ -9,10 +9,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.Cursor;
-import android.net.Uri;
 import android.os.Build;
-import android.provider.ContactsContract;
-import android.telecom.TelecomManager;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 
@@ -119,73 +116,6 @@ public class CallReceiver extends BroadcastReceiver {
         }
     }
 
-    private void showSaveNotification(Context context, String number, int duration) {
-        NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-        if (nm == null) {
-            return;
-        }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(
-                    CHANNEL_ID,
-                    "Save recruiter contacts",
-                    NotificationManager.IMPORTANCE_HIGH);
-            channel.setDescription("Prompts you to save unknown callers to your Job Tracker.");
-            nm.createNotificationChannel(channel);
-        }
-
-        Intent tapIntent = new Intent(context, SaveContactActivity.class);
-        tapIntent.putExtra("phone_number", number);
-        tapIntent.putExtra("timestamp", System.currentTimeMillis());
-        tapIntent.putExtra("duration", duration);
-        tapIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-
-        int piFlags = PendingIntent.FLAG_UPDATE_CURRENT;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            piFlags |= PendingIntent.FLAG_IMMUTABLE;
-        }
-        PendingIntent pendingIntent = PendingIntent.getActivity(
-                context, number.hashCode(), tapIntent, piFlags);
-
-        DatabaseHelper db = new DatabaseHelper(context);
-        JobCall call = db.getJobCallByNumber(context, number);
-        
-        String title = "Save call to Tracker?";
-        String content = "Number: " + number + " isn't logged. Tap to log & transcribe.";
-        if (call != null) {
-            String label = (call.getCompanyName() != null && !call.getCompanyName().isEmpty()) ? call.getCompanyName() : number;
-            title = "Transcribe call for " + label;
-            content = "Tap to review call recording and transcribe notes.";
-        }
-
-        // Quick Action Pending Intent
-        Intent quickActionIntent = new Intent(context, CallActionReceiver.class);
-        quickActionIntent.setAction("com.example.callsaver.action.QUICK_SAVE_TRANSCRIBE");
-        quickActionIntent.putExtra("phone_number", number);
-        quickActionIntent.putExtra("duration", duration);
-        quickActionIntent.putExtra("timestamp", System.currentTimeMillis());
-
-        PendingIntent quickActionPendingIntent = PendingIntent.getBroadcast(
-                context, number.hashCode() + 100, quickActionIntent, piFlags);
-
-        Notification notification = new NotificationCompat.Builder(context, CHANNEL_ID)
-                .setSmallIcon(android.R.drawable.sym_action_call)
-                .setContentTitle(title)
-                .setContentText(content)
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setCategory(NotificationCompat.CATEGORY_RECOMMENDATION)
-                .setAutoCancel(true)
-                .setContentIntent(pendingIntent)
-                .addAction(android.R.drawable.ic_menu_save, "Quick Save & Note", quickActionPendingIntent)
-                .build();
-
-        try {
-            nm.notify(number.hashCode(), notification);
-        } catch (SecurityException e) {
-            Log.e(TAG, "Cannot post notification: " + e.getMessage());
-        }
-    }
-
     /**
      * Tells the user WHY the after-call AI processing didn't save anything (missing
      * recording, transcription failure, OpenAI error, DB error, etc.) instead of
@@ -206,10 +136,24 @@ public class CallReceiver extends BroadcastReceiver {
             nm.createNotificationChannel(channel);
         }
 
-        Intent tapIntent = new Intent(context, SaveContactActivity.class);
+        // Same capture screen used everywhere else in the app (in-call, Tracker,
+        // Upcoming, Recents), in review mode - not the old separate SaveContactActivity.
+        // This is only ever called for a number that's already tracked (see the
+        // trackedCall != null check at the call site), so look it up to reuse that
+        // lead instead of creating a duplicate.
+        JobCall existing = new DatabaseHelper(context).getJobCallByNumber(context, number);
+        Intent tapIntent = new Intent(context, InCallActivity.class);
+        tapIntent.putExtra("mode", "review");
         tapIntent.putExtra("phone_number", number);
-        tapIntent.putExtra("timestamp", System.currentTimeMillis());
-        tapIntent.putExtra("duration", duration);
+        if (existing != null) {
+            tapIntent.putExtra("company_name", existing.getCompanyName());
+            tapIntent.putExtra("round_status", existing.getRoundStatus());
+            tapIntent.putExtra("tags", existing.getTags());
+            tapIntent.putExtra("job_call_id", (long) existing.getId());
+            tapIntent.putExtra("recruiter_name", existing.getRecruiterName());
+        } else {
+            tapIntent.putExtra("job_call_id", -1L);
+        }
         tapIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
 
         int piFlags = PendingIntent.FLAG_UPDATE_CURRENT;
@@ -234,69 +178,6 @@ public class CallReceiver extends BroadcastReceiver {
         } catch (SecurityException e) {
             Log.e(TAG, "Cannot post AI-failure notification: " + e.getMessage());
         }
-    }
-
-    private boolean isDefaultDialer(Context context) {
-        try {
-            TelecomManager tm = (TelecomManager) context.getSystemService(Context.TELECOM_SERVICE);
-            return tm != null && context.getPackageName().equals(tm.getDefaultDialerPackage());
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
-    /**
-     * Queries the Android Contacts ContentProvider to see if the given phone number exists.
-     */
-    private boolean isContactExists(Context context, String number) {
-        if (number == null || number.isEmpty()) {
-            return false;
-        }
-
-        try {
-            Uri lookupUri = Uri.withAppendedPath(
-                    ContactsContract.PhoneLookup.CONTENT_FILTER_URI,
-                    Uri.encode(number)
-            );
-            String[] projection = { ContactsContract.PhoneLookup._ID };
-
-            try (Cursor cursor = context.getContentResolver().query(lookupUri, projection, null, null, null)) {
-                if (cursor != null && cursor.moveToFirst()) {
-                    return true;
-                }
-            }
-        } catch (SecurityException e) {
-            Log.e(TAG, "SecurityException checking contacts: " + e.getMessage());
-        } catch (Exception e) {
-            Log.e(TAG, "Exception checking contacts: " + e.getMessage());
-        }
-        return false;
-    }
-
-    /**
-     * Queries the system's CallLog provider for the duration of the last call matching the number.
-     */
-    private int getLastCallDuration(Context context, String number) {
-        if (number == null || number.isEmpty()) {
-            return 0;
-        }
-        try {
-            Uri callUri = android.provider.CallLog.Calls.CONTENT_URI;
-            String[] projection = { android.provider.CallLog.Calls.DURATION };
-            String selection = android.provider.CallLog.Calls.NUMBER + " = ?";
-            String[] selectionArgs = { number };
-            String sortOrder = android.provider.CallLog.Calls.DATE + " DESC";
-            try (Cursor cursor = context.getContentResolver().query(callUri, projection, selection, selectionArgs, sortOrder)) {
-                if (cursor != null && cursor.moveToFirst()) {
-                    return cursor.getInt(0); // Returns duration in seconds
-                }
-            }
-        } catch (SecurityException e) {
-            Log.e(TAG, "SecurityException querying call duration: " + e.getMessage());
-        } catch (Exception e) {
-            Log.e(TAG, "Exception querying call duration: " + e.getMessage());
-        }
-        return 0;
     }
 
     private static List<CallLogEntry> getRecentCallLogEntries(Context context, int limit) {
@@ -476,153 +357,4 @@ public class CallReceiver extends BroadcastReceiver {
         }
     }
 
-    private void showNotification(Context context, String title, String content) {
-        NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-        if (nm == null) return;
-        
-        Notification notification = new NotificationCompat.Builder(context, CHANNEL_ID)
-                .setSmallIcon(android.R.drawable.sym_action_call)
-                .setContentTitle(title)
-                .setContentText(content)
-                .setPriority(NotificationCompat.PRIORITY_LOW)
-                .setAutoCancel(true)
-                .build();
-                
-        try {
-            nm.notify(9999, notification);
-        } catch (SecurityException e) {
-            Log.e(TAG, "Cannot post notification: " + e.getMessage());
-        }
-    }
-
-    /**
-     * Final "call fully processed" notification. Tapping opens the app (Tracker tab)
-     * instead of a Calendar-add screen - purely informational, no calendar action.
-     */
-    private void showCallProcessedNotification(Context context, String phoneNumber, String title, String content) {
-        NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-        if (nm == null) return;
-
-        Intent tapIntent = new Intent(context, MainActivity.class);
-        tapIntent.putExtra("open_tab", "tracker");
-        tapIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-
-        int piFlags = PendingIntent.FLAG_UPDATE_CURRENT;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            piFlags |= PendingIntent.FLAG_IMMUTABLE;
-        }
-        PendingIntent pendingIntent = PendingIntent.getActivity(context, phoneNumber.hashCode() + 500, tapIntent, piFlags);
-
-        Notification notification = new NotificationCompat.Builder(context, CHANNEL_ID)
-                .setSmallIcon(android.R.drawable.sym_action_call)
-                .setContentTitle(title)
-                .setContentText(content)
-                .setStyle(new NotificationCompat.BigTextStyle().bigText(content))
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setCategory(NotificationCompat.CATEGORY_RECOMMENDATION)
-                .setAutoCancel(true)
-                .setContentIntent(pendingIntent)
-                .build();
-
-        try {
-            nm.notify(phoneNumber.hashCode() + 500, notification);
-        } catch (SecurityException e) {
-            Log.e(TAG, "Cannot post notification: " + e.getMessage());
-        }
-    }
-
-    /**
-     * Ongoing low-key notification showing which stage of the after-call pipeline is
-     * currently running (looking for recording / transcribing / extracting fields),
-     * so the user isn't left wondering what's happening. Reuses one notification ID
-     * per phone number so each stage update replaces the last rather than stacking.
-     */
-    private void showProgressNotification(Context context, String phoneNumber, String stage) {
-        NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-        if (nm == null) return;
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(
-                    CHANNEL_ID, "Save recruiter contacts", NotificationManager.IMPORTANCE_LOW);
-            nm.createNotificationChannel(channel);
-        }
-
-        // Try to look up existing company/recruiter name to show in title
-        String displayLabel = phoneNumber;
-        try {
-            DatabaseHelper db = new DatabaseHelper(context);
-            JobCall call = db.getJobCallByNumber(context, phoneNumber);
-            if (call != null) {
-                String rec = call.getRecruiterName() != null ? call.getRecruiterName().trim() : "";
-                String comp = call.getCompanyName() != null ? call.getCompanyName().trim() : "";
-                if (!rec.isEmpty() && !comp.isEmpty()) {
-                    displayLabel = rec + " @ " + comp;
-                } else if (!comp.isEmpty()) {
-                    displayLabel = comp;
-                } else if (!rec.isEmpty()) {
-                    displayLabel = rec;
-                }
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Error checking db for progress notification label: " + e.getMessage());
-        }
-
-        Notification notification = new NotificationCompat.Builder(context, CHANNEL_ID)
-                .setSmallIcon(android.R.drawable.sym_action_call)
-                .setContentTitle("Processing call - " + displayLabel)
-                .setContentText(stage)
-                .setPriority(NotificationCompat.PRIORITY_LOW)
-                .setOngoing(true)
-                .setOnlyAlertOnce(true)
-                .build();
-
-        try {
-            nm.notify(phoneNumber.hashCode() + 400, notification);
-        } catch (SecurityException e) {
-            Log.e(TAG, "Cannot post progress notification: " + e.getMessage());
-        }
-    }
-
-    private void dismissProgressNotification(Context context, String phoneNumber) {
-        NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-        if (nm == null) return;
-        try {
-            nm.cancel(phoneNumber.hashCode() + 400);
-        } catch (Exception ignored) {
-        }
-    }
-
-    private static String optClean(org.json.JSONObject json, String key, String fallback) {
-        if (json == null || json.isNull(key)) return fallback;
-        String val = json.optString(key, fallback).trim();
-        if (val.equalsIgnoreCase("null")) return fallback;
-        String lower = val.toLowerCase();
-        if (lower.equals("not mentioned") || lower.equals("not mentioned.") 
-                || lower.equals("not_mentioned") || lower.equals("n/a") 
-                || lower.equals("none") || lower.equals("unknown")) {
-            return fallback;
-        }
-        return val;
-    }
-
-    private static String cleanNoteText(String rawText) {
-        if (rawText == null) return "";
-        String[] lines = rawText.split("\n");
-        StringBuilder sb = new StringBuilder();
-        for (String line : lines) {
-            String trimmed = line.trim().toLowerCase();
-            if (trimmed.contains("interested in") || 
-                trimmed.contains("is interested") || 
-                trimmed.contains("of course") ||
-                trimmed.contains("candidate is interested") ||
-                trimmed.contains("ofcourse")) {
-                continue;
-            }
-            if (sb.length() > 0) {
-                sb.append("\n");
-            }
-            sb.append(line);
-        }
-        return sb.toString();
-    }
 }

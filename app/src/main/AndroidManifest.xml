@@ -79,15 +79,6 @@
             </intent-filter>
         </activity>
 
-        <!-- Transparent dialog-like popup Activity -->
-        <activity
-            android:name=".SaveContactActivity"
-            android:excludeFromRecents="true"
-            android:exported="false"
-            android:launchMode="singleInstance"
-            android:taskAffinity=""
-            android:theme="@style/Theme.TransparentDialog" />
-
         <!-- Analytics dashboard -->
         <activity
             android:name=".AnalyticsActivity"
@@ -99,11 +90,6 @@
             android:name=".SettingsActivity"
             android:exported="false"
             android:parentActivityName=".MainActivity" />
-
-        <!-- Handles Answer/Decline from the incoming-call notification -->
-        <receiver
-            android:name=".CallActionReceiver"
-            android:exported="false" />
 
         <!-- Broadcast Receiver for call state changes -->
         <receiver
