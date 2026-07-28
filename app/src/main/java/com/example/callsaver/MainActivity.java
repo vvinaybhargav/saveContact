@@ -132,9 +132,54 @@ public class MainActivity extends AppCompatActivity {
         handleOpenTabIntent(intent);
     }
 
+    /** Places a call immediately via Telecom, for ACTION_CALL/CALL_PRIVILEGED intents. */
+    private void placeCallDirectly(String number) {
+        if (number == null || number.trim().isEmpty()) return;
+        Uri uri = Uri.fromParts("tel", number.trim(), null);
+        boolean canCall = ContextCompat.checkSelfPermission(this, Manifest.permission.CALL_PHONE)
+                == PackageManager.PERMISSION_GRANTED;
+        if (canCall) {
+            try {
+                TelecomManager tm = (TelecomManager) getSystemService(Context.TELECOM_SERVICE);
+                if (tm != null) {
+                    tm.placeCall(uri, null);
+                    return;
+                }
+            } catch (SecurityException e) {
+                e.printStackTrace();
+            }
+            try {
+                Intent call = new Intent(Intent.ACTION_CALL, uri);
+                startActivity(call);
+                return;
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        // No call permission yet - fall back to pre-filling the dialer instead of
+        // silently doing nothing.
+        if (bottomNavigation != null) bottomNavigation.setSelectedItemId(R.id.navigation_recents);
+        if (recentsFragment != null) recentsFragment.setDialedNumber(number);
+    }
+
     private void handleOpenTabIntent(Intent intent) {
         if (intent == null) return;
-        
+
+        // ACTION_CALL/CALL_PRIVILEGED mean "place this call now" - this is what fires
+        // when a number is called from another app (tapping a tel: link, the copied-
+        // number "Call" quick action, etc). MainActivity is registered as a handler for
+        // these in the manifest, but was previously only handling ACTION_DIAL/VIEW
+        // (which just pre-fill the dialer for the user to confirm) - so calls placed
+        // this way from outside the app silently went nowhere.
+        if (Intent.ACTION_CALL.equals(intent.getAction()) || Intent.ACTION_CALL_PRIVILEGED.equals(intent.getAction())) {
+            Uri data = intent.getData();
+            if (data != null && "tel".equals(data.getScheme())) {
+                String number = data.getSchemeSpecificPart();
+                placeCallDirectly(number);
+                return;
+            }
+        }
+
         // Handle incoming dial/tel intents directly
         if (Intent.ACTION_DIAL.equals(intent.getAction()) || Intent.ACTION_VIEW.equals(intent.getAction())) {
             Uri data = intent.getData();
