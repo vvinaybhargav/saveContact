@@ -252,7 +252,7 @@ public class MailInboxActivity extends AppCompatActivity implements MailInboxAda
                 TextView tv = v.findViewById(android.R.id.text1);
                 if (tv != null) {
                     tv.setTextColor(getResources().getColor(R.color.text_primary));
-                    tv.setTextSize(14sp);
+                    tv.setTextSize(14);
                     int pad = (int) (12 * getResources().getDisplayMetrics().density);
                     tv.setPadding(pad, pad, pad, pad);
                 }
