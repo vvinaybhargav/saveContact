@@ -43,6 +43,9 @@ public class JobCall {
         return trimmed;
     }
 
+    public JobCall() {
+    }
+
     // Constructor for retrieving from DB (with ID and Duration)
     public JobCall(int id, String phoneNumber, String companyName, String roundStatus, String tags, String notes, int duration, long timestamp) {
         this.id = id;

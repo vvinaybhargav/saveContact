@@ -1,6 +1,7 @@
 package com.example.callsaver;
 
 import android.Manifest;
+import android.app.Dialog;
 import android.content.ContentProviderOperation;
 import android.content.Context;
 import android.content.Intent;
@@ -15,8 +16,11 @@ import android.provider.ContactsContract;
 import android.provider.CallLog;
 import android.provider.Settings;
 import android.text.Editable;
+import android.text.Html;
 import android.text.TextUtils;
 import android.text.TextWatcher;
+import android.text.format.DateFormat;
+import android.webkit.WebView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
