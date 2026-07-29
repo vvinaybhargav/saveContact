@@ -716,6 +716,7 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
 
             // Calls + notes are shown as a merged timeline below; the field adds a new note.
             populateTimeline(llNotesTimeline, labelNotes, editCall.getId());
+            populateAttachedEmails(dialogView, editCall.getId());
             populateSkillsMatch(llSkillsMatchSection, tvSkillsMatching, tvSkillsNotMatching, editCall);
             btnSave.setText(R.string.btn_update);
             btnDelete.setVisibility(View.VISIBLE);
@@ -1024,8 +1025,102 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
             } else {
                 delete.setVisibility(View.GONE);
             }
+        }
+    }
+
+    private void populateAttachedEmails(View dialogView, long jobId) {
+        if (dialogView == null) return;
+        LinearLayout container = dialogView.findViewById(R.id.ll_attached_emails_container);
+        View label = dialogView.findViewById(R.id.label_attached_emails);
+
+        if (container == null) return;
+        container.removeAllViews();
+
+        List<EmailMessage> emails = dbHelper.getEmailsForJob(jobId);
+        if (emails.isEmpty()) {
+            if (label != null) label.setVisibility(View.GONE);
+            return;
+        }
+        if (label != null) {
+            label.setVisibility(View.VISIBLE);
+            if (label instanceof TextView) {
+                ((TextView) label).setText("📧 Attached Emails (" + emails.size() + ")");
+            }
+        }
+
+        LayoutInflater inflater = getLayoutInflater();
+        SimpleDateFormat sdf = new SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault());
+
+        for (EmailMessage email : emails) {
+            View row = inflater.inflate(R.layout.item_log_email_row, container, false);
+            ((TextView) row.findViewById(R.id.tv_log_email_subject)).setText(email.getSubject());
+            ((TextView) row.findViewById(R.id.tv_log_email_sender)).setText("From: " + email.getSenderDisplayName());
+            ((TextView) row.findViewById(R.id.tv_log_email_snippet)).setText(email.getSnippet());
+
+            long ts = email.getReceivedTimestamp();
+            if (ts > 0) {
+                ((TextView) row.findViewById(R.id.tv_log_email_time)).setText(sdf.format(new Date(ts)));
+            }
+
+            row.setOnClickListener(v -> showEmailDetailDialog(email));
+
             container.addView(row);
         }
+    }
+
+    private void showEmailDetailDialog(EmailMessage email) {
+        if (getContext() == null) return;
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext(), android.R.style.Theme_DeviceDefault_NoActionBar_Fullscreen);
+        View view = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_mail_detail, null);
+        builder.setView(view);
+
+        Dialog dialog = builder.create();
+
+        TextView tvSubject = view.findViewById(R.id.tv_detail_subject);
+        TextView tvFrom = view.findViewById(R.id.tv_detail_from);
+        TextView tvTo = view.findViewById(R.id.tv_detail_to);
+        TextView tvDate = view.findViewById(R.id.tv_detail_date);
+        TextView tvBody = view.findViewById(R.id.tv_detail_body);
+        WebView webView = view.findViewById(R.id.webview_detail_body);
+        ImageView btnClose = view.findViewById(R.id.btn_close_detail);
+        View btnAssign = view.findViewById(R.id.btn_detail_assign);
+
+        if (tvSubject != null) tvSubject.setText(email.getSubject());
+        if (tvFrom != null) tvFrom.setText("From: " + email.getSender());
+        if (tvTo != null) tvTo.setText("To: " + (email.getRecipient().isEmpty() ? GmailService.getAccountEmail(requireContext()) : email.getRecipient()));
+
+        if (tvDate != null) {
+            long ts = email.getReceivedTimestamp();
+            if (ts > 0) {
+                tvDate.setText("Date: " + DateFormat.format("E, dd MMM yyyy, h:mm a", new Date(ts)));
+            }
+        }
+
+        String body = email.getBody();
+        if (body == null || body.trim().isEmpty()) {
+            body = email.getSnippet();
+        }
+
+        if (body != null && (body.contains("<html") || body.contains("<div") || body.contains("<p>"))) {
+            if (webView != null) {
+                webView.setVisibility(View.VISIBLE);
+                if (tvBody != null) tvBody.setVisibility(View.GONE);
+                webView.loadData(body, "text/html; charset=utf-8", "UTF-8");
+            } else if (tvBody != null) {
+                tvBody.setText(Html.fromHtml(body, Html.FROM_HTML_MODE_LEGACY));
+            }
+        } else {
+            if (tvBody != null) {
+                tvBody.setText(body);
+                tvBody.setVisibility(View.VISIBLE);
+            }
+            if (webView != null) webView.setVisibility(View.GONE);
+        }
+
+        if (btnClose != null) btnClose.setOnClickListener(v -> dialog.dismiss());
+        if (btnAssign != null) btnAssign.setVisibility(View.GONE);
+
+        dialog.show();
     }
 
     private String describeCall(CallHistory h) {

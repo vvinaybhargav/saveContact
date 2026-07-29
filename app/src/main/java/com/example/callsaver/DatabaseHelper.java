@@ -13,7 +13,7 @@ import java.util.List;
 public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "JobTracker.db";
-    private static final int DATABASE_VERSION = 13; // V13: add expected_ctc, work_mode, employment_type
+    private static final int DATABASE_VERSION = 14; // V14: add job_emails table for Gmail integration
 
     public static final String TABLE_NAME = "job_calls";
     public static final String COLUMN_ID = "id";
@@ -57,11 +57,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public static final String COLUMN_NOTE_JOB_ID = "job_call_id";
     public static final String COLUMN_NOTE_TEXT = "note_text";
     public static final String COLUMN_NOTE_TIME = "note_time";
-    // V8: where the note came from — "call" (auto-detected/background) or "manual"
-    // (user manually uploaded & transcribed a recording from the edit-log screen).
+    // V8: where the note came from — "call" (auto-detected/background), "manual", or "email"
     public static final String COLUMN_NOTE_SOURCE = "note_source";
     public static final String NOTE_SOURCE_CALL = "call";
     public static final String NOTE_SOURCE_MANUAL = "manual";
+    public static final String NOTE_SOURCE_EMAIL = "email";
 
     // V5: per-entry call history (each in/out/missed call logged against a job call).
     public static final String TABLE_HISTORY = "call_history";
@@ -76,6 +76,18 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public static final String COLUMN_PHONE_ID = "id";
     public static final String COLUMN_PHONE_JOB_ID = "job_call_id";
     public static final String COLUMN_PHONE_RECRUITER_NAME = "recruiter_name";
+
+    // V14: emails attached to a job call log
+    public static final String TABLE_EMAILS = "job_emails";
+    public static final String COLUMN_EMAIL_ID = "id";
+    public static final String COLUMN_EMAIL_JOB_ID = "job_call_id";
+    public static final String COLUMN_EMAIL_GMAIL_ID = "gmail_message_id";
+    public static final String COLUMN_EMAIL_SENDER = "sender";
+    public static final String COLUMN_EMAIL_RECIPIENT = "recipient";
+    public static final String COLUMN_EMAIL_SUBJECT = "subject";
+    public static final String COLUMN_EMAIL_SNIPPET = "snippet";
+    public static final String COLUMN_EMAIL_BODY = "body";
+    public static final String COLUMN_EMAIL_TIMESTAMP = "received_timestamp";
 
     public DatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -112,6 +124,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         db.execSQL(createNotesTableSql());
         db.execSQL(createHistoryTableSql());
         db.execSQL(createPhonesTableSql());
+        db.execSQL(createEmailsTableSql());
     }
 
     @Override
@@ -172,6 +185,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             db.execSQL("ALTER TABLE " + TABLE_NAME + " ADD COLUMN " + COLUMN_WORK_MODE + " TEXT");
             db.execSQL("ALTER TABLE " + TABLE_NAME + " ADD COLUMN " + COLUMN_EMPLOYMENT_TYPE + " TEXT");
         }
+        if (oldVersion < 14) {
+            db.execSQL(createEmailsTableSql());
+        }
     }
 
     private static String createNotesTableSql() {
@@ -200,6 +216,20 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 + COLUMN_PHONE_JOB_ID + " INTEGER,"
                 + COLUMN_PHONE_NUMBER + " TEXT,"
                 + COLUMN_PHONE_RECRUITER_NAME + " TEXT"
+                + ")";
+    }
+
+    private static String createEmailsTableSql() {
+        return "CREATE TABLE IF NOT EXISTS " + TABLE_EMAILS + "("
+                + COLUMN_EMAIL_ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
+                + COLUMN_EMAIL_JOB_ID + " INTEGER,"
+                + COLUMN_EMAIL_GMAIL_ID + " TEXT,"
+                + COLUMN_EMAIL_SENDER + " TEXT,"
+                + COLUMN_EMAIL_RECIPIENT + " TEXT,"
+                + COLUMN_EMAIL_SUBJECT + " TEXT,"
+                + COLUMN_EMAIL_SNIPPET + " TEXT,"
+                + COLUMN_EMAIL_BODY + " TEXT,"
+                + COLUMN_EMAIL_TIMESTAMP + " INTEGER"
                 + ")";
     }
 
@@ -511,6 +541,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             ContentValues movePhones = new ContentValues();
             movePhones.put(COLUMN_PHONE_JOB_ID, keepId);
             db.update(TABLE_PHONES, movePhones, COLUMN_PHONE_JOB_ID + "=?", new String[]{String.valueOf(loserId)});
+
+            ContentValues moveEmails = new ContentValues();
+            moveEmails.put(COLUMN_EMAIL_JOB_ID, keepId);
+            db.update(TABLE_EMAILS, moveEmails, COLUMN_EMAIL_JOB_ID + "=?", new String[]{String.valueOf(loserId)});
 
             db.setTransactionSuccessful();
         } finally {
@@ -986,5 +1020,57 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             e.printStackTrace();
         }
         return list;
+    }
+
+    public long insertJobEmail(long jobCallId, String gmailMsgId, String sender, String recipient, String subject, String snippet, String body, long timestamp) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues v = new ContentValues();
+        v.put(COLUMN_EMAIL_JOB_ID, jobCallId);
+        v.put(COLUMN_EMAIL_GMAIL_ID, gmailMsgId);
+        v.put(COLUMN_EMAIL_SENDER, sender);
+        v.put(COLUMN_EMAIL_RECIPIENT, recipient);
+        v.put(COLUMN_EMAIL_SUBJECT, subject);
+        v.put(COLUMN_EMAIL_SNIPPET, snippet);
+        v.put(COLUMN_EMAIL_BODY, body);
+        v.put(COLUMN_EMAIL_TIMESTAMP, timestamp);
+        long id = db.insert(TABLE_EMAILS, null, v);
+        db.close();
+
+        // Add to call timeline notes as well for seamless timeline visibility
+        String noteText = "📧 Email: " + (subject != null ? subject : "(No Subject)") + "\nFrom: " + sender + "\n" + (snippet != null ? snippet : "");
+        insertNote(jobCallId, noteText, timestamp, NOTE_SOURCE_EMAIL);
+
+        return id;
+    }
+
+    public List<EmailMessage> getEmailsForJob(long jobCallId) {
+        List<EmailMessage> list = new ArrayList<>();
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor c = db.query(TABLE_EMAILS, null, COLUMN_EMAIL_JOB_ID + "=?",
+                new String[]{String.valueOf(jobCallId)}, null, null, COLUMN_EMAIL_TIMESTAMP + " DESC");
+        if (c != null) {
+            while (c.moveToNext()) {
+                list.add(new EmailMessage(
+                        c.getLong(c.getColumnIndexOrThrow(COLUMN_EMAIL_ID)),
+                        c.getLong(c.getColumnIndexOrThrow(COLUMN_EMAIL_JOB_ID)),
+                        c.getString(c.getColumnIndexOrThrow(COLUMN_EMAIL_GMAIL_ID)),
+                        c.getString(c.getColumnIndexOrThrow(COLUMN_EMAIL_SENDER)),
+                        c.getString(c.getColumnIndexOrThrow(COLUMN_EMAIL_RECIPIENT)),
+                        c.getString(c.getColumnIndexOrThrow(COLUMN_EMAIL_SUBJECT)),
+                        c.getString(c.getColumnIndexOrThrow(COLUMN_EMAIL_SNIPPET)),
+                        c.getString(c.getColumnIndexOrThrow(COLUMN_EMAIL_BODY)),
+                        c.getLong(c.getColumnIndexOrThrow(COLUMN_EMAIL_TIMESTAMP))
+                ));
+            }
+            c.close();
+        }
+        db.close();
+        return list;
+    }
+
+    public void deleteJobEmail(long emailId) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        db.delete(TABLE_EMAILS, COLUMN_EMAIL_ID + "=?", new String[]{String.valueOf(emailId)});
+        db.close();
     }
 }

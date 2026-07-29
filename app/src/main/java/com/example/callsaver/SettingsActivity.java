@@ -59,6 +59,19 @@ public class SettingsActivity extends AppCompatActivity {
         btnClearLogs = findViewById(R.id.btn_clear_logs);
         btnRefreshLogs = findViewById(R.id.btn_refresh_logs);
 
+        // Gmail & Mail Inbox UI elements
+        Button btnOpenMailInbox = findViewById(R.id.btn_open_mail_inbox);
+        EditText etGmailEmail = findViewById(R.id.settings_gmail_email);
+        EditText etGmailClientId = findViewById(R.id.settings_gmail_client_id);
+        EditText etGmailRefreshToken = findViewById(R.id.settings_gmail_refresh_token);
+
+        if (btnOpenMailInbox != null) {
+            btnOpenMailInbox.setOnClickListener(v -> {
+                Intent intent = new Intent(this, MailInboxActivity.class);
+                startActivity(intent);
+            });
+        }
+
         // Setup Default Dialer button
         Button btnSetDefaultDialer = findViewById(R.id.btn_set_default_dialer);
         TextView tvDefaultDialerStatus = findViewById(R.id.tv_default_dialer_status);
@@ -72,6 +85,9 @@ public class SettingsActivity extends AppCompatActivity {
         if (etOpenAiKey != null) etOpenAiKey.setText(prefs.getString("openai_api_key", ""));
         if (etUserName != null) etUserName.setText(prefs.getString("user_full_name", ""));
         if (etUserInterests != null) etUserInterests.setText(prefs.getString("user_talking_points", ""));
+        if (etGmailEmail != null) etGmailEmail.setText(prefs.getString("gmail_account_email", GmailService.DEFAULT_ACCOUNT));
+        if (etGmailClientId != null) etGmailClientId.setText(GmailService.getClientId(this));
+        if (etGmailRefreshToken != null) etGmailRefreshToken.setText(GmailService.getRefreshToken(this));
 
         // Setup save action
         if (btnSave != null) {
@@ -79,11 +95,17 @@ public class SettingsActivity extends AppCompatActivity {
                 String openAi = etOpenAiKey != null ? etOpenAiKey.getText().toString().trim() : "";
                 String userName = etUserName != null ? etUserName.getText().toString().trim() : "";
                 String interests = etUserInterests != null ? etUserInterests.getText().toString().trim() : "";
+                String gmailEmail = etGmailEmail != null ? etGmailEmail.getText().toString().trim() : "";
+                String gmailClientId = etGmailClientId != null ? etGmailClientId.getText().toString().trim() : "";
+                String gmailRefreshToken = etGmailRefreshToken != null ? etGmailRefreshToken.getText().toString().trim() : "";
 
                 prefs.edit()
                         .putString("openai_api_key", openAi)
                         .putString("user_full_name", userName)
                         .putString("user_talking_points", interests)
+                        .putString("gmail_account_email", gmailEmail.isEmpty() ? GmailService.DEFAULT_ACCOUNT : gmailEmail)
+                        .putString("gmail_client_id", gmailClientId)
+                        .putString("gmail_refresh_token", gmailRefreshToken)
                         .apply();
 
                 Toast.makeText(this, "Settings saved successfully!", Toast.LENGTH_SHORT).show();

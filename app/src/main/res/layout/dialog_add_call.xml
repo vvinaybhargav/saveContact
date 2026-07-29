@@ -401,6 +401,28 @@
         android:orientation="vertical"
         android:layout_marginBottom="8dp" />
 
+    <!-- Attached Emails Section -->
+    <TextView
+        android:id="@+id/label_attached_emails"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="📧 Attached Emails"
+        android:textColor="@color/accent_indigo"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:letterSpacing="0.04"
+        android:layout_marginTop="4dp"
+        android:layout_marginBottom="6dp"
+        android:layout_marginStart="4dp"
+        android:visibility="gone" />
+
+    <LinearLayout
+        android:id="@+id/ll_attached_emails_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginBottom="12dp" />
+
     <!-- Skills Match: skills discussed on calls that matched / didn't match the
          candidate's stated interests (Settings > My Interests). AI-populated. -->
     <LinearLayout

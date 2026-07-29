@@ -91,6 +91,12 @@
             android:exported="false"
             android:parentActivityName=".MainActivity" />
 
+        <!-- Mail Inbox screen -->
+        <activity
+            android:name=".MailInboxActivity"
+            android:exported="false"
+            android:parentActivityName=".SettingsActivity" />
+
         <!-- Broadcast Receiver for call state changes -->
         <receiver
             android:name=".CallReceiver"

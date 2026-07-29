@@ -1,0 +1,340 @@
+package com.example.callsaver;
+
+import android.content.Context;
+import android.content.SharedPreferences;
+import android.util.Base64;
+import android.util.Log;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
+
+public class GmailService {
+
+    private static final String TAG = "GmailService";
+
+    public static final String DEFAULT_ACCOUNT = "vvinaybhargav1997@gmail.com";
+
+    private static String cachedAccessToken = null;
+    private static long tokenExpiryTimeMs = 0;
+
+    public interface FetchCallback<T> {
+        void onSuccess(T result);
+        void onError(String error);
+    }
+
+    public static String getClientId(Context context) {
+        SharedPreferences prefs = context.getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE);
+        String saved = prefs.getString("gmail_client_id", "");
+        if (!saved.trim().isEmpty()) return saved.trim();
+
+        // Attempt to load dynamically from local mailautomation credentials
+        try {
+            File credFile = new File("C:/Users/vvina/OneDrive/Desktop/miniprojects/mailautomation/credentials.json");
+            if (credFile.exists()) {
+                String jsonStr = readStream(new FileInputStream(credFile));
+                JSONObject json = new JSONObject(jsonStr);
+                JSONObject installed = json.optJSONObject("installed");
+                if (installed != null) {
+                    return installed.optString("client_id", "");
+                }
+            }
+        } catch (Exception ignored) {}
+        return "";
+    }
+
+    public static String getClientSecret(Context context) {
+        SharedPreferences prefs = context.getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE);
+        String saved = prefs.getString("gmail_client_secret", "");
+        if (!saved.trim().isEmpty()) return saved.trim();
+
+        try {
+            File credFile = new File("C:/Users/vvina/OneDrive/Desktop/miniprojects/mailautomation/credentials.json");
+            if (credFile.exists()) {
+                String jsonStr = readStream(new FileInputStream(credFile));
+                JSONObject json = new JSONObject(jsonStr);
+                JSONObject installed = json.optJSONObject("installed");
+                if (installed != null) {
+                    return installed.optString("client_secret", "");
+                }
+            }
+        } catch (Exception ignored) {}
+        return "";
+    }
+
+    public static String getRefreshToken(Context context) {
+        SharedPreferences prefs = context.getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE);
+        String saved = prefs.getString("gmail_refresh_token", "");
+        if (!saved.trim().isEmpty()) return saved.trim();
+
+        try {
+            File tokenFile = new File("C:/Users/vvina/OneDrive/Desktop/miniprojects/mailautomation/token.json");
+            if (tokenFile.exists()) {
+                String jsonStr = readStream(new FileInputStream(tokenFile));
+                JSONObject json = new JSONObject(jsonStr);
+                return json.optString("refresh_token", "");
+            }
+        } catch (Exception ignored) {}
+        return "";
+    }
+
+    public static String getAccountEmail(Context context) {
+        SharedPreferences prefs = context.getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE);
+        return prefs.getString("gmail_account_email", DEFAULT_ACCOUNT);
+    }
+
+    public static String getAccessToken(Context context) throws Exception {
+        if (cachedAccessToken != null && System.currentTimeMillis() < (tokenExpiryTimeMs - 60000)) {
+            return cachedAccessToken;
+        }
+
+        String clientId = getClientId(context);
+        String clientSecret = getClientSecret(context);
+        String refreshToken = getRefreshToken(context);
+
+        if (clientId.isEmpty() || clientSecret.isEmpty() || refreshToken.isEmpty()) {
+            throw new Exception("Gmail OAuth credentials are not configured. Please enter Client ID, Secret, and Refresh Token in Settings.");
+        }
+
+        URL url = new URL("https://oauth2.googleapis.com/token");
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setRequestMethod("POST");
+        conn.setDoOutput(true);
+        conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+        conn.setConnectTimeout(10000);
+        conn.setReadTimeout(10000);
+
+        String postData = "grant_type=refresh_token"
+                + "&client_id=" + URLEncoder.encode(clientId, "UTF-8")
+                + "&client_secret=" + URLEncoder.encode(clientSecret, "UTF-8")
+                + "&refresh_token=" + URLEncoder.encode(refreshToken, "UTF-8");
+
+        try (OutputStream os = conn.getOutputStream()) {
+            os.write(postData.getBytes(StandardCharsets.UTF_8));
+            os.flush();
+        }
+
+        int code = conn.getResponseCode();
+        InputStream is = (code >= 200 && code < 300) ? conn.getInputStream() : conn.getErrorStream();
+        String response = readStream(is);
+
+        if (code >= 200 && code < 300) {
+            JSONObject json = new JSONObject(response);
+            cachedAccessToken = json.getString("access_token");
+            int expiresIn = json.optInt("expires_in", 3600);
+            tokenExpiryTimeMs = System.currentTimeMillis() + (expiresIn * 1000L);
+            return cachedAccessToken;
+        } else {
+            Log.e(TAG, "Failed to refresh token: " + response);
+            throw new Exception("OAuth refresh failed (" + code + "): " + response);
+        }
+    }
+
+    public static void fetchInboxMessagesAsync(Context context, int maxResults, FetchCallback<List<EmailMessage>> callback) {
+        new Thread(() -> {
+            try {
+                List<EmailMessage> messages = fetchInboxMessagesSync(context, maxResults);
+                callback.onSuccess(messages);
+            } catch (Exception e) {
+                Log.e(TAG, "Error fetching inbox", e);
+                callback.onError(e.getMessage());
+            }
+        }).start();
+    }
+
+    public static List<EmailMessage> fetchInboxMessagesSync(Context context, int maxResults) throws Exception {
+        String token = getAccessToken(context);
+        URL url = new URL("https://gmail.googleapis.com/gmail/v1/users/me/messages?q=in:inbox&maxResults=" + Math.max(1, maxResults));
+
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setRequestMethod("GET");
+        conn.setRequestProperty("Authorization", "Bearer " + token);
+        conn.setConnectTimeout(10000);
+        conn.setReadTimeout(15000);
+
+        int code = conn.getResponseCode();
+        InputStream is = (code >= 200 && code < 300) ? conn.getInputStream() : conn.getErrorStream();
+        String response = readStream(is);
+
+        if (code < 200 || code >= 300) {
+            throw new Exception("Failed to list messages (" + code + "): " + response);
+        }
+
+        JSONObject json = new JSONObject(response);
+        List<EmailMessage> resultList = new ArrayList<>();
+
+        if (!json.has("messages")) {
+            return resultList;
+        }
+
+        JSONArray msgArray = json.getJSONArray("messages");
+        for (int i = 0; i < msgArray.length(); i++) {
+            JSONObject msgObj = msgArray.getJSONObject(i);
+            String msgId = msgObj.getString("id");
+            try {
+                EmailMessage email = fetchSingleMessageSync(context, token, msgId);
+                if (email != null) {
+                    resultList.add(email);
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "Could not fetch message " + msgId, e);
+            }
+        }
+
+        return resultList;
+    }
+
+    public static EmailMessage fetchSingleMessageSync(Context context, String accessToken, String messageId) throws Exception {
+        if (accessToken == null || accessToken.isEmpty()) {
+            accessToken = getAccessToken(context);
+        }
+
+        URL url = new URL("https://gmail.googleapis.com/gmail/v1/users/me/messages/" + messageId + "?format=full");
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setRequestMethod("GET");
+        conn.setRequestProperty("Authorization", "Bearer " + accessToken);
+        conn.setConnectTimeout(10000);
+        conn.setReadTimeout(15000);
+
+        int code = conn.getResponseCode();
+        InputStream is = (code >= 200 && code < 300) ? conn.getInputStream() : conn.getErrorStream();
+        String response = readStream(is);
+
+        if (code < 200 || code >= 300) {
+            throw new Exception("Failed to fetch message details (" + code + "): " + response);
+        }
+
+        JSONObject json = new JSONObject(response);
+        EmailMessage email = new EmailMessage();
+        email.setGmailMessageId(messageId);
+        email.setSnippet(json.optString("snippet", ""));
+        email.setReceivedTimestamp(json.optLong("internalDate", System.currentTimeMillis()));
+
+        // Parse labelIds for unread status
+        if (json.has("labelIds")) {
+            JSONArray labels = json.getJSONArray("labelIds");
+            boolean unread = false;
+            for (int i = 0; i < labels.length(); i++) {
+                if ("UNREAD".equalsIgnoreCase(labels.getString(i))) {
+                    unread = true;
+                    break;
+                }
+            }
+            email.setRead(!unread);
+        }
+
+        // Parse Headers
+        JSONObject payload = json.optJSONObject("payload");
+        if (payload != null) {
+            JSONArray headers = payload.optJSONArray("headers");
+            if (headers != null) {
+                for (int i = 0; i < headers.length(); i++) {
+                    JSONObject h = headers.getJSONObject(i);
+                    String name = h.optString("name", "");
+                    String value = h.optString("value", "");
+
+                    if ("From".equalsIgnoreCase(name)) {
+                        email.setSender(value);
+                    } else if ("To".equalsIgnoreCase(name)) {
+                        email.setRecipient(value);
+                    } else if ("Subject".equalsIgnoreCase(name)) {
+                        email.setSubject(value);
+                    }
+                }
+            }
+
+            // Extract Body Text / HTML
+            String bodyText = parsePayloadBody(payload);
+            email.setBody(bodyText);
+        }
+
+        return email;
+    }
+
+    private static String parsePayloadBody(JSONObject payload) {
+        if (payload == null) return "";
+
+        JSONObject bodyObj = payload.optJSONObject("body");
+        if (bodyObj != null && bodyObj.has("data")) {
+            String data = bodyObj.optString("data");
+            if (!data.isEmpty()) {
+                return decodeBase64Url(data);
+            }
+        }
+
+        JSONArray parts = payload.optJSONArray("parts");
+        if (parts != null) {
+            StringBuilder htmlBody = new StringBuilder();
+            StringBuilder textBody = new StringBuilder();
+
+            for (int i = 0; i < parts.length(); i++) {
+                try {
+                    JSONObject part = parts.getJSONObject(i);
+                    String mimeType = part.optString("mimeType", "");
+                    JSONObject pBody = part.optJSONObject("body");
+                    String data = pBody != null ? pBody.optString("data", "") : "";
+
+                    if (!data.isEmpty()) {
+                        String decoded = decodeBase64Url(data);
+                        if ("text/html".equalsIgnoreCase(mimeType)) {
+                            htmlBody.append(decoded);
+                        } else if ("text/plain".equalsIgnoreCase(mimeType)) {
+                            textBody.append(decoded);
+                        }
+                    }
+
+                    if (part.has("parts")) {
+                        String nested = parsePayloadBody(part);
+                        if (!nested.isEmpty()) {
+                            textBody.append("\n").append(nested);
+                        }
+                    }
+                } catch (Exception ignored) {
+                }
+            }
+
+            if (htmlBody.length() > 0) return htmlBody.toString();
+            if (textBody.length() > 0) return textBody.toString();
+        }
+
+        return "";
+    }
+
+    private static String decodeBase64Url(String base64UrlStr) {
+        try {
+            byte[] bytes = Base64.decode(base64UrlStr, Base64.URL_SAFE | Base64.NO_WRAP | Base64.NO_PADDING);
+            return new String(bytes, StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            try {
+                byte[] bytes = Base64.decode(base64UrlStr, Base64.DEFAULT);
+                return new String(bytes, StandardCharsets.UTF_8);
+            } catch (Exception ex) {
+                return base64UrlStr;
+            }
+        }
+    }
+
+    private static String readStream(InputStream is) throws Exception {
+        if (is == null) return "";
+        BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
+        StringBuilder sb = new StringBuilder();
+        String line;
+        while ((line = reader.readLine()) != null) {
+            sb.append(line).append("\n");
+        }
+        reader.close();
+        return sb.toString();
+    }
+}
