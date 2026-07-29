@@ -119,9 +119,14 @@ public class MailInboxActivity extends AppCompatActivity implements MailInboxAda
                     if (progressBar != null) progressBar.setVisibility(View.GONE);
                     if (swipeRefresh != null) swipeRefresh.setRefreshing(false);
 
-                    Toast.makeText(MailInboxActivity.this, "Could not load emails: " + error, Toast.LENGTH_LONG).show();
+                    new AlertDialog.Builder(MailInboxActivity.this)
+                            .setTitle("⚠️ Gmail Sync Error")
+                            .setMessage(error)
+                            .setPositiveButton("OK", null)
+                            .show();
+
                     if (allFetchedEmails.isEmpty() && tvEmpty != null) {
-                        tvEmpty.setText("⚠️ Failed to sync with Gmail.\nCheck credentials in Settings.");
+                        tvEmpty.setText("⚠️ Failed to sync with Gmail.\n" + error);
                         tvEmpty.setVisibility(View.VISIBLE);
                     }
                 });

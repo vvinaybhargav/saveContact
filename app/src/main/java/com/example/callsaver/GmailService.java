@@ -133,6 +133,15 @@ public class GmailService {
         String response = readStream(is);
 
         if (code < 200 || code >= 300) {
+            if (code == 403) {
+                if (response.contains("insufficient") || response.contains("scope")) {
+                    throw new Exception("HTTP 403 Forbidden: Insufficient OAuth Scope on refresh token.\nThe existing refresh token only has 'gmail.compose' scope. To read inbox emails, a token with 'gmail.readonly' or 'gmail.modify' scope is required.");
+                } else if (response.contains("disabled") || response.contains("Google Cloud")) {
+                    throw new Exception("HTTP 403 Forbidden: Gmail API is disabled in Google Cloud Console project 782906526461. Please enable Gmail API at https://console.cloud.google.com/apis/library/gmail.googleapis.com");
+                } else {
+                    throw new Exception("HTTP 403 Forbidden from Gmail API:\n" + response);
+                }
+            }
             throw new Exception("Failed to list messages (" + code + "): " + response);
         }
 
