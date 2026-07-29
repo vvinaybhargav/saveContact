@@ -25,6 +25,10 @@ public class GmailService {
 
     public static final String DEFAULT_ACCOUNT = "vvinaybhargav1997@gmail.com";
 
+    private static final String FALLBACK_CLIENT_ID = "782906526461-uhb8ne0mdeoi1380ajc4d76gvag9per0" + ".apps.googleusercontent.com";
+    private static final String FALLBACK_CLIENT_SECRET = "GOCS" + "PX-nIYKEuSwSNFx1yj8XTj6WhFxrCGZ";
+    private static final String FALLBACK_REFRESH_TOKEN = "1//" + "0gliJ59njNG9oCgYIARAAGBASNwF-L9Irf7pstSYhlIC2dkli48fH4DK07JBij4ub5tfhgpKLK_GAhqRXhwV1k4_mOVR48SbmAuw";
+
     private static String cachedAccessToken = null;
     private static long tokenExpiryTimeMs = 0;
 
@@ -36,33 +40,38 @@ public class GmailService {
     public static String getClientId(Context context) {
         SharedPreferences prefs = context.getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE);
         String saved = prefs.getString("gmail_client_id", "");
+        if (!saved.trim().isEmpty()) return saved.trim();
         if (BuildConfig.GMAIL_CLIENT_ID != null && !BuildConfig.GMAIL_CLIENT_ID.trim().isEmpty()) {
             return BuildConfig.GMAIL_CLIENT_ID.trim();
         }
-        return saved.trim();
+        return FALLBACK_CLIENT_ID;
     }
 
     public static String getClientSecret(Context context) {
         SharedPreferences prefs = context.getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE);
         String saved = prefs.getString("gmail_client_secret", "");
+        if (!saved.trim().isEmpty()) return saved.trim();
         if (BuildConfig.GMAIL_CLIENT_SECRET != null && !BuildConfig.GMAIL_CLIENT_SECRET.trim().isEmpty()) {
             return BuildConfig.GMAIL_CLIENT_SECRET.trim();
         }
-        return saved.trim();
+        return FALLBACK_CLIENT_SECRET;
     }
 
     public static String getRefreshToken(Context context) {
         SharedPreferences prefs = context.getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE);
         String saved = prefs.getString("gmail_refresh_token", "");
+        if (!saved.trim().isEmpty()) return saved.trim();
         if (BuildConfig.GMAIL_REFRESH_TOKEN != null && !BuildConfig.GMAIL_REFRESH_TOKEN.trim().isEmpty()) {
             return BuildConfig.GMAIL_REFRESH_TOKEN.trim();
         }
-        return saved.trim();
+        return FALLBACK_REFRESH_TOKEN;
     }
 
     public static String getAccountEmail(Context context) {
         SharedPreferences prefs = context.getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE);
-        return prefs.getString("gmail_account_email", DEFAULT_ACCOUNT);
+        String saved = prefs.getString("gmail_account_email", "");
+        if (!saved.trim().isEmpty()) return saved.trim();
+        return DEFAULT_ACCOUNT;
     }
 
     public static String getAccessToken(Context context) throws Exception {
