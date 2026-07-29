@@ -267,52 +267,55 @@ public class GmailService {
         return email;
     }
 
-    private static String parsePayloadBody(JSONObject payload) {
-        if (payload == null) return "";
+    private static String parsePayloadBody(JSONObject part) {
+        if (part == null) return "";
 
-        JSONObject bodyObj = payload.optJSONObject("body");
+        // Check single part body data
+        JSONObject bodyObj = part.optJSONObject("body");
         if (bodyObj != null && bodyObj.has("data")) {
-            String data = bodyObj.optString("data");
-            if (!data.isEmpty()) {
+            String data = bodyObj.optString("data", "");
+            if (!data.trim().isEmpty()) {
                 return decodeBase64Url(data);
             }
         }
 
-        JSONArray parts = payload.optJSONArray("parts");
-        if (parts != null) {
-            StringBuilder htmlBody = new StringBuilder();
-            StringBuilder textBody = new StringBuilder();
+        // Check multi-part body recursively
+        JSONArray parts = part.optJSONArray("parts");
+        if (parts != null && parts.length() > 0) {
+            String htmlContent = extractMimeType(parts, "text/html");
+            if (!htmlContent.trim().isEmpty()) return htmlContent;
 
-            for (int i = 0; i < parts.length(); i++) {
-                try {
-                    JSONObject part = parts.getJSONObject(i);
-                    String mimeType = part.optString("mimeType", "");
-                    JSONObject pBody = part.optJSONObject("body");
-                    String data = pBody != null ? pBody.optString("data", "") : "";
-
-                    if (!data.isEmpty()) {
-                        String decoded = decodeBase64Url(data);
-                        if ("text/html".equalsIgnoreCase(mimeType)) {
-                            htmlBody.append(decoded);
-                        } else if ("text/plain".equalsIgnoreCase(mimeType)) {
-                            textBody.append(decoded);
-                        }
-                    }
-
-                    if (part.has("parts")) {
-                        String nested = parsePayloadBody(part);
-                        if (!nested.isEmpty()) {
-                            textBody.append("\n").append(nested);
-                        }
-                    }
-                } catch (Exception ignored) {
-                }
-            }
-
-            if (htmlBody.length() > 0) return htmlBody.toString();
-            if (textBody.length() > 0) return textBody.toString();
+            String plainContent = extractMimeType(parts, "text/plain");
+            if (!plainContent.trim().isEmpty()) return plainContent;
         }
 
+        return "";
+    }
+
+    private static String extractMimeType(JSONArray parts, String targetMime) {
+        if (parts == null) return "";
+        for (int i = 0; i < parts.length(); i++) {
+            try {
+                JSONObject part = parts.getJSONObject(i);
+                String mimeType = part.optString("mimeType", "");
+
+                if (targetMime.equalsIgnoreCase(mimeType)) {
+                    JSONObject bodyObj = part.optJSONObject("body");
+                    if (bodyObj != null && bodyObj.has("data")) {
+                        String data = bodyObj.optString("data", "");
+                        if (!data.trim().isEmpty()) {
+                            return decodeBase64Url(data);
+                        }
+                    }
+                }
+
+                if (part.has("parts")) {
+                    String subContent = extractMimeType(part.getJSONArray("parts"), targetMime);
+                    if (!subContent.trim().isEmpty()) return subContent;
+                }
+            } catch (Exception ignored) {
+            }
+        }
         return "";
     }
 

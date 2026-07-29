@@ -12,6 +12,7 @@ import android.text.Editable;
 import android.text.Html;
 import android.text.TextWatcher;
 import android.text.format.DateFormat;
+import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -1105,17 +1106,34 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
             body = email.getSnippet();
         }
 
-        if (body != null && (body.contains("<html") || body.contains("<div") || body.contains("<p>"))) {
-            if (webView != null) {
+        if (body != null && !body.trim().isEmpty()) {
+            boolean isHtml = body.contains("<html") || body.contains("<div") || body.contains("<p>") || body.contains("<span") || body.contains("<br") || body.contains("<table");
+            if (isHtml && webView != null) {
                 webView.setVisibility(View.VISIBLE);
                 if (tvBody != null) tvBody.setVisibility(View.GONE);
-                webView.loadData(body, "text/html; charset=utf-8", "UTF-8");
+
+                WebSettings webSettings = webView.getSettings();
+                webSettings.setJavaScriptEnabled(true);
+                webSettings.setDomStorageEnabled(true);
+                webSettings.setLoadWithOverviewMode(true);
+                webSettings.setUseWideViewPort(true);
+
+                String styledHtml = "<html><head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><style>" +
+                        "body { color: #E0E0E0; background-color: #121212; font-family: sans-serif; font-size: 14px; padding: 12px; line-height: 1.6; word-wrap: break-word; }" +
+                        "a { color: #818CF8; }" +
+                        "img { max-width: 100% !important; height: auto !important; }" +
+                        "table { max-width: 100% !important; width: 100% !important; }" +
+                        "</style></head><body>" + body + "</body></html>";
+
+                webView.loadDataWithBaseURL(null, styledHtml, "text/html", "UTF-8", null);
             } else if (tvBody != null) {
-                tvBody.setText(Html.fromHtml(body, Html.FROM_HTML_MODE_LEGACY));
+                tvBody.setText(isHtml ? Html.fromHtml(body, Html.FROM_HTML_MODE_LEGACY) : body);
+                tvBody.setVisibility(View.VISIBLE);
+                if (webView != null) webView.setVisibility(View.GONE);
             }
         } else {
             if (tvBody != null) {
-                tvBody.setText(body);
+                tvBody.setText("(No email content available)");
                 tvBody.setVisibility(View.VISIBLE);
             }
             if (webView != null) webView.setVisibility(View.GONE);
