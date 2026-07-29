@@ -36,22 +36,28 @@ public class GmailService {
     public static String getClientId(Context context) {
         SharedPreferences prefs = context.getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE);
         String saved = prefs.getString("gmail_client_id", "");
-        if (!saved.trim().isEmpty()) return saved.trim();
-        return BuildConfig.GMAIL_CLIENT_ID != null ? BuildConfig.GMAIL_CLIENT_ID : "";
+        if (BuildConfig.GMAIL_CLIENT_ID != null && !BuildConfig.GMAIL_CLIENT_ID.trim().isEmpty()) {
+            return BuildConfig.GMAIL_CLIENT_ID.trim();
+        }
+        return saved.trim();
     }
 
     public static String getClientSecret(Context context) {
         SharedPreferences prefs = context.getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE);
         String saved = prefs.getString("gmail_client_secret", "");
-        if (!saved.trim().isEmpty()) return saved.trim();
-        return BuildConfig.GMAIL_CLIENT_SECRET != null ? BuildConfig.GMAIL_CLIENT_SECRET : "";
+        if (BuildConfig.GMAIL_CLIENT_SECRET != null && !BuildConfig.GMAIL_CLIENT_SECRET.trim().isEmpty()) {
+            return BuildConfig.GMAIL_CLIENT_SECRET.trim();
+        }
+        return saved.trim();
     }
 
     public static String getRefreshToken(Context context) {
         SharedPreferences prefs = context.getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE);
         String saved = prefs.getString("gmail_refresh_token", "");
-        if (!saved.trim().isEmpty()) return saved.trim();
-        return BuildConfig.GMAIL_REFRESH_TOKEN != null ? BuildConfig.GMAIL_REFRESH_TOKEN : "";
+        if (BuildConfig.GMAIL_REFRESH_TOKEN != null && !BuildConfig.GMAIL_REFRESH_TOKEN.trim().isEmpty()) {
+            return BuildConfig.GMAIL_REFRESH_TOKEN.trim();
+        }
+        return saved.trim();
     }
 
     public static String getAccountEmail(Context context) {
@@ -132,8 +138,24 @@ public class GmailService {
         InputStream is = (code >= 200 && code < 300) ? conn.getInputStream() : conn.getErrorStream();
         String response = readStream(is);
 
+        if (code == 401) {
+            cachedAccessToken = null; // Invalidate cached token
+            token = getAccessToken(context);
+            conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            conn.setRequestProperty("Authorization", "Bearer " + token);
+            conn.setConnectTimeout(10000);
+            conn.setReadTimeout(15000);
+
+            code = conn.getResponseCode();
+            is = (code >= 200 && code < 300) ? conn.getInputStream() : conn.getErrorStream();
+            response = readStream(is);
+        }
+
         if (code < 200 || code >= 300) {
-            if (code == 403) {
+            if (code == 401) {
+                throw new Exception("HTTP 401 Unauthorized: Invalid or expired access token. Please check credentials in Settings.");
+            } else if (code == 403) {
                 if (response.contains("insufficient") || response.contains("scope")) {
                     throw new Exception("HTTP 403 Forbidden: Insufficient OAuth Scope on refresh token.\nThe existing refresh token only has 'gmail.compose' scope. To read inbox emails, a token with 'gmail.readonly' or 'gmail.modify' scope is required.");
                 } else if (response.contains("disabled") || response.contains("Google Cloud")) {
