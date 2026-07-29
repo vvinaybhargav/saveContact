@@ -177,6 +177,8 @@
                             android:textSize="14sp" />
                     </com.google.android.material.textfield.TextInputLayout>
                 </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
             <!-- Section: Gmail Inbox & Integration -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
