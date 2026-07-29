@@ -6,6 +6,10 @@ android {
     namespace 'com.example.callsaver'
     compileSdk 34
 
+    buildFeatures {
+        buildConfig true
+    }
+
     defaultConfig {
         applicationId "com.example.callsaver"
         minSdk 23
@@ -14,6 +18,16 @@ android {
         versionName "4.34"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        Properties properties = new Properties()
+        File localPropertiesFile = project.rootProject.file('local.properties')
+        if (localPropertiesFile.exists()) {
+            properties.load(localPropertiesFile.newDataInputStream())
+        }
+
+        buildConfigField "String", "GMAIL_CLIENT_ID", "\"${properties.getProperty('gmail.client.id', '')}\""
+        buildConfigField "String", "GMAIL_CLIENT_SECRET", "\"${properties.getProperty('gmail.client.secret', '')}\""
+        buildConfigField "String", "GMAIL_REFRESH_TOKEN", "\"${properties.getProperty('gmail.refresh.token', '')}\""
     }
 
     // Stable signing key so every build (local & CI) is signed identically.

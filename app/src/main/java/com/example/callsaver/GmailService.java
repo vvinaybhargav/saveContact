@@ -25,16 +25,6 @@ public class GmailService {
 
     public static final String DEFAULT_ACCOUNT = "vvinaybhargav1997@gmail.com";
 
-    // Split components to prevent static regex pattern matching by git scanners
-    private static final String CID_A = "782906526461-uhb8ne0mdeoi1380ajc4d76gvag9per0";
-    private static final String CID_B = ".apps.googleusercontent.com";
-
-    private static final String SEC_A = "GOCSPX-";
-    private static final String SEC_B = "nIYKEuSwSNFx1yj8XTj6WhFxrCGZ";
-
-    private static final String TOK_A = "1//0gD9ajabJmHZICgYIARAAGBASNwF-";
-    private static final String TOK_B = "L9IrlWO6Q582-9wEgT4m7j4KTES7ephuM3UZ3Jud6Iia0ePK4WhrisgipdDIV_eCLuA2awM";
-
     private static String cachedAccessToken = null;
     private static long tokenExpiryTimeMs = 0;
 
@@ -47,21 +37,21 @@ public class GmailService {
         SharedPreferences prefs = context.getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE);
         String saved = prefs.getString("gmail_client_id", "");
         if (!saved.trim().isEmpty()) return saved.trim();
-        return CID_A + CID_B;
+        return BuildConfig.GMAIL_CLIENT_ID != null ? BuildConfig.GMAIL_CLIENT_ID : "";
     }
 
     public static String getClientSecret(Context context) {
         SharedPreferences prefs = context.getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE);
         String saved = prefs.getString("gmail_client_secret", "");
         if (!saved.trim().isEmpty()) return saved.trim();
-        return SEC_A + SEC_B;
+        return BuildConfig.GMAIL_CLIENT_SECRET != null ? BuildConfig.GMAIL_CLIENT_SECRET : "";
     }
 
     public static String getRefreshToken(Context context) {
         SharedPreferences prefs = context.getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE);
         String saved = prefs.getString("gmail_refresh_token", "");
         if (!saved.trim().isEmpty()) return saved.trim();
-        return TOK_A + TOK_B;
+        return BuildConfig.GMAIL_REFRESH_TOKEN != null ? BuildConfig.GMAIL_REFRESH_TOKEN : "";
     }
 
     public static String getAccountEmail(Context context) {
