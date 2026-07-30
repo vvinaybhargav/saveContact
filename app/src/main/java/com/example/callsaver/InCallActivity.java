@@ -1201,6 +1201,20 @@ public class InCallActivity extends AppCompatActivity {
             } else {
                 Toast.makeText(this, "Couldn't load that image", Toast.LENGTH_SHORT).show();
             }
+        } else if (requestCode == REQ_CODE_SPEECH_INPUT && resultCode == RESULT_OK && data != null) {
+            ArrayList<String> result = data.getStringArrayListExtra(android.speech.RecognizerIntent.EXTRA_RESULTS);
+            if (result != null && !result.isEmpty()) {
+                String spokenText = result.get(0);
+                if (etOverlayNoteInput != null) {
+                    String existing = etOverlayNoteInput.getText().toString();
+                    if (!existing.trim().isEmpty()) {
+                        etOverlayNoteInput.setText(existing + " " + spokenText);
+                    } else {
+                        etOverlayNoteInput.setText(spokenText);
+                    }
+                    etOverlayNoteInput.setSelection(etOverlayNoteInput.getText().length());
+                }
+            }
         }
     }
 
@@ -1487,25 +1501,7 @@ public class InCallActivity extends AppCompatActivity {
         }
     }
 
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQ_CODE_SPEECH_INPUT && resultCode == RESULT_OK && data != null) {
-            ArrayList<String> result = data.getStringArrayListExtra(android.speech.RecognizerIntent.EXTRA_RESULTS);
-            if (result != null && !result.isEmpty()) {
-                String spokenText = result.get(0);
-                if (etOverlayNoteInput != null) {
-                    String existing = etOverlayNoteInput.getText().toString();
-                    if (!existing.trim().isEmpty()) {
-                        etOverlayNoteInput.setText(existing + " " + spokenText);
-                    } else {
-                        etOverlayNoteInput.setText(spokenText);
-                    }
-                    etOverlayNoteInput.setSelection(etOverlayNoteInput.getText().length());
-                }
-            }
-        }
-    }
+
 
     private String getOrdinalSuffix(int number) {
         if (number >= 11 && number <= 13) return "th";

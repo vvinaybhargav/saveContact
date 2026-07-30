@@ -240,7 +240,8 @@ public class OpenAiClient {
     }
 
     public static void transcribeAudioFile(Context context, java.io.File audioFile, OpenAiCallback callback) {
-        String apiKey = getApiKey(context);
+        String apiKey = context.getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE)
+                .getString("openai_api_key", "").trim();
         if (apiKey.isEmpty()) {
             if (callback != null) callback.onError("OpenAI API key missing");
             return;

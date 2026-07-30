@@ -368,7 +368,7 @@ public class CallReceiver extends BroadcastReceiver {
                                     if (!rec.isEmpty() && !"null".equalsIgnoreCase(rec)) targetCall.setRecruiterName(rec);
                                     long newId = db.insertJobCall(targetCall);
                                     db.linkPhoneToJob(newId, entry.number, rec);
-                                    targetCall.setId(newId);
+                                    targetCall.setId((int) newId);
                                 } else {
                                     if (!comp.isEmpty() && !"null".equalsIgnoreCase(comp) && (targetCall.getCompanyName() == null || targetCall.getCompanyName().isEmpty())) targetCall.setCompanyName(comp);
                                     if (!role.isEmpty() && !"null".equalsIgnoreCase(role) && (targetCall.getAppliedRole() == null || targetCall.getAppliedRole().isEmpty())) targetCall.setAppliedRole(role);
@@ -389,6 +389,11 @@ public class CallReceiver extends BroadcastReceiver {
                                         db.insertNote(targetCall.getId(), sb.toString(), System.currentTimeMillis(), DatabaseHelper.NOTE_SOURCE_CALL);
                                     }
                                 }
+                            }
+
+                            @Override
+                            public void onError(String error) {
+                                DebugLogger.log(context, "[Receiver] OpenAI extraction error: " + error);
                             }
                         });
                     }
