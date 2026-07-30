@@ -75,6 +75,8 @@ public class SettingsActivity extends AppCompatActivity {
         // Setup Default Dialer button
         Button btnSetDefaultDialer = findViewById(R.id.btn_set_default_dialer);
         TextView tvDefaultDialerStatus = findViewById(R.id.tv_default_dialer_status);
+        View cardDefaultDialer = findViewById(R.id.card_default_dialer);
+        if (cardDefaultDialer != null) cardDefaultDialer.setVisibility(View.GONE);
         updateDefaultDialerStatus(btnSetDefaultDialer, tvDefaultDialerStatus);
 
         if (btnSetDefaultDialer != null) {

@@ -104,9 +104,6 @@ public class MainActivity extends AppCompatActivity {
         // prompt fires from onRequestPermissionsResult once they're granted (or
         // immediately below if everything was already granted from a prior run).
         requestRequiredPermissionsIfMissing();
-        if (allRequiredPermissionsGranted()) {
-            offerDefaultDialer();
-        }
 
         // Check overlay window permission for caller ID banner
         checkOverlayPermission();
@@ -372,12 +369,6 @@ public class MainActivity extends AppCompatActivity {
             }
             if (upcomingFragment != null && upcomingFragment.isAdded()) {
                 upcomingFragment.onResume();
-            }
-            // Now that phone-related permissions have been answered, this is the
-            // right moment to prompt for Default Phone App - some OEM skins wouldn't
-            // have listed us as eligible before these were granted.
-            if (allRequiredPermissionsGranted()) {
-                offerDefaultDialer();
             }
         }
     }
