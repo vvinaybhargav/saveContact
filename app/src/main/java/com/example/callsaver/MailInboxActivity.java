@@ -143,7 +143,9 @@ public class MailInboxActivity extends AppCompatActivity implements MailInboxAda
             if (q.isEmpty()
                     || mail.getSubject().toLowerCase().contains(q)
                     || mail.getSender().toLowerCase().contains(q)
-                    || mail.getSnippet().toLowerCase().contains(q)) {
+                    || mail.getRecipient().toLowerCase().contains(q)
+                    || mail.getSnippet().toLowerCase().contains(q)
+                    || mail.getBody().toLowerCase().contains(q)) {
                 filtered.add(mail);
             }
         }

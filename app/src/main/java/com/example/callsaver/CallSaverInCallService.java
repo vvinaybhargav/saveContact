@@ -357,13 +357,16 @@ public class CallSaverInCallService extends InCallService {
 
         Notification notification = new NotificationCompat.Builder(this, ONGOING_CALL_CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.sym_action_call)
-                .setContentTitle("Call in progress - " + label)
-                .setContentText(simLabel.isEmpty() ? "Tap to return to the call screen" : "Tap to return  ·  " + simLabel)
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setContentTitle("📞 Call in progress - " + label)
+                .setContentText(simLabel.isEmpty() ? "Tap to return to call screen" : "Tap to return  ·  " + simLabel)
+                .setPriority(NotificationCompat.PRIORITY_MAX)
                 .setCategory(NotificationCompat.CATEGORY_CALL)
                 .setOngoing(true)
+                .setAutoCancel(false)
                 .setContentIntent(pendingIntent)
                 .build();
+
+        notification.flags |= Notification.FLAG_ONGOING_EVENT | Notification.FLAG_NO_CLEAR;
 
         // setOngoing(true) alone isn't reliably swipe-proof on every OEM notification
         // shade (confirmed swipeable on at least one device) - running this as a real

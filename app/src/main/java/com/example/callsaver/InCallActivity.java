@@ -1320,4 +1320,14 @@ public class InCallActivity extends AppCompatActivity {
             default: return "th";
         }
     }
+
+    @Override
+    public void onBackPressed() {
+        if (!reviewMode && CallSaverInCallService.getActiveCall() != null) {
+            moveTaskToBack(true);
+            Toast.makeText(this, "Call running in background. Tap notification to return.", Toast.LENGTH_SHORT).show();
+        } else {
+            super.onBackPressed();
+        }
+    }
 }
