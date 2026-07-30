@@ -867,6 +867,11 @@ public class InCallActivity extends AppCompatActivity {
         View btnOverlayCancelNote = findViewById(R.id.btn_overlay_cancel_note);
         View btnOverlaySaveNote = findViewById(R.id.btn_overlay_save_note);
 
+        View btnMicDictate = findViewById(R.id.btn_mic_dictate);
+        if (btnMicDictate != null) {
+            btnMicDictate.setOnClickListener(v -> startVoiceDictation());
+        }
+
         // Prefill from the latest DB state (falls back to what CallSaverInCallService passed in).
         JobCall currentForPrefill = jobCallId != -1 ? new DatabaseHelper(this).getJobCallById(jobCallId) : null;
         String prefillName = currentForPrefill != null ? currentForPrefill.getRecruiterName() : recruiter;
@@ -1466,6 +1471,40 @@ public class InCallActivity extends AppCompatActivity {
             sb.append(line);
         }
         return sb.toString();
+    }
+
+    private static final int REQ_CODE_SPEECH_INPUT = 9002;
+
+    private void startVoiceDictation() {
+        Intent intent = new Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+        intent.putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+        intent.putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault());
+        intent.putExtra(android.speech.RecognizerIntent.EXTRA_PROMPT, "Dictate call note...");
+        try {
+            startActivityForResult(intent, REQ_CODE_SPEECH_INPUT);
+        } catch (Exception e) {
+            Toast.makeText(this, "Voice dictation is not supported on this device.", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQ_CODE_SPEECH_INPUT && resultCode == RESULT_OK && data != null) {
+            ArrayList<String> result = data.getStringArrayListExtra(android.speech.RecognizerIntent.EXTRA_RESULTS);
+            if (result != null && !result.isEmpty()) {
+                String spokenText = result.get(0);
+                if (etOverlayNoteInput != null) {
+                    String existing = etOverlayNoteInput.getText().toString();
+                    if (!existing.trim().isEmpty()) {
+                        etOverlayNoteInput.setText(existing + " " + spokenText);
+                    } else {
+                        etOverlayNoteInput.setText(spokenText);
+                    }
+                    etOverlayNoteInput.setSelection(etOverlayNoteInput.getText().length());
+                }
+            }
+        }
     }
 
     private String getOrdinalSuffix(int number) {
