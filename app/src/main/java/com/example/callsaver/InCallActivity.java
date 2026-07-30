@@ -32,6 +32,10 @@ import com.google.android.material.textfield.TextInputLayout;
 
 import android.app.DatePickerDialog;
 import android.app.TimePickerDialog;
+import android.net.Uri;
+import java.io.File;
+import org.json.JSONObject;
+import org.json.JSONArray;
 import java.util.Calendar;
 
 import java.util.ArrayList;
@@ -1225,6 +1229,8 @@ public class InCallActivity extends AppCompatActivity {
                     etOverlayNoteInput.setSelection(etOverlayNoteInput.getText().length());
                 }
             }
+        } else if (requestCode == REQ_CODE_PICK_AUDIO_FILE && resultCode == RESULT_OK && data != null && data.getData() != null) {
+            processAudioRecordingFile(data.getData());
         }
     }
 
@@ -1527,27 +1533,7 @@ public class InCallActivity extends AppCompatActivity {
         }
     }
 
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQ_CODE_SPEECH_INPUT && resultCode == RESULT_OK && data != null) {
-            ArrayList<String> result = data.getStringArrayListExtra(android.speech.RecognizerIntent.EXTRA_RESULTS);
-            if (result != null && !result.isEmpty()) {
-                String spokenText = result.get(0);
-                if (etOverlayNoteInput != null) {
-                    String existing = etOverlayNoteInput.getText().toString();
-                    if (!existing.trim().isEmpty()) {
-                        etOverlayNoteInput.setText(existing + " " + spokenText);
-                    } else {
-                        etOverlayNoteInput.setText(spokenText);
-                    }
-                    etOverlayNoteInput.setSelection(etOverlayNoteInput.getText().length());
-                }
-            }
-        } else if (requestCode == REQ_CODE_PICK_AUDIO_FILE && resultCode == RESULT_OK && data != null && data.getData() != null) {
-            processAudioRecordingFile(data.getData());
-        }
-    }
+
 
     private void processAudioRecordingFile(Uri uri) {
         if (uri == null) return;
