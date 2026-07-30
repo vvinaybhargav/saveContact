@@ -571,6 +571,19 @@
                 </HorizontalScrollView>
 
                 <EditText
+                    android:id="@+id/et_overlay_phone_number"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_marginBottom="8dp"
+                    android:background="@drawable/bg_glass_field"
+                    android:paddingHorizontal="14dp"
+                    android:hint="Phone Number (e.g. +91 9876543210)"
+                    android:textColorHint="#8E8E93"
+                    android:inputType="phone"
+                    android:textColor="@color/white_constant"
+                    android:textSize="14sp" />
+
+                <EditText
                     android:id="@+id/et_overlay_name"
                     android:layout_width="match_parent"
                     android:layout_height="48dp"

@@ -87,6 +87,7 @@ public class InCallActivity extends AppCompatActivity {
     // while typing, and immediately when the call ends / screen is destroyed) instead
     // of requiring an explicit Save tap that's easy to miss before a call disconnects.
     private EditText etOverlayNoteInput;
+    private EditText etOverlayPhone;
     private EditText etOverlayName;
     private EditText etOverlayCompany;
     private EditText etOverlayExpectedCtc;
@@ -858,6 +859,10 @@ public class InCallActivity extends AppCompatActivity {
         tvNotesTimelineField = tvNotesTimeline;
         tvCallerStatusField = tvCallerStatus;
         etOverlayNoteInput = findViewById(R.id.et_overlay_note_input);
+        etOverlayPhone = findViewById(R.id.et_overlay_phone_number);
+        if (etOverlayPhone != null && notEmpty(phoneNumber)) {
+            etOverlayPhone.setText(phoneNumber);
+        }
         etOverlayName = findViewById(R.id.et_overlay_name);
         etOverlayCompany = findViewById(R.id.et_overlay_company);
         etOverlayExpectedCtc = findViewById(R.id.et_overlay_expected_ctc);
@@ -1330,10 +1335,14 @@ public class InCallActivity extends AppCompatActivity {
         }
         String jdImagePathVal = jdJoined.toString();
 
+        if (etOverlayPhone != null) {
+            String typedPhone = etOverlayPhone.getText().toString().trim();
+            if (!typedPhone.isEmpty()) {
+                phoneNumber = typedPhone;
+            }
+        }
+
         if (targetJobId == -1) {
-            // Leave company blank if it wasn't filled in - no placeholder text like
-            // "Unsaved Number"; the display logic elsewhere already falls back to
-            // showing just the name, or just the number, when a field is empty.
             String leadCompany = !companyVal.isEmpty() ? companyVal
                     : (notEmpty(contactName) ? contactName : "");
             JobCall newLead = new JobCall(phoneNumber, leadCompany, selectedRound, tagsValue, noteText, 0, System.currentTimeMillis());
@@ -1345,12 +1354,12 @@ public class InCallActivity extends AppCompatActivity {
             jobCallId = targetJobId;
             company = leadCompany;
             recruiter = nameVal;
+            if (notEmpty(phoneNumber)) {
+                db.linkPhoneToJob(targetJobId, phoneNumber, nameVal, true);
+            }
         } else {
             JobCall current = db.getJobCallById(targetJobId);
             if (current != null) {
-                // Set unconditionally, including empty - whatever's in the field right
-                // now is what should be saved, so clearing a name/company and saving
-                // actually clears it instead of silently keeping the old value.
                 current.setRecruiterName(nameVal);
                 current.setCompanyName(companyVal);
                 current.setExpectedCtc(ctcVal);
@@ -1359,20 +1368,20 @@ public class InCallActivity extends AppCompatActivity {
                 current.setTags(tagsValue);
                 current.setJdImagePath(jdImagePathVal);
                 db.updateJobCall(current);
-                // Recruiter name lives in a separate phone-number table (job_phones),
-                // not the job_calls row updateJobCall() just wrote - without this call
-                // an edited name here never actually persisted.
-                db.linkPhoneToJob(targetJobId, phoneNumber, nameVal, true);
+                if (notEmpty(phoneNumber)) {
+                    db.linkPhoneToJob(targetJobId, phoneNumber, nameVal, true);
+                }
                 company = current.getCompanyName();
                 recruiter = current.getRecruiterName();
             } else {
                 db.updateRoundStatus(targetJobId, selectedRound);
             }
-            if (!noteText.isEmpty() && !noteText.equals(lastAutoSavedNoteText)) {
-                db.insertNote(targetJobId, noteText, System.currentTimeMillis());
-            }
-            db.refreshNotesPreview(targetJobId);
         }
+
+        if (!noteText.isEmpty() && !noteText.equals(lastAutoSavedNoteText)) {
+            db.insertNote(targetJobId, noteText, System.currentTimeMillis(), DatabaseHelper.NOTE_SOURCE_MANUAL);
+        }
+        db.refreshNotesPreview(targetJobId);
         lastAutoSavedNoteText = noteText;
 
         if (!noteText.isEmpty()) {
