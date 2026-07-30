@@ -41,3 +41,14 @@ jobs:
         name: call-saver-debug-apk
         path: app/build/outputs/apk/debug/app-debug.apk
         retention-days: 7
+
+    - name: Publish Direct APK to GitHub Release
+      uses: ncipollo/release-action@v1
+      with:
+        artifacts: "app/build/outputs/apk/debug/app-debug.apk"
+        tag: "latest"
+        name: "CallSaver Latest APK Build"
+        body: "Direct 1-tap download link for CallSaver app-debug.apk. Tap the app-debug.apk file below on your phone to install directly."
+        allowUpdates: true
+        recreate: true
+        token: ${{ secrets.GITHUB_TOKEN }}
