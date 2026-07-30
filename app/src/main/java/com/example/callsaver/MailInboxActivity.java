@@ -364,7 +364,7 @@ public class MailInboxActivity extends AppCompatActivity implements MailInboxAda
                         }
                     }
                     if (sb.length() > 0) {
-                        dbHelper.addCallNote(targetJobId, sb.toString(), false);
+                        dbHelper.insertNote(targetJobId, sb.toString(), System.currentTimeMillis(), DatabaseHelper.NOTE_SOURCE_EMAIL);
                     }
                 }
                 Toast.makeText(MailInboxActivity.this, "🤖 AI auto-filled details & summary notes from email!", Toast.LENGTH_SHORT).show();

@@ -708,7 +708,7 @@ public class InCallActivity extends AppCompatActivity {
                 java.text.SimpleDateFormat emailSdf = new java.text.SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault());
 
                 for (EmailMessage email : attachedEmails) {
-                    View row = LayoutInflater.from(this).inflate(R.layout.item_attached_email_log, llEmailsList, false);
+                    View row = LayoutInflater.from(this).inflate(R.layout.item_log_email_row, llEmailsList, false);
 
                     TextView tvSub = row.findViewById(R.id.tv_log_email_subject);
                     TextView tvSender = row.findViewById(R.id.tv_log_email_sender);
