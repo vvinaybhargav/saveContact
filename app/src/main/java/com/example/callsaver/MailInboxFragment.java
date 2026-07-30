@@ -562,26 +562,47 @@ public class MailInboxFragment extends Fragment implements MailInboxAdapter.OnMa
                 // know if this AI follow-up step failed instead of it looking like
                 // nothing happened at all.
                 try {
-                    processEmailExtractionResult(targetJobId, jobCall, result);
+                    processEmailExtractionResult(targetJobId, jobCall, result, email);
                 } catch (Exception e) {
+                    insertFallbackEmailNote(targetJobId, email);
                     if (getActivity() != null) {
                         requireActivity().runOnUiThread(() ->
-                                Toast.makeText(requireContext(), "Email attached, but AI summary failed: " + e.getMessage(), Toast.LENGTH_LONG).show());
+                                Toast.makeText(requireContext(), "Email attached - AI summary failed (" + e.getMessage() + "), added a basic note instead.", Toast.LENGTH_LONG).show());
                     }
                 }
             }
 
             @Override
             public void onError(String error) {
+                // AI step failed entirely (missing/invalid API key, network error, etc.)
+                // - still guarantee an Email Note shows up, just built from the email
+                // itself instead of AI-extracted keywords.
+                insertFallbackEmailNote(targetJobId, email);
                 if (getActivity() != null) {
                     requireActivity().runOnUiThread(() ->
-                            Toast.makeText(requireContext(), "Email attached, but AI summary/JD extraction failed: " + error, Toast.LENGTH_LONG).show());
+                            Toast.makeText(requireContext(), "Email attached - AI summary failed (" + error + "), added a basic note instead.", Toast.LENGTH_LONG).show());
                 }
             }
         });
     }
 
-    private void processEmailExtractionResult(long targetJobId, JobCall jobCall, org.json.JSONObject result) {
+    /** Guarantees an Email Note exists even when the AI extraction fails or returns
+     *  no usable keywords - built directly from the email's subject/snippet instead. */
+    private void insertFallbackEmailNote(long targetJobId, EmailMessage email) {
+        if (dbHelper == null || targetJobId <= 0) return;
+        String subject = email.getSubject();
+        String snippet = email.getSnippet();
+        StringBuilder sb = new StringBuilder();
+        if (subject != null && !subject.trim().isEmpty()) sb.append("• ").append(subject.trim());
+        if (snippet != null && !snippet.trim().isEmpty()) {
+            if (sb.length() > 0) sb.append("\n");
+            sb.append("• ").append(snippet.trim());
+        }
+        if (sb.length() == 0) sb.append("• Email attached (no summary available)");
+        dbHelper.insertNote(targetJobId, sb.toString(), System.currentTimeMillis(), DatabaseHelper.NOTE_SOURCE_EMAIL);
+    }
+
+    private void processEmailExtractionResult(long targetJobId, JobCall jobCall, org.json.JSONObject result, EmailMessage email) {
                 if (result == null || getContext() == null) return;
                 String aiComp = result.optString("company_name", "").trim();
                 String aiRole = result.optString("applied_role", "").trim();
@@ -636,8 +657,8 @@ public class MailInboxFragment extends Fragment implements MailInboxAdapter.OnMa
                     dbHelper.updateJobCall(jobCall);
                 }
 
+                StringBuilder sb = new StringBuilder();
                 if (aiPoints != null && aiPoints.length() > 0) {
-                    StringBuilder sb = new StringBuilder();
                     for (int i = 0; i < aiPoints.length(); i++) {
                         String pt = aiPoints.optString(i, "").trim();
                         if (!pt.isEmpty()) {
@@ -645,9 +666,14 @@ public class MailInboxFragment extends Fragment implements MailInboxAdapter.OnMa
                             sb.append("• ").append(pt);
                         }
                     }
-                    if (sb.length() > 0) {
-                        dbHelper.insertNote(targetJobId, sb.toString(), System.currentTimeMillis(), DatabaseHelper.NOTE_SOURCE_EMAIL);
-                    }
+                }
+                if (sb.length() > 0) {
+                    dbHelper.insertNote(targetJobId, sb.toString(), System.currentTimeMillis(), DatabaseHelper.NOTE_SOURCE_EMAIL);
+                } else {
+                    // The AI call succeeded but returned no usable keywords (short/blank
+                    // email, model declined, etc.) - still guarantee an Email Note shows
+                    // up instead of silently having nothing to show.
+                    insertFallbackEmailNote(targetJobId, email);
                 }
                 if (getActivity() != null) {
                     requireActivity().runOnUiThread(() ->
