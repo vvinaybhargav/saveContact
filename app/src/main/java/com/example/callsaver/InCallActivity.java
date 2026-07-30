@@ -565,13 +565,45 @@ public class InCallActivity extends AppCompatActivity {
         if (jobCallId == -1) {
             tvNotesTimeline.setText("• Not saved in Tracker yet.");
         } else {
+            // The latest email-note keywords should show here too, not only once
+            // "Expand" is tapped - otherwise they can get crowded out by whatever
+            // other note happened to be added most recently.
+            CallNote latestEmailNote = null;
+            for (CallNote n : notesList) { // notesList is newest-first
+                if (DatabaseHelper.NOTE_SOURCE_EMAIL.equals(n.source) || (n.note != null && n.note.startsWith("📧"))) {
+                    latestEmailNote = n;
+                    break;
+                }
+            }
+
+            List<String> collapsedLines = new ArrayList<>();
+            if (latestEmailNote != null) {
+                String cleaned = cleanNoteText(latestEmailNote.note);
+                for (String line : cleaned.split("\n")) {
+                    String lineTrimmed = line.trim();
+                    if (!lineTrimmed.isEmpty()) {
+                        if (!lineTrimmed.startsWith("•") && !lineTrimmed.startsWith("-")) {
+                            lineTrimmed = "• " + lineTrimmed;
+                        }
+                        collapsedLines.add(lineTrimmed);
+                    }
+                }
+            }
+            // Fill any remaining slots (up to 3 lines total) with the most recent
+            // other points, in chronological order.
+            int remaining = Math.max(0, 3 - collapsedLines.size());
+            if (remaining > 0) {
+                int total = allCleanedPoints.size();
+                int startIdx = Math.max(0, total - remaining);
+                for (int i = startIdx; i < total; i++) {
+                    collapsedLines.add(allCleanedPoints.get(i));
+                }
+            }
+            // String.join() requires API 26+, but minSdk is 23 - build manually instead.
             StringBuilder collapsedSb = new StringBuilder();
-            int total = allCleanedPoints.size();
-            int pointsToShow = Math.min(total, 3);
-            int startIdx = total - pointsToShow;
-            for (int i = startIdx; i < total; i++) {
+            for (String line : collapsedLines) {
                 if (collapsedSb.length() > 0) collapsedSb.append("\n");
-                collapsedSb.append(allCleanedPoints.get(i));
+                collapsedSb.append(line);
             }
             String collapsedStr = collapsedSb.toString();
             if (collapsedStr.isEmpty()) collapsedStr = "• No previous notes.";
