@@ -44,9 +44,10 @@ jobs:
         path: app/build/outputs/apk/debug/app-debug.apk
         retention-days: 7
 
-    - name: Generate Timestamped APK Name
+    - name: Generate IST Timestamped APK Name
       run: |
-        TIMESTAMP=$(date +'%b%d-%H%M')
+        export TZ='Asia/Kolkata'
+        TIMESTAMP=$(date +'%b%d-%I%M%p-IST')
         cp app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/CallSaver-${TIMESTAMP}.apk
         echo "BUILD_TIMESTAMP=${TIMESTAMP}" >> $GITHUB_ENV
 
@@ -55,8 +56,9 @@ jobs:
       with:
         artifacts: "app/build/outputs/apk/debug/CallSaver-*.apk"
         tag: "latest"
-        name: "CallSaver Build (${{ env.BUILD_TIMESTAMP }})"
-        body: "Latest CallSaver APK Build (${{ env.BUILD_TIMESTAMP }}). Tap the CallSaver-${{ env.BUILD_TIMESTAMP }}.apk file below on your phone to install directly."
+        name: "CallSaver IST Build (${{ env.BUILD_TIMESTAMP }})"
+        body: "Latest CallSaver APK Build (${{ env.BUILD_TIMESTAMP }} IST). Tap the CallSaver-${{ env.BUILD_TIMESTAMP }}.apk file below on your phone to install directly."
         allowUpdates: true
         recreate: true
+        removeArtifacts: true
         token: ${{ secrets.GITHUB_TOKEN }}
