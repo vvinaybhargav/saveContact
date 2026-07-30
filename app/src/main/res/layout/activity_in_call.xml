@@ -235,6 +235,9 @@
                         android:text="First call - -  |  Recent call - NA"
                         android:textColor="#C7C7CC"
                         android:textSize="12sp" />
+                </LinearLayout>
+            </LinearLayout>
+
             <!-- Attached Emails glass card -->
             <LinearLayout
                 android:id="@+id/ll_overlay_attached_emails_card"
