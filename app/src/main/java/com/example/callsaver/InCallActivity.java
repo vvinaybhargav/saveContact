@@ -203,10 +203,10 @@ public class InCallActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
-        // Review-mode screens (Tracker/Upcoming/"+"/post-call notification) have no live
-        // call to return to - make sure back always actually leaves instead of getting
-        // stuck, same as the Cancel button.
-        if (reviewMode) {
+        if (!reviewMode && CallSaverInCallService.getActiveCall() != null) {
+            moveTaskToBack(true);
+            Toast.makeText(this, "Call running in background. Tap notification to return.", Toast.LENGTH_SHORT).show();
+        } else if (reviewMode) {
             finish();
         } else {
             super.onBackPressed();
@@ -1318,16 +1318,6 @@ public class InCallActivity extends AppCompatActivity {
             case 2: return "nd";
             case 3: return "rd";
             default: return "th";
-        }
-    }
-
-    @Override
-    public void onBackPressed() {
-        if (!reviewMode && CallSaverInCallService.getActiveCall() != null) {
-            moveTaskToBack(true);
-            Toast.makeText(this, "Call running in background. Tap notification to return.", Toast.LENGTH_SHORT).show();
-        } else {
-            super.onBackPressed();
         }
     }
 }
