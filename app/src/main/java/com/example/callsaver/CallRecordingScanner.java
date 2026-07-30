@@ -1,0 +1,51 @@
+package com.example.callsaver;
+
+import android.content.Context;
+import android.os.Environment;
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+public class CallRecordingScanner {
+
+    public static File findLatestCallRecording(Context context) {
+        List<File> candidateFiles = new ArrayList<>();
+        long maxAgeMs = System.currentTimeMillis() - (15 * 60 * 1000); // Created in last 15 minutes
+
+        String[] searchPaths = new String[]{
+                Environment.getExternalStorageDirectory() + "/Recordings/Call",
+                Environment.getExternalStorageDirectory() + "/CallRecordings",
+                Environment.getExternalStorageDirectory() + "/Call Record",
+                Environment.getExternalStorageDirectory() + "/Sounds/Call",
+                Environment.getExternalStorageDirectory() + "/Music/Recordings",
+                Environment.getExternalStorageDirectory() + "/MIUI/sound_recorder/call_rec",
+                Environment.getExternalStorageDirectory() + "/VoiceRecorder"
+        };
+
+        for (String path : searchPaths) {
+            try {
+                File dir = new File(path);
+                if (dir.exists() && dir.isDirectory()) {
+                    File[] files = dir.listFiles();
+                    if (files != null) {
+                        for (File f : files) {
+                            if (f.isFile() && f.lastModified() >= maxAgeMs) {
+                                String name = f.getName().toLowerCase();
+                                if (name.endsWith(".m4a") || name.endsWith(".mp3") || name.endsWith(".wav") || name.endsWith(".3gp") || name.endsWith(".aac") || name.endsWith(".amr")) {
+                                    candidateFiles.add(f);
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
+
+        if (candidateFiles.isEmpty()) return null;
+
+        // Sort by newest first
+        Collections.sort(candidateFiles, (f1, f2) -> Long.compare(f2.lastModified(), f1.lastModified()));
+        return candidateFiles.get(0);
+    }
+}

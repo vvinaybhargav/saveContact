@@ -336,11 +336,57 @@ public class CallReceiver extends BroadcastReceiver {
             db.insertCallHistory(call.getId(), typeLabel, entry.duration, entry.date + entry.duration * 1000L);
         }
 
-        // The post-call "log details" prompt is now a notification posted by
-        // CallSaverInCallService.onCallRemoved (tapping it opens the same capture
-        // form in review mode). CallReceiver only records the call-history entry
-        // above; it no longer launches a separate SaveContactActivity popup, which
-        // would double-prompt alongside that notification.
+        // Auto-detect newly created call recording file & transcribe
+        if (entry.duration > 0) {
+            java.io.File recordingFile = CallRecordingScanner.findLatestCallRecording(context);
+            if (recordingFile != null) {
+                DebugLogger.log(context, "[Receiver] Found call recording file: " + recordingFile.getName() + ". Transcribing...");
+                final long targetJobId = call != null ? call.getId() : -1;
+                OpenAiClient.transcribeAudioFile(context, recordingFile, new OpenAiClient.OpenAiCallback() {
+                    @Override
+                    public void onSuccess(org.json.JSONObject result) {
+                        if (result == null) return;
+                        String comp = result.optString("company_name", "").trim();
+                        String role = result.optString("applied_role", "").trim();
+                        String rec = result.optString("recruiter_name", "").trim();
+                        org.json.JSONArray points = result.optJSONArray("key_discussion_points");
+
+                        JobCall targetCall = targetJobId != -1 ? db.getJobCallById(targetJobId) : null;
+                        if (targetCall == null) {
+                            targetCall = new JobCall();
+                            targetCall.setPhoneNumber(entry.number);
+                            targetCall.setTimestamp(System.currentTimeMillis());
+                            targetCall.setRoundStatus("Lead");
+                            if (!comp.isEmpty() && !"null".equalsIgnoreCase(comp)) targetCall.setCompanyName(comp);
+                            if (!role.isEmpty() && !"null".equalsIgnoreCase(role)) targetCall.setAppliedRole(role);
+                            if (!rec.isEmpty() && !"null".equalsIgnoreCase(rec)) targetCall.setRecruiterName(rec);
+                            long newId = db.insertJobCall(targetCall);
+                            db.linkPhoneToJob(newId, entry.number, rec);
+                            targetCall.setId(newId);
+                        } else {
+                            if (!comp.isEmpty() && !"null".equalsIgnoreCase(comp) && (targetCall.getCompanyName() == null || targetCall.getCompanyName().isEmpty())) targetCall.setCompanyName(comp);
+                            if (!role.isEmpty() && !"null".equalsIgnoreCase(role) && (targetCall.getAppliedRole() == null || targetCall.getAppliedRole().isEmpty())) targetCall.setAppliedRole(role);
+                            if (!rec.isEmpty() && !"null".equalsIgnoreCase(rec) && (targetCall.getRecruiterName() == null || targetCall.getRecruiterName().isEmpty())) targetCall.setRecruiterName(rec);
+                            db.updateJobCall(targetCall);
+                        }
+
+                        if (points != null && points.length() > 0) {
+                            StringBuilder sb = new StringBuilder();
+                            for (int i = 0; i < points.length(); i++) {
+                                String pt = points.optString(i, "").trim();
+                                if (!pt.isEmpty()) {
+                                    if (sb.length() > 0) sb.append("\n");
+                                    sb.append("• ").append(pt);
+                                }
+                            }
+                            if (sb.length() > 0) {
+                                db.insertNote(targetCall.getId(), sb.toString(), System.currentTimeMillis(), DatabaseHelper.NOTE_SOURCE_CALL);
+                            }
+                        }
+                    }
+                });
+            }
+        }
     }
     
     private static class CallLogEntry {

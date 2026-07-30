@@ -239,6 +239,71 @@ public class OpenAiClient {
         extractFields(context, fullEmail, callback);
     }
 
+    public static void transcribeAudioFile(Context context, java.io.File audioFile, OpenAiCallback callback) {
+        String apiKey = getApiKey(context);
+        if (apiKey.isEmpty()) {
+            if (callback != null) callback.onError("OpenAI API key missing");
+            return;
+        }
+
+        new Thread(() -> {
+            try {
+                String boundary = "---Boundary" + System.currentTimeMillis();
+                java.net.URL url = new java.net.URL("https://api.openai.com/v1/audio/transcriptions");
+                java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("POST");
+                conn.setDoOutput(true);
+                conn.setRequestProperty("Authorization", "Bearer " + apiKey);
+                conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
+
+                java.io.OutputStream os = conn.getOutputStream();
+                java.io.PrintWriter writer = new java.io.PrintWriter(new java.io.OutputStreamWriter(os, "UTF-8"), true);
+
+                writer.append("--").append(boundary).append("\r\n");
+                writer.append("Content-Disposition: form-data; name=\"model\"\r\n\r\n");
+                writer.append("whisper-1\r\n");
+                writer.flush();
+
+                writer.append("--").append(boundary).append("\r\n");
+                writer.append("Content-Disposition: form-data; name=\"file\"; filename=\"").append(audioFile.getName()).append("\"\r\n");
+                writer.append("Content-Type: audio/m4a\r\n\r\n");
+                writer.flush();
+
+                java.io.FileInputStream fis = new java.io.FileInputStream(audioFile);
+                byte[] buffer = new byte[4096];
+                int bytesRead;
+                while ((bytesRead = fis.read(buffer)) != -1) {
+                    os.write(buffer, 0, bytesRead);
+                }
+                os.flush();
+                fis.close();
+
+                writer.append("\r\n").append("--").append(boundary).append("--\r\n");
+                writer.flush();
+                writer.close();
+
+                int code = conn.getResponseCode();
+                if (code == 200) {
+                    java.io.BufferedReader in = new java.io.BufferedReader(new java.io.InputStreamReader(conn.getInputStream()));
+                    StringBuilder response = new StringBuilder();
+                    String line;
+                    while ((line = in.readLine()) != null) {
+                        response.append(line);
+                    }
+                    in.close();
+                    org.json.JSONObject resJson = new org.json.JSONObject(response.toString());
+                    String transcriptText = resJson.optString("text", "");
+
+                    extractFields(context, "Call Audio Transcript:\n" + transcriptText, callback);
+                } else {
+                    if (callback != null) callback.onError("Whisper API returned HTTP " + code);
+                }
+            } catch (Exception e) {
+                if (callback != null) callback.onError("Audio transcription error: " + e.getMessage());
+            }
+        }).start();
+    }
+
     private static int roundRank(String status) {
         if (status == null) return 1;
         switch (status) {
