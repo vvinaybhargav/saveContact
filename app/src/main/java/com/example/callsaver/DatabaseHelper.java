@@ -1054,8 +1054,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         v.put(COLUMN_EMAIL_SUBJECT, subject);
         v.put(COLUMN_EMAIL_SNIPPET, snippet);
         v.put(COLUMN_EMAIL_BODY, body);
-        v.put(COLUMN_EMAIL_TIMESTAMP, timestamp);
-        // Email is saved to TABLE_EMAILS. AI extraction will insert clean keyword-only notes into TABLE_NOTES.
+        long id = db.insert(TABLE_EMAILS, null, v);
+        db.close();
 
         if (context != null && (body != null || snippet != null)) {
             String textToParse = "Email Subject: " + (subject != null ? subject : "") + "\nEmail Body:\n" + (body != null && !body.isEmpty() ? body : snippet);
