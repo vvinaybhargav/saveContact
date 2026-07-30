@@ -580,82 +580,25 @@ public class InCallActivity extends AppCompatActivity {
 
         if (llExpandedList != null && !notesList.isEmpty()) {
             llExpandedList.removeAllViews();
-            List<CallNote> chronologicalNotes = new ArrayList<>(notesList);
-            Collections.reverse(chronologicalNotes);
 
-            int callCounter = 1;
-            for (CallNote note : chronologicalNotes) {
-                String noteClean = cleanNoteText(note.note);
-                if (noteClean.trim().isEmpty()) {
-                    noteClean = note.note == null ? "" : note.note;
+            List<CallNote> callNotes = new ArrayList<>();
+            List<CallNote> emailNotes = new ArrayList<>();
+            List<CallNote> manualNotes = new ArrayList<>();
+
+            for (CallNote n : notesList) {
+                if (DatabaseHelper.NOTE_SOURCE_EMAIL.equals(n.source) || (n.note != null && n.note.startsWith("📧"))) {
+                    emailNotes.add(n);
+                } else if (DatabaseHelper.NOTE_SOURCE_MANUAL.equals(n.source) || n.isManual()) {
+                    manualNotes.add(n);
+                } else {
+                    callNotes.add(n);
                 }
-                if (noteClean.trim().isEmpty()) continue;
-
-                android.widget.LinearLayout titleRow = new android.widget.LinearLayout(this);
-                titleRow.setOrientation(android.widget.LinearLayout.HORIZONTAL);
-                titleRow.setGravity(android.view.Gravity.CENTER_VERTICAL);
-                titleRow.setPadding(0, callCounter == 1 ? 0 : 12, 0, 4);
-
-                TextView titleTv = new TextView(this);
-                titleTv.setText(callCounter + getOrdinalSuffix(callCounter) + (note.isManual() ? " MCall" : " Call"));
-                titleTv.setTextColor(0xFF9A9AA2);
-                titleTv.setTextSize(12);
-                titleTv.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
-                titleTv.setLayoutParams(new android.widget.LinearLayout.LayoutParams(
-                        0, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
-
-                TextView deleteTv = new TextView(this);
-                deleteTv.setText("Delete");
-                deleteTv.setTextColor(0xFFFB7185);
-                deleteTv.setTextSize(11);
-                deleteTv.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
-                deleteTv.setPadding(16, 4, 4, 4);
-                deleteTv.setClickable(true);
-                deleteTv.setFocusable(true);
-                final long noteId = note.id;
-                deleteTv.setOnClickListener(v -> {
-                    new androidx.appcompat.app.AlertDialog.Builder(this)
-                            .setTitle("Delete this note?")
-                            .setMessage("This can't be undone.")
-                            .setPositiveButton("Delete", (d, w) -> {
-                                new DatabaseHelper(this).deleteNote(noteId, jobCallId);
-                                // The note-input box still holds whatever was last typed
-                                // there (it's separate from the history list) - clear it
-                                // and the auto-save tracker too, otherwise the very next
-                                // auto-save (e.g. when this screen closes) would silently
-                                // re-insert the same text and "undo" the delete.
-                                if (etOverlayNoteInput != null) etOverlayNoteInput.setText("");
-                                lastAutoSavedNoteText = "";
-                                bindNotesAndSkills();
-                            })
-                            .setNegativeButton("Cancel", null)
-                            .show();
-                });
-
-                titleRow.addView(titleTv);
-                titleRow.addView(deleteTv);
-
-                TextView pointsTv = new TextView(this);
-                StringBuilder pointsSb = new StringBuilder();
-                for (String line : noteClean.split("\n")) {
-                    String trimmedLine = line.trim();
-                    if (!trimmedLine.isEmpty()) {
-                        if (!trimmedLine.startsWith("•") && !trimmedLine.startsWith("-")) {
-                            trimmedLine = "• " + trimmedLine;
-                        }
-                        if (pointsSb.length() > 0) pointsSb.append("\n");
-                        pointsSb.append(trimmedLine);
-                    }
-                }
-                pointsTv.setText(pointsSb.toString());
-                pointsTv.setTextColor(0xFFD1D5DB);
-                pointsTv.setTextSize(13);
-                pointsTv.setLineSpacing(0f, 1.2f);
-
-                llExpandedList.addView(titleRow);
-                llExpandedList.addView(pointsTv);
-                callCounter++;
             }
+
+            // Render 3 separate sections for Call, Email, and Manual notes
+            renderNoteSection("📞 Call Notes", callNotes, llExpandedList);
+            renderNoteSection("📧 Email Notes", emailNotes, llExpandedList);
+            renderNoteSection("📝 Manual Notes", manualNotes, llExpandedList);
         }
 
         boolean hasRecentCallData = false;
@@ -769,6 +712,104 @@ public class InCallActivity extends AppCompatActivity {
         }
         if (chipJd != null && cardJd != null && scrollView != null) {
             chipJd.setOnClickListener(v -> scrollView.smoothScrollTo(0, cardJd.getTop()));
+        }
+    }
+
+    private void renderNoteSection(String title, List<CallNote> notes, android.widget.LinearLayout parent) {
+        if (notes == null || notes.isEmpty() || parent == null) return;
+
+        TextView headerTv = new TextView(this);
+        headerTv.setText(title);
+        headerTv.setTextColor(0xFF818CF8);
+        headerTv.setTextSize(13);
+        headerTv.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        headerTv.setPadding(0, 16, 0, 8);
+        parent.addView(headerTv);
+
+        for (CallNote note : notes) {
+            String noteClean = cleanNoteText(note.note);
+            if (noteClean.trim().isEmpty()) {
+                noteClean = note.note == null ? "" : note.note;
+            }
+            if (noteClean.trim().isEmpty()) continue;
+
+            android.widget.LinearLayout itemContainer = new android.widget.LinearLayout(this);
+            itemContainer.setOrientation(android.widget.LinearLayout.VERTICAL);
+            itemContainer.setPadding(24, 16, 24, 16);
+
+            android.widget.LinearLayout.LayoutParams params = new android.widget.LinearLayout.LayoutParams(
+                    android.widget.LinearLayout.LayoutParams.MATCH_PARENT, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT);
+            params.setMargins(0, 0, 0, 16);
+            itemContainer.setLayoutParams(params);
+
+            android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
+            bg.setColor(0x221E1B4B);
+            float density = getResources().getDisplayMetrics().density;
+            bg.setCornerRadius(10 * density);
+            bg.setStroke((int) (1 * density), 0x336366F1);
+            itemContainer.setBackground(bg);
+
+            android.widget.LinearLayout titleRow = new android.widget.LinearLayout(this);
+            titleRow.setOrientation(android.widget.LinearLayout.HORIZONTAL);
+            titleRow.setGravity(android.view.Gravity.CENTER_VERTICAL);
+            titleRow.setPadding(0, 0, 0, 6);
+
+            java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault());
+            String timeStr = sdf.format(new java.util.Date(note.timestamp));
+
+            TextView timeTv = new TextView(this);
+            timeTv.setText(timeStr);
+            timeTv.setTextColor(0xFF9CA3AF);
+            timeTv.setTextSize(11);
+            timeTv.setLayoutParams(new android.widget.LinearLayout.LayoutParams(0, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+
+            TextView deleteTv = new TextView(this);
+            deleteTv.setText("🗑️ Delete");
+            deleteTv.setTextColor(0xFFFB7185);
+            deleteTv.setTextSize(12);
+            deleteTv.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+            deleteTv.setPadding(12, 4, 4, 4);
+            deleteTv.setClickable(true);
+            deleteTv.setFocusable(true);
+            final long noteId = note.id;
+            deleteTv.setOnClickListener(v -> {
+                new androidx.appcompat.app.AlertDialog.Builder(this)
+                        .setTitle("Delete this note?")
+                        .setMessage("This note will be permanently removed.")
+                        .setPositiveButton("Delete", (d, w) -> {
+                            new DatabaseHelper(this).deleteNote(noteId, jobCallId);
+                            if (etOverlayNoteInput != null) etOverlayNoteInput.setText("");
+                            lastAutoSavedNoteText = "";
+                            bindNotesAndSkills();
+                            Toast.makeText(this, "Note deleted", Toast.LENGTH_SHORT).show();
+                        })
+                        .setNegativeButton("Cancel", null)
+                        .show();
+            });
+
+            titleRow.addView(timeTv);
+            titleRow.addView(deleteTv);
+
+            TextView pointsTv = new TextView(this);
+            StringBuilder pointsSb = new StringBuilder();
+            for (String line : noteClean.split("\n")) {
+                String trimmedLine = line.trim();
+                if (!trimmedLine.isEmpty()) {
+                    if (!trimmedLine.startsWith("•") && !trimmedLine.startsWith("-")) {
+                        trimmedLine = "• " + trimmedLine;
+                    }
+                    if (pointsSb.length() > 0) pointsSb.append("\n");
+                    pointsSb.append(trimmedLine);
+                }
+            }
+            pointsTv.setText(pointsSb.toString());
+            pointsTv.setTextColor(0xFFF3F4F6);
+            pointsTv.setTextSize(13);
+            pointsTv.setLineSpacing(0f, 1.2f);
+
+            itemContainer.addView(titleRow);
+            itemContainer.addView(pointsTv);
+            parent.addView(itemContainer);
         }
     }
 
