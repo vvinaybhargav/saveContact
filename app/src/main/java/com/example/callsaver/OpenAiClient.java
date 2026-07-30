@@ -64,7 +64,9 @@ public class OpenAiClient {
             systemMsg.put("role", "system");
             systemMsg.put("content", "You are an expert recruitment assistant tool built into a call logging app. Your job is to parse conversational call transcripts or notes (representing a recruiter and candidate's discussion) and extract clean, professional hiring data.\n" +
                     "\n" +
-                     "For \"key_discussion_points\", rewrite the discussion between the recruiter and candidate of what went on (what was discussed, what went okay, schedule details, etc.) in clean, simple English. DO NOT shorten or truncate them excessively; write a descriptive narrative/bullet points showing the discussion flow. This must always be populated with at least one descriptive item rewriting the input conversation/note text in simple English.\n" +
+                     "For \"key_discussion_points\", rewrite the discussion between the recruiter and candidate of what went on (what was discussed, what went okay, schedule details, etc.) in clean, simple English. DO NOT put Job Description (JD) text, job requirements, or company overview background ('About the company') inside key_discussion_points — those belong strictly in job_description.\n" +
+                    "\n" +
+                    "\"job_description\": string or null — Extract the clean Job Description text (role requirements, duties, job specs, or company intro) if present in the input text; otherwise null.\n" +
                     "\n" +
                     "\"recruiter_name\" must be the OTHER person on the call (the recruiter/interviewer), never the candidate. If a speaker says 'this is <name> speaking' and that is clearly the candidate introducing themselves, do not use that as recruiter_name.\n" +
                     "\n" +
@@ -98,6 +100,7 @@ public class OpenAiClient {
                     "  \"company_name\": string or null,\n" +
                     "  \"recruiter_name\": string or null,\n" +
                     "  \"applied_role\": string or null,\n" +
+                    "  \"job_description\": string or null,\n" +
                     "  \"present_round\": string (one of the exact values listed above),\n" +
                     "  \"sentiment_comment\": string or null,\n" +
                     "  \"tentative_schedule\": string or null (Resolve relative schedules like 'tomorrow', 'next Monday', or 'day after' to an absolute date format relative to today: [Current Date: " + currentDateStr + "]. For example, if it says 'tomorrow at 3 PM', output '2026-07-12 at 03:00 PM'),\n" +

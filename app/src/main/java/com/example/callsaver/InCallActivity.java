@@ -731,6 +731,18 @@ public class InCallActivity extends AppCompatActivity {
             }
         }
 
+        View cardJd = findViewById(R.id.ll_overlay_jd_card);
+        TextView tvJdText = findViewById(R.id.tv_overlay_jd_text);
+        if (cardJd != null && tvJdText != null && jobCallId != -1) {
+            JobCall call = dbHelper.getJobCallById(jobCallId);
+            if (call != null && !call.getJdText().trim().isEmpty()) {
+                cardJd.setVisibility(View.VISIBLE);
+                tvJdText.setText(call.getJdText());
+            } else {
+                cardJd.setVisibility(View.GONE);
+            }
+        }
+
         bindNoteEditor(tvNotesTimeline, tvCallerStatusRef());
     }
 

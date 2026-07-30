@@ -329,6 +329,7 @@ public class MailInboxActivity extends AppCompatActivity implements MailInboxAda
                 String aiComp = result.optString("company_name", "").trim();
                 String aiRole = result.optString("applied_role", "").trim();
                 String aiRec = result.optString("recruiter_name", "").trim();
+                String aiJd = result.optString("job_description", "").trim();
                 org.json.JSONArray aiPoints = result.optJSONArray("key_discussion_points");
 
                 boolean updated = false;
@@ -342,6 +343,10 @@ public class MailInboxActivity extends AppCompatActivity implements MailInboxAda
                 }
                 if (!aiRec.isEmpty() && !"null".equalsIgnoreCase(aiRec) && (jobCall.getRecruiterName() == null || jobCall.getRecruiterName().isEmpty())) {
                     jobCall.setRecruiterName(aiRec);
+                    updated = true;
+                }
+                if (!aiJd.isEmpty() && !"null".equalsIgnoreCase(aiJd)) {
+                    jobCall.setJdText(aiJd);
                     updated = true;
                 }
 

@@ -24,6 +24,7 @@ public class JobCall {
     private String notMatchingSkills = "";
     private String jdLink = "";
     private String jdImagePath = "";
+    private String jdText = "";
     private String interestRating = "";
     private String expectedCtc = "";
     private String workMode = "";
@@ -267,5 +268,13 @@ public class JobCall {
 
     public void setEmploymentType(String employmentType) {
         this.employmentType = clean(employmentType);
+    }
+
+    public String getJdText() {
+        return jdText != null ? jdText : "";
+    }
+
+    public void setJdText(String jdText) {
+        this.jdText = clean(jdText);
     }
 }

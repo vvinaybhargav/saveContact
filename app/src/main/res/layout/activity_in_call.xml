@@ -266,6 +266,38 @@
                     android:orientation="vertical" />
             </LinearLayout>
 
+            <!-- Dedicated Job Description (JD) glass card -->
+            <LinearLayout
+                android:id="@+id/ll_overlay_jd_card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/bg_glass_card"
+                android:padding="16dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="📄 JOB DESCRIPTION (JD)"
+                    android:textColor="#ABABB0"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.08"
+                    android:layout_marginBottom="8dp" />
+
+                <TextView
+                    android:id="@+id/tv_overlay_jd_text"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text=""
+                    android:textColor="#EDEDED"
+                    android:textSize="13sp"
+                    android:lineSpacingMultiplier="1.25"
+                    android:textIsSelectable="true" />
+            </LinearLayout>
+
             <!-- Skills Match glass card -->
             <LinearLayout
                 android:id="@+id/ll_overlay_skills_match_container"

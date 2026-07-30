@@ -13,7 +13,7 @@ import java.util.List;
 public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "JobTracker.db";
-    private static final int DATABASE_VERSION = 14; // V14: add job_emails table for Gmail integration
+    private static final int DATABASE_VERSION = 15; // V15: add jd_text column for dedicated Job Description section
 
     public static final String TABLE_NAME = "job_calls";
     public static final String COLUMN_ID = "id";
@@ -42,6 +42,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     // V11 columns
     public static final String COLUMN_JD_LINK = "jd_link";
     public static final String COLUMN_JD_IMAGE_PATH = "jd_image_path";
+    public static final String COLUMN_JD_TEXT = "jd_text";
 
     // V12 columns
     public static final String COLUMN_INTEREST_RATING = "interest_rating";
@@ -118,7 +119,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 + COLUMN_INTEREST_RATING + " TEXT,"
                 + COLUMN_EXPECTED_CTC + " TEXT,"
                 + COLUMN_WORK_MODE + " TEXT,"
-                + COLUMN_EMPLOYMENT_TYPE + " TEXT"
+                + COLUMN_EMPLOYMENT_TYPE + " TEXT,"
+                + COLUMN_JD_TEXT + " TEXT"
                 + ")";
         db.execSQL(CREATE_TABLE);
         db.execSQL(createNotesTableSql());
@@ -187,6 +189,12 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         }
         if (oldVersion < 14) {
             db.execSQL(createEmailsTableSql());
+        }
+        if (oldVersion < 15) {
+            try {
+                db.execSQL("ALTER TABLE " + TABLE_NAME + " ADD COLUMN " + COLUMN_JD_TEXT + " TEXT");
+            } catch (Exception ignored) {
+            }
         }
     }
 
@@ -307,6 +315,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         values.put(COLUMN_EXPECTED_CTC, jobCall.getExpectedCtc());
         values.put(COLUMN_WORK_MODE, jobCall.getWorkMode());
         values.put(COLUMN_EMPLOYMENT_TYPE, jobCall.getEmploymentType());
+        values.put(COLUMN_JD_TEXT, jobCall.getJdText());
 
         long id = db.insert(TABLE_NAME, null, values);
         if (id != -1) {
@@ -357,6 +366,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 call.setExpectedCtc(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_EXPECTED_CTC)));
                 call.setWorkMode(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_WORK_MODE)));
                 call.setEmploymentType(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_EMPLOYMENT_TYPE)));
+                int jdTextCol = cursor.getColumnIndex(COLUMN_JD_TEXT);
+                if (jdTextCol >= 0) {
+                    call.setJdText(cursor.getString(jdTextCol));
+                }
                 call.setRecruiterName(getRecruiterNameForJob(call.getId()));
                 callsList.add(call);
             } while (cursor.moveToNext());
@@ -411,6 +424,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 call.setExpectedCtc(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_EXPECTED_CTC)));
                 call.setWorkMode(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_WORK_MODE)));
                 call.setEmploymentType(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_EMPLOYMENT_TYPE)));
+                int jdCol = cursor.getColumnIndex(COLUMN_JD_TEXT);
+                if (jdCol >= 0) {
+                    call.setJdText(cursor.getString(jdCol));
+                }
                 call.setRecruiterName(getRecruiterNameForJob(call.getId()));
                 callsList.add(call);
             } while (cursor.moveToNext());
@@ -493,6 +510,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         values.put(COLUMN_EXPECTED_CTC, jobCall.getExpectedCtc());
         values.put(COLUMN_WORK_MODE, jobCall.getWorkMode());
         values.put(COLUMN_EMPLOYMENT_TYPE, jobCall.getEmploymentType());
+        values.put(COLUMN_JD_TEXT, jobCall.getJdText());
 
         int count = db.update(TABLE_NAME, values, COLUMN_ID + " = ?",
                 new String[]{String.valueOf(jobCall.getId())});
