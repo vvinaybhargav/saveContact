@@ -64,7 +64,7 @@ public class OpenAiClient {
             systemMsg.put("role", "system");
             systemMsg.put("content", "You are an expert recruitment assistant tool built into a call logging app. Your job is to parse conversational call transcripts or notes (representing a recruiter and candidate's discussion) and extract clean, professional hiring data.\n" +
                     "\n" +
-                     "For \"key_discussion_points\", rewrite the discussion between the recruiter and candidate of what went on (what was discussed, what went okay, schedule details, etc.) in clean, simple English. DO NOT put Job Description (JD) text, job requirements, or company overview background ('About the company') inside key_discussion_points — those belong strictly in job_description.\n" +
+                     "For \"key_discussion_points\", do NOT write long conversational sentences or paragraphs. Output ONLY short, crisp keywords and key facts (e.g., 'Data Engineer', '18 LPA', 'Hybrid - Bangalore', 'Shortlisted for L1', 'Interview slots requested'). Keep each point to 2–5 words maximum. DO NOT put Job Description (JD) text or company overview inside key_discussion_points — those belong strictly in job_description.\n" +
                     "\n" +
                     "\"job_description\": string or null — Extract the clean Job Description text (role requirements, duties, job specs, or company intro) if present in the input text; otherwise null.\n" +
                     "\n" +
