@@ -234,9 +234,119 @@ public class OpenAiClient {
         return roundRank(incoming) > roundRank(existing);
     }
 
+    /**
+     * Dedicated email extractor - NOT a thin wrapper around extractFields(), because
+     * that method's system prompt is framed entirely around "analyze this call
+     * transcript" and produces conversational key_discussion_points suited to a call,
+     * not a keyword-only summary of an email. Reusing it on raw email text tended to
+     * paste large chunks of the email body back out instead of short keywords.
+     */
     public static void extractFieldsFromEmail(Context context, String subject, String bodyText, OpenAiCallback callback) {
-        String fullEmail = "Email Subject: " + (subject != null ? subject : "") + "\n\nEmail Body:\n" + (bodyText != null ? bodyText : "");
-        extractFields(context, fullEmail, callback);
+        String apiKey = context.getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE)
+                .getString("openai_api_key", "").trim();
+
+        if (apiKey.isEmpty()) {
+            callback.onError("OpenAI API Key is missing. Please save your OpenAI API Key first.");
+            return;
+        }
+
+        String fullEmail = "Email Subject: " + (subject != null ? subject : "")
+                + "\n\nEmail Body:\n" + (bodyText != null ? bodyText : "");
+        if (fullEmail.trim().isEmpty()) {
+            callback.onError("Email is empty - nothing to analyze.");
+            return;
+        }
+
+        Handler mainHandler = new Handler(Looper.getMainLooper());
+
+        try {
+            JSONObject jsonBody = new JSONObject();
+            jsonBody.put("model", "gpt-4o-mini");
+
+            JSONObject responseFormat = new JSONObject();
+            responseFormat.put("type", "json_object");
+            jsonBody.put("response_format", responseFormat);
+
+            JSONArray messages = new JSONArray();
+
+            JSONObject systemMsg = new JSONObject();
+            systemMsg.put("role", "system");
+            systemMsg.put("content", "You are parsing a recruiter's EMAIL (not a call transcript) for a job-tracking app. " +
+                    "\"key_discussion_points\" is a NOTE, not a copy of the email - it must be ONLY short keyword-style " +
+                    "facts, 2-5 words each (e.g. 'GCP Data Engineer role', '18 LPA', 'Hybrid - Bangalore', 'Interview on Friday', " +
+                    "'Offer extended'). Never paste, quote, summarize in full sentences, or restate paragraphs from the email body - " +
+                    "extract only the concrete facts (role, CTC, location/work mode, interview round/status, dates, next steps). " +
+                    "The full Job Description text (responsibilities, requirements, company blurb) goes ONLY in \"job_description\", " +
+                    "never in key_discussion_points.\n\n" +
+                    "Return a strict JSON object with exactly these keys:\n" +
+                    "{\n" +
+                    "  \"company_name\": string or null,\n" +
+                    "  \"applied_role\": string or null,\n" +
+                    "  \"recruiter_name\": string or null (the sender, if it's a person's name, not the candidate),\n" +
+                    "  \"job_description\": string or null (the full JD text if present in the email, else null),\n" +
+                    "  \"key_discussion_points\": [string] (short keyword facts only, as described above)\n" +
+                    "}");
+            messages.put(systemMsg);
+
+            JSONObject userMsg = new JSONObject();
+            userMsg.put("role", "user");
+            userMsg.put("content", fullEmail);
+            messages.put(userMsg);
+
+            jsonBody.put("messages", messages);
+
+            RequestBody body = RequestBody.create(jsonBody.toString(), MediaType.parse("application/json; charset=utf-8"));
+
+            Request request = new Request.Builder()
+                    .url("https://api.openai.com/v1/chat/completions")
+                    .header("Authorization", "Bearer " + apiKey)
+                    .header("Content-Type", "application/json")
+                    .post(body)
+                    .build();
+
+            client.newCall(request).enqueue(new Callback() {
+                @Override
+                public void onFailure(Call call, IOException e) {
+                    mainHandler.post(() -> callback.onError("Network error: " + e.getMessage()));
+                }
+
+                @Override
+                public void onResponse(Call call, Response response) throws IOException {
+                    try {
+                        String responseBody = response.body() != null ? response.body().string() : "";
+                        if (!response.isSuccessful()) {
+                            String errMsg = "";
+                            try {
+                                JSONObject errorObj = new JSONObject(responseBody).getJSONObject("error");
+                                errMsg = errorObj.optString("message", "");
+                            } catch (Exception ignore) {}
+                            if (errMsg.isEmpty()) {
+                                errMsg = responseBody.length() > 180 ? responseBody.substring(0, 180) : responseBody;
+                            }
+                            final String finalErr = "OpenAI HTTP " + response.code()
+                                    + (errMsg.isEmpty() ? "" : ": " + errMsg);
+                            mainHandler.post(() -> callback.onError(finalErr));
+                            return;
+                        }
+
+                        JSONObject json = new JSONObject(responseBody);
+                        String content = json.getJSONArray("choices")
+                                .getJSONObject(0)
+                                .getJSONObject("message")
+                                .getString("content");
+
+                        final JSONObject parsedResult = new JSONObject(content.trim());
+                        mainHandler.post(() -> callback.onSuccess(parsedResult));
+
+                    } catch (Exception e) {
+                        mainHandler.post(() -> callback.onError("Failed to parse OpenAI response: " + e.getMessage()));
+                    }
+                }
+            });
+
+        } catch (Exception e) {
+            callback.onError("Failed to build request body: " + e.getMessage());
+        }
     }
 
     public static void transcribeAudioFile(Context context, java.io.File audioFile, OpenAiCallback callback) {
