@@ -807,6 +807,34 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
     }
 
     @Override
+    public void onViewEmailsClick(JobCall call) {
+        if (getContext() == null || call.getId() <= 0 || dbHelper == null) return;
+        List<EmailMessage> emails = dbHelper.getEmailsForJob(call.getId());
+        if (emails == null || emails.isEmpty()) {
+            Toast.makeText(requireContext(), "No emails attached to this log yet.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (emails.size() == 1) {
+            showEmailDetailDialog(emails.get(0));
+        } else {
+            String[] items = new String[emails.size()];
+            for (int i = 0; i < emails.size(); i++) {
+                EmailMessage em = emails.get(i);
+                items[i] = "📧 " + (em.getSubject().isEmpty() ? "(No Subject)" : em.getSubject()) + "\nFrom: " + em.getSender();
+            }
+
+            new AlertDialog.Builder(requireContext())
+                    .setTitle("📧 Attached Emails (" + emails.size() + ")")
+                    .setItems(items, (dialog, which) -> {
+                        showEmailDetailDialog(emails.get(which));
+                    })
+                    .setNegativeButton("Close", null)
+                    .show();
+        }
+    }
+
+    @Override
     public void onFollowUpClick(JobCall call) {
         if (getContext() == null) return;
         

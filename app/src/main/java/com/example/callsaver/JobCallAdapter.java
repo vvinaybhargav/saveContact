@@ -28,6 +28,7 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
     public interface OnItemClickListener {
         void onItemClick(JobCall jobCall);
         void onFollowUpClick(JobCall jobCall);
+        void onViewEmailsClick(JobCall jobCall);
     }
 
     public JobCallAdapter(Context context, List<JobCall> callList, OnItemClickListener listener) {
@@ -142,6 +143,29 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
         holder.btnActionCall.setOnClickListener(v -> {
             callDirectly(call.getPhoneNumber());
         });
+
+        // Attached Emails Action
+        if (holder.btnActionEmails != null) {
+            if (call.getId() > 0) {
+                DatabaseHelper db = new DatabaseHelper(context);
+                List<EmailMessage> emails = db.getEmailsForJob(call.getId());
+                if (emails != null && !emails.isEmpty()) {
+                    holder.btnActionEmails.setVisibility(View.VISIBLE);
+                    if (holder.tvEmailBadgeCount != null) {
+                        holder.tvEmailBadgeCount.setText("📧 " + emails.size());
+                    }
+                    holder.btnActionEmails.setOnClickListener(v -> {
+                        if (listener != null) {
+                            listener.onViewEmailsClick(call);
+                        }
+                    });
+                } else {
+                    holder.btnActionEmails.setVisibility(View.GONE);
+                }
+            } else {
+                holder.btnActionEmails.setVisibility(View.GONE);
+            }
+        }
 
         // WhatsApp Action
         if (holder.btnActionFollowup != null) {
@@ -287,8 +311,8 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
     }
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
-        TextView tvCompanyName, tvPhoneNumber, tvTags, tvNotesPreview, tvCallTime, tvAvatarText, tvStatusBadge;
-        MaterialCardView cardAvatar, btnActionCall, btnActionFollowup, parentCard;
+        TextView tvCompanyName, tvPhoneNumber, tvTags, tvNotesPreview, tvCallTime, tvAvatarText, tvStatusBadge, tvEmailBadgeCount;
+        MaterialCardView cardAvatar, btnActionCall, btnActionFollowup, btnActionEmails, parentCard;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -300,9 +324,11 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
             tvCallTime = itemView.findViewById(R.id.tv_call_time);
             tvAvatarText = itemView.findViewById(R.id.tv_avatar_text);
             tvStatusBadge = itemView.findViewById(R.id.tv_status_badge);
+            tvEmailBadgeCount = itemView.findViewById(R.id.tv_email_badge_count);
             cardAvatar = itemView.findViewById(R.id.card_avatar);
             btnActionCall = itemView.findViewById(R.id.btn_action_call);
             btnActionFollowup = itemView.findViewById(R.id.btn_action_followup);
+            btnActionEmails = itemView.findViewById(R.id.btn_action_emails);
         }
     }
 }
