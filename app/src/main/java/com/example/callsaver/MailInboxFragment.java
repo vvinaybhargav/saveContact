@@ -557,6 +557,31 @@ public class MailInboxFragment extends Fragment implements MailInboxAdapter.OnMa
         OpenAiClient.extractFieldsFromEmail(requireContext(), email.getSubject(), email.getBody(), new OpenAiClient.OpenAiCallback() {
             @Override
             public void onSuccess(org.json.JSONObject result) {
+                // Wrapped in try/catch so a parsing hiccup can't silently drop the email
+                // note/JD - the attach action itself already succeeded, we just want to
+                // know if this AI follow-up step failed instead of it looking like
+                // nothing happened at all.
+                try {
+                    processEmailExtractionResult(targetJobId, jobCall, result);
+                } catch (Exception e) {
+                    if (getActivity() != null) {
+                        requireActivity().runOnUiThread(() ->
+                                Toast.makeText(requireContext(), "Email attached, but AI summary failed: " + e.getMessage(), Toast.LENGTH_LONG).show());
+                    }
+                }
+            }
+
+            @Override
+            public void onError(String error) {
+                if (getActivity() != null) {
+                    requireActivity().runOnUiThread(() ->
+                            Toast.makeText(requireContext(), "Email attached, but AI summary/JD extraction failed: " + error, Toast.LENGTH_LONG).show());
+                }
+            }
+        });
+    }
+
+    private void processEmailExtractionResult(long targetJobId, JobCall jobCall, org.json.JSONObject result) {
                 if (result == null || getContext() == null) return;
                 String aiComp = result.optString("company_name", "").trim();
                 String aiRole = result.optString("applied_role", "").trim();
@@ -630,12 +655,6 @@ public class MailInboxFragment extends Fragment implements MailInboxAdapter.OnMa
                     );
                 }
             }
-
-            @Override
-            public void onError(String error) {
-            }
-        });
-    }
 
     private static String extractDomain(String email) {
         if (email == null || !email.contains("@")) return "";

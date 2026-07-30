@@ -338,8 +338,32 @@ public class CallReceiver extends BroadcastReceiver {
 
         // Auto-detect newly created call recording file & transcribe via Deepgram + OpenAI summary
         if (entry.duration > 0) {
-            java.io.File recordingFile = CallRecordingScanner.findLatestCallRecording(context);
-            if (recordingFile != null) {
+            findRecordingWithRetry(context, entry, 1);
+        }
+    }
+
+    /**
+     * The OEM's call-recorder app can take a few seconds to finish writing/saving the
+     * recording file after the call ends, so a single immediate scan can miss a file
+     * that shows up moments later. Retries a few times with a growing delay before
+     * giving up and telling the user to pick the file manually.
+     */
+    private void findRecordingWithRetry(final Context context, final CallLogEntry entry, final int attempt) {
+        java.io.File recordingFile = CallRecordingScanner.findLatestCallRecording(context);
+        if (recordingFile == null && attempt < 4) {
+            DebugLogger.log(context, "[Receiver] No recording file found yet (attempt " + attempt + "/4) - retrying...");
+            new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(
+                    () -> new Thread(() -> findRecordingWithRetry(context, entry, attempt + 1)).start(),
+                    2000L * attempt);
+            return;
+        }
+        processRecordingFile(context, entry, recordingFile);
+    }
+
+    private void processRecordingFile(final Context context, final CallLogEntry entry, java.io.File recordingFile) {
+        DatabaseHelper db = new DatabaseHelper(context);
+        JobCall call = db.getJobCallByNumber(context, entry.number);
+        if (recordingFile != null) {
                 DebugLogger.log(context, "[Receiver] Found call recording file: " + recordingFile.getName() + ". Transcribing via Deepgram...");
                 final long targetJobId = call != null ? call.getId() : -1;
                 Transcriber.transcribeCallRecording(context, recordingFile, new Transcriber.TranscriptionCallback() {
@@ -408,12 +432,11 @@ public class CallReceiver extends BroadcastReceiver {
                         showAiFailureNotification(context, entry.number, entry.duration, "Auto transcription failed: " + error + ". Tap to pick file manually.");
                     }
                 });
-            } else {
-                showAiFailureNotification(context, entry.number, entry.duration, "Call ended. Could not find auto-recording file — tap to select file or add notes manually.");
-            }
+        } else {
+            showAiFailureNotification(context, entry.number, entry.duration, "Call ended. Could not find auto-recording file — tap to select file or add notes manually.");
         }
     }
-    
+
     private static class CallLogEntry {
         String number;
         long date;

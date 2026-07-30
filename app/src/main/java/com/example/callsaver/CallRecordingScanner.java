@@ -15,10 +15,19 @@ public class CallRecordingScanner {
 
         String[] searchPaths = new String[]{
                 Environment.getExternalStorageDirectory() + "/Recordings/Call",
+                Environment.getExternalStorageDirectory() + "/Recordings/CallRecord",
+                Environment.getExternalStorageDirectory() + "/Recordings/Call Recordings",
                 Environment.getExternalStorageDirectory() + "/CallRecordings",
                 Environment.getExternalStorageDirectory() + "/Call Record",
                 Environment.getExternalStorageDirectory() + "/Sounds/Call",
+                Environment.getExternalStorageDirectory() + "/Sounds/CallRecord",
                 Environment.getExternalStorageDirectory() + "/Music/Recordings",
+                Environment.getExternalStorageDirectory() + "/Music/CallRecord",
+                Environment.getExternalStorageDirectory() + "/Music/Call",
+                // ColorOS/OPPO/Realme
+                Environment.getExternalStorageDirectory() + "/Recordings/Call recordings",
+                Environment.getExternalStorageDirectory() + "/PhoneRecord",
+                Environment.getExternalStorageDirectory() + "/CallRecord",
                 Environment.getExternalStorageDirectory() + "/MIUI/sound_recorder/call_rec",
                 Environment.getExternalStorageDirectory() + "/VoiceRecorder"
         };

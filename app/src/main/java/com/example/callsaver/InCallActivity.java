@@ -1563,7 +1563,38 @@ public class InCallActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Shows the device's audio files sorted newest-first so the latest recording is
+     * always at the top, instead of handing off to the system's generic file picker
+     * (whose sort order isn't something this app can control). Falls back to that
+     * system picker if the MediaStore query fails or turns up nothing, or if the user
+     * wants to browse elsewhere.
+     */
     private void pickAudioRecordingFile() {
+        List<android.util.Pair<String, Uri>> recent = queryRecentAudioFiles(40);
+        if (recent.isEmpty()) {
+            launchSystemAudioPicker();
+            return;
+        }
+
+        String[] labels = new String[recent.size() + 1];
+        for (int i = 0; i < recent.size(); i++) labels[i] = recent.get(i).first;
+        labels[recent.size()] = "Browse other files…";
+
+        new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("Select Call Recording (newest first)")
+                .setItems(labels, (dialog, which) -> {
+                    if (which == recent.size()) {
+                        launchSystemAudioPicker();
+                    } else {
+                        processAudioRecordingFile(recent.get(which).second);
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void launchSystemAudioPicker() {
         try {
             Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
             intent.setType("audio/*");
@@ -1572,6 +1603,39 @@ public class InCallActivity extends AppCompatActivity {
         } catch (Exception e) {
             Toast.makeText(this, "Could not launch audio file picker: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
+    }
+
+    /** Newest-first list of (display label, content Uri) for audio files on the device. */
+    private List<android.util.Pair<String, Uri>> queryRecentAudioFiles(int limit) {
+        List<android.util.Pair<String, Uri>> results = new ArrayList<>();
+        try {
+            android.database.Cursor cursor = getContentResolver().query(
+                    android.provider.MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                    new String[]{
+                            android.provider.MediaStore.Audio.Media._ID,
+                            android.provider.MediaStore.Audio.Media.DISPLAY_NAME,
+                            android.provider.MediaStore.Audio.Media.DATE_ADDED
+                    },
+                    null, null,
+                    android.provider.MediaStore.Audio.Media.DATE_ADDED + " DESC"
+            );
+            if (cursor != null) {
+                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault());
+                while (cursor.moveToNext() && results.size() < limit) {
+                    long id = cursor.getLong(0);
+                    String name = cursor.getString(1);
+                    long dateAddedSec = cursor.getLong(2);
+                    Uri contentUri = android.content.ContentUris.withAppendedId(
+                            android.provider.MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id);
+                    String label = (name != null ? name : "Audio file") + "  ·  " + sdf.format(new java.util.Date(dateAddedSec * 1000L));
+                    results.add(new android.util.Pair<>(label, contentUri));
+                }
+                cursor.close();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return results;
     }
 
 
