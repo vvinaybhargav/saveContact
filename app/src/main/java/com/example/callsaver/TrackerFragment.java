@@ -1451,6 +1451,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         WebView webView = view.findViewById(R.id.webview_detail_body);
         ImageView btnClose = view.findViewById(R.id.btn_close_detail);
         View btnAssign = view.findViewById(R.id.btn_detail_assign);
+        View btnUnassign = view.findViewById(R.id.btn_detail_unassign);
 
         if (tvSubject != null) tvSubject.setText(email.getSubject());
         if (tvFrom != null) tvFrom.setText("From: " + email.getSender());

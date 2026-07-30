@@ -95,6 +95,34 @@ public class MailInboxFragment extends Fragment implements MailInboxAdapter.OnMa
             });
         }
 
+        com.google.android.material.chip.Chip chipAll = view.findViewById(R.id.chip_filter_all);
+        com.google.android.material.chip.Chip chipUnassigned = view.findViewById(R.id.chip_filter_unassigned);
+        com.google.android.material.chip.Chip chipInterviews = view.findViewById(R.id.chip_filter_interviews);
+
+        if (chipAll != null && chipUnassigned != null && chipInterviews != null) {
+            chipAll.setOnClickListener(v -> {
+                selectedFilterMode = 0;
+                chipAll.setChecked(true);
+                chipUnassigned.setChecked(false);
+                chipInterviews.setChecked(false);
+                filterEmails(etSearch != null ? etSearch.getText().toString() : "");
+            });
+            chipUnassigned.setOnClickListener(v -> {
+                selectedFilterMode = 1;
+                chipAll.setChecked(false);
+                chipUnassigned.setChecked(true);
+                chipInterviews.setChecked(false);
+                filterEmails(etSearch != null ? etSearch.getText().toString() : "");
+            });
+            chipInterviews.setOnClickListener(v -> {
+                selectedFilterMode = 2;
+                chipAll.setChecked(false);
+                chipUnassigned.setChecked(false);
+                chipInterviews.setChecked(true);
+                filterEmails(etSearch != null ? etSearch.getText().toString() : "");
+            });
+        }
+
         loadInboxEmails();
         return view;
     }
@@ -157,17 +185,31 @@ public class MailInboxFragment extends Fragment implements MailInboxAdapter.OnMa
         });
     }
 
+    private int selectedFilterMode = 0; // 0 = All, 1 = Unassigned, 2 = Interview Invites
+
     private void filterEmails(String query) {
         String q = query != null ? query.trim().toLowerCase() : "";
         List<EmailMessage> filtered = new ArrayList<>();
 
         for (EmailMessage mail : allFetchedEmails) {
-            if (q.isEmpty()
+            boolean matchesSearch = q.isEmpty()
                     || mail.getSubject().toLowerCase().contains(q)
                     || mail.getSender().toLowerCase().contains(q)
                     || mail.getRecipient().toLowerCase().contains(q)
                     || mail.getSnippet().toLowerCase().contains(q)
-                    || mail.getBody().toLowerCase().contains(q)) {
+                    || mail.getBody().toLowerCase().contains(q);
+
+            boolean matchesChip = true;
+            if (selectedFilterMode == 1) {
+                matchesChip = mail.getJobCallId() <= 0;
+            } else if (selectedFilterMode == 2) {
+                String combined = (mail.getSubject() + " " + mail.getBody()).toLowerCase();
+                matchesChip = combined.contains("interview") || combined.contains("invite")
+                        || combined.contains("schedule") || combined.contains("slot")
+                        || combined.contains("assessment") || combined.contains("round");
+            }
+
+            if (matchesSearch && matchesChip) {
                 filtered.add(mail);
             }
         }

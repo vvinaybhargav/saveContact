@@ -744,6 +744,26 @@ public class InCallActivity extends AppCompatActivity {
         }
 
         bindNoteEditor(tvNotesTimeline, tvCallerStatusRef());
+
+        View chipSummary = findViewById(R.id.chip_sec_summary);
+        View chipNotes = findViewById(R.id.chip_sec_notes);
+        View chipEmails = findViewById(R.id.chip_sec_emails);
+        View chipJd = findViewById(R.id.chip_sec_jd);
+
+        ScrollView scrollView = findViewById(R.id.sv_overlay_scroll);
+
+        if (chipSummary != null && scrollView != null) {
+            chipSummary.setOnClickListener(v -> scrollView.smoothScrollTo(0, 0));
+        }
+        if (chipNotes != null && tvNotesTimeline != null && scrollView != null) {
+            chipNotes.setOnClickListener(v -> scrollView.smoothScrollTo(0, tvNotesTimeline.getTop()));
+        }
+        if (chipEmails != null && cardAttachedEmails != null && scrollView != null) {
+            chipEmails.setOnClickListener(v -> scrollView.smoothScrollTo(0, cardAttachedEmails.getTop()));
+        }
+        if (chipJd != null && cardJd != null && scrollView != null) {
+            chipJd.setOnClickListener(v -> scrollView.smoothScrollTo(0, cardJd.getTop()));
+        }
     }
 
     private void showEmailDetailDialog(EmailMessage email) {
