@@ -42,6 +42,29 @@ public class CallRecordingScanner {
             } catch (Exception ignored) {}
         }
 
+        // Also query Android MediaStore.Audio for newly created audio files
+        try {
+            android.database.Cursor cursor = context.getContentResolver().query(
+                    android.provider.MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                    new String[]{android.provider.MediaStore.Audio.Media.DATA, android.provider.MediaStore.Audio.Media.DATE_ADDED},
+                    android.provider.MediaStore.Audio.Media.DATE_ADDED + " >= ?",
+                    new String[]{String.valueOf((maxAgeMs / 1000L))},
+                    android.provider.MediaStore.Audio.Media.DATE_ADDED + " DESC"
+            );
+            if (cursor != null) {
+                while (cursor.moveToNext()) {
+                    String filePath = cursor.getString(0);
+                    if (filePath != null) {
+                        File f = new File(filePath);
+                        if (f.exists() && f.isFile()) {
+                            candidateFiles.add(f);
+                        }
+                    }
+                }
+                cursor.close();
+            }
+        } catch (Exception ignored) {}
+
         if (candidateFiles.isEmpty()) return null;
 
         // Sort by newest first

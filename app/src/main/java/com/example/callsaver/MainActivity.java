@@ -108,10 +108,7 @@ public class MainActivity extends AppCompatActivity {
         // Check overlay window permission for caller ID banner
         checkOverlayPermission();
 
-        // Android 14+ requires explicit special-app-access grant for full-screen
-        // intents; without it, an incoming call on the lock screen silently
-        // downgrades to sound-only (no screen launch) with no error shown anywhere.
-        checkFullScreenIntentPermission();
+
 
         ImageView btnSettings = findViewById(R.id.btn_main_settings);
         if (btnSettings != null) {
