@@ -345,7 +345,10 @@ public class CallReceiver extends BroadcastReceiver {
                 Transcriber.transcribeCallRecording(context, recordingFile, new Transcriber.TranscriptionCallback() {
                     @Override
                     public void onSuccess(String transcriptText) {
-                        if (transcriptText == null || transcriptText.trim().isEmpty()) return;
+                        if (transcriptText == null || transcriptText.trim().isEmpty()) {
+                            showAiFailureNotification(context, entry.number, entry.duration, "Call recording was silent or empty. Tap to transcribe manually.");
+                            return;
+                        }
                         DebugLogger.log(context, "[Receiver] Deepgram transcription success! Extracting summary via OpenAI...");
 
                         OpenAiClient.extractFields(context, "Call Transcript:\n" + transcriptText, new OpenAiClient.OpenAiCallback() {
@@ -394,6 +397,7 @@ public class CallReceiver extends BroadcastReceiver {
                             @Override
                             public void onError(String error) {
                                 DebugLogger.log(context, "[Receiver] OpenAI extraction error: " + error);
+                                showAiFailureNotification(context, entry.number, entry.duration, "AI summary extraction failed: " + error + ". Tap to retry.");
                             }
                         });
                     }
@@ -401,8 +405,11 @@ public class CallReceiver extends BroadcastReceiver {
                     @Override
                     public void onError(String error) {
                         DebugLogger.log(context, "[Receiver] Deepgram transcription error: " + error);
+                        showAiFailureNotification(context, entry.number, entry.duration, "Auto transcription failed: " + error + ". Tap to pick file manually.");
                     }
                 });
+            } else {
+                showAiFailureNotification(context, entry.number, entry.duration, "Call ended. Could not find auto-recording file — tap to select file or add notes manually.");
             }
         }
     }
