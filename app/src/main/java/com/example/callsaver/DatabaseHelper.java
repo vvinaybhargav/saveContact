@@ -1091,4 +1091,36 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         db.delete(TABLE_EMAILS, COLUMN_EMAIL_ID + "=?", new String[]{String.valueOf(emailId)});
         db.close();
     }
+
+    public void unassignJobEmail(long emailId) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues v = new ContentValues();
+        v.put(COLUMN_EMAIL_JOB_ID, -1);
+        db.update(TABLE_EMAILS, v, COLUMN_EMAIL_ID + "=?", new String[]{String.valueOf(emailId)});
+        db.close();
+    }
+
+    public List<EmailMessage> getAllCachedEmails() {
+        List<EmailMessage> list = new ArrayList<>();
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor c = db.query(TABLE_EMAILS, null, null, null, null, null, COLUMN_EMAIL_TIMESTAMP + " DESC");
+        if (c != null) {
+            while (c.moveToNext()) {
+                list.add(new EmailMessage(
+                        c.getLong(c.getColumnIndexOrThrow(COLUMN_EMAIL_ID)),
+                        c.getLong(c.getColumnIndexOrThrow(COLUMN_EMAIL_JOB_ID)),
+                        c.getString(c.getColumnIndexOrThrow(COLUMN_EMAIL_GMAIL_ID)),
+                        c.getString(c.getColumnIndexOrThrow(COLUMN_EMAIL_SENDER)),
+                        c.getString(c.getColumnIndexOrThrow(COLUMN_EMAIL_RECIPIENT)),
+                        c.getString(c.getColumnIndexOrThrow(COLUMN_EMAIL_SUBJECT)),
+                        c.getString(c.getColumnIndexOrThrow(COLUMN_EMAIL_SNIPPET)),
+                        c.getString(c.getColumnIndexOrThrow(COLUMN_EMAIL_BODY)),
+                        c.getLong(c.getColumnIndexOrThrow(COLUMN_EMAIL_TIMESTAMP))
+                ));
+            }
+            c.close();
+        }
+        db.close();
+        return list;
+    }
 }

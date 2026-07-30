@@ -150,6 +150,20 @@
             android:textSize="14sp"
             app:cornerRadius="10dp"
             android:backgroundTint="@color/accent_indigo" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_detail_unassign"
+            android:layout_width="0dp"
+            android:layout_height="46dp"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:text="❌ Unassign from Log"
+            android:textAllCaps="false"
+            android:textColor="@color/white"
+            android:textSize="14sp"
+            app:cornerRadius="10dp"
+            android:backgroundTint="#E11D48"
+            android:visibility="gone" />
     </LinearLayout>
 
 </LinearLayout>

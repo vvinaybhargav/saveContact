@@ -42,6 +42,7 @@ public class MainActivity extends AppCompatActivity {
     private RecentsFragment recentsFragment;
     private TrackerFragment trackerFragment;
     private UpcomingFragment upcomingFragment;
+    private MailInboxFragment mailInboxFragment;
 
     // GET_ACCOUNTS left out on purpose - see TrackerFragment.requiredPermissions for why.
     private final String[] requiredPermissions = {
@@ -61,6 +62,7 @@ public class MainActivity extends AppCompatActivity {
         recentsFragment = new RecentsFragment();
         trackerFragment = new TrackerFragment();
         upcomingFragment = new UpcomingFragment();
+        mailInboxFragment = new MailInboxFragment();
 
         bottomNavigation = findViewById(R.id.bottom_navigation);
 
@@ -77,6 +79,8 @@ public class MainActivity extends AppCompatActivity {
                     selectedFragment = trackerFragment;
                 } else if (itemId == R.id.navigation_upcoming) {
                     selectedFragment = upcomingFragment;
+                } else if (itemId == R.id.navigation_emails) {
+                    selectedFragment = mailInboxFragment;
                 }
 
                 if (selectedFragment != null) {

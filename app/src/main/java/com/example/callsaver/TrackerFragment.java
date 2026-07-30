@@ -1501,6 +1501,16 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             if (webView != null) webView.setVisibility(View.GONE);
         }
 
+        if (email.getJobCallId() > 0 && btnUnassign != null) {
+            btnUnassign.setVisibility(View.VISIBLE);
+            btnUnassign.setOnClickListener(v -> {
+                if (dbHelper != null) dbHelper.unassignJobEmail(email.getId());
+                Toast.makeText(requireContext(), "Email unassigned from call log!", Toast.LENGTH_SHORT).show();
+                dialog.dismiss();
+                refreshDashboardList();
+            });
+        }
+
         if (btnClose != null) btnClose.setOnClickListener(v -> dialog.dismiss());
         if (btnAssign != null) btnAssign.setVisibility(View.GONE);
 

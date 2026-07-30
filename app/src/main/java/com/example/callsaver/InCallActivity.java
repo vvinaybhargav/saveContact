@@ -811,6 +811,18 @@ public class InCallActivity extends AppCompatActivity {
             if (webView != null) webView.setVisibility(View.GONE);
         }
 
+        View btnUnassign = view.findViewById(R.id.btn_detail_unassign);
+        if (email.getJobCallId() > 0 && btnUnassign != null) {
+            btnUnassign.setVisibility(View.VISIBLE);
+            btnUnassign.setOnClickListener(v -> {
+                DatabaseHelper db = new DatabaseHelper(this);
+                db.unassignJobEmail(email.getId());
+                Toast.makeText(this, "Email unassigned from call log!", Toast.LENGTH_SHORT).show();
+                dialog.dismiss();
+                bindNotesAndSkills();
+            });
+        }
+
         if (btnClose != null) btnClose.setOnClickListener(v -> dialog.dismiss());
         if (btnAssign != null) btnAssign.setVisibility(View.GONE);
 
