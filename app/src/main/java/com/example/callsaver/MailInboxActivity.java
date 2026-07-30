@@ -245,31 +245,60 @@ public class MailInboxActivity extends AppCompatActivity implements MailInboxAda
         dialog.show();
     }
 
+    private static class AssignOption {
+        String label;
+        JobCall existingCall;
+        String unloggedPhone;
+    }
+
     private void showAssignMailDialog(EmailMessage email) {
+        if (dbHelper == null) return;
+
+        List<AssignOption> assignOptions = new ArrayList<>();
         List<JobCall> allCalls = dbHelper.getAllJobCalls();
+        String domain = extractDomain(email.getSenderEmail());
 
-        List<String> options = new ArrayList<>();
-        options.add("➕ Create New Call Log for this Email");
-
-        // Try auto matching by sender name/domain
-        String senderEmail = email.getSenderEmail().toLowerCase();
-        int suggestedIndex = -1;
-
-        for (int i = 0; i < allCalls.size(); i++) {
-            JobCall call = allCalls.get(i);
-            String company = call.getCompanyName() != null ? call.getCompanyName() : "Unknown Company";
-            String label = "🏢 " + company + (call.getAppliedRole() != null && !call.getAppliedRole().isEmpty() ? " (" + call.getAppliedRole() + ")" : "");
-            options.add(label);
-
-            if (suggestedIndex == -1 && !company.trim().isEmpty()) {
-                String domain = extractDomain(senderEmail);
-                if (!domain.isEmpty() && company.toLowerCase().contains(domain)) {
-                    suggestedIndex = i + 1; // +1 due to "Create New" item
-                }
+        // 1. Check existing logged calls
+        for (JobCall call : allCalls) {
+            String company = call.getCompanyName() != null ? call.getCompanyName() : "Call #" + call.getId();
+            boolean matchesDomain = !domain.isEmpty() && company.toLowerCase().contains(domain);
+            
+            AssignOption opt = new AssignOption();
+            opt.existingCall = call;
+            opt.label = (matchesDomain ? "⭐ RECOMMENDED: " : "📌 ") + company;
+            if (call.getAppliedRole() != null && !call.getAppliedRole().isEmpty()) {
+                opt.label += " (" + call.getAppliedRole() + ")";
+            }
+            if (call.getPhoneNumber() != null && !call.getPhoneNumber().isEmpty()) {
+                opt.label += " - " + call.getPhoneNumber();
+            }
+            if (matchesDomain) {
+                assignOptions.add(0, opt);
+            } else {
+                assignOptions.add(opt);
             }
         }
 
-        ArrayAdapter<String> adapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, options) {
+        // 2. Check unlogged recent calls from system phone history
+        List<String> unloggedPhones = getUnloggedPhoneNumbers(this);
+        for (String phone : unloggedPhones) {
+            AssignOption opt = new AssignOption();
+            opt.unloggedPhone = phone;
+            opt.label = "➕ Create Log for Recent Call: " + phone;
+            assignOptions.add(opt);
+        }
+
+        // 3. Option for blank new log
+        AssignOption blankOpt = new AssignOption();
+        blankOpt.label = "➕ Create New Blank Log";
+        assignOptions.add(blankOpt);
+
+        List<String> labels = new ArrayList<>();
+        for (AssignOption opt : assignOptions) {
+            labels.add(opt.label);
+        }
+
+        ArrayAdapter<String> adapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, labels) {
             @NonNull
             @Override
             public View getView(int position, View convertView, @NonNull ViewGroup parent) {
@@ -288,12 +317,21 @@ public class MailInboxActivity extends AppCompatActivity implements MailInboxAda
         new AlertDialog.Builder(this)
                 .setTitle("📌 Assign Mail to Log\n" + email.getSubject())
                 .setAdapter(adapter, (dialog, which) -> {
-                    if (which == 0) {
-                        // Create New Job Call Log linked to email
+                    AssignOption selected = assignOptions.get(which);
+                    if (selected.existingCall != null) {
+                        // Attach to existing log
+                        JobCall chosenCall = selected.existingCall;
+                        dbHelper.insertJobEmail(chosenCall.getId(), email.getGmailMessageId(), email.getSender(), email.getRecipient(), email.getSubject(), email.getSnippet(), email.getBody(), email.getReceivedTimestamp());
+                        Toast.makeText(MailInboxActivity.this, "Attached email to " + chosenCall.getCompanyName() + " log!", Toast.LENGTH_SHORT).show();
+                        triggerAiEmailExtraction(chosenCall.getId(), chosenCall, email);
+                    } else {
+                        // Create new log (either from unlogged phone number or blank)
                         JobCall newCall = new JobCall();
+                        if (selected.unloggedPhone != null) {
+                            newCall.setPhoneNumber(selected.unloggedPhone);
+                        }
                         String companyName = email.getSenderDisplayName();
                         if (companyName.equalsIgnoreCase(email.getSenderEmail())) {
-                            String domain = extractDomain(email.getSenderEmail());
                             if (!domain.isEmpty()) {
                                 companyName = capitalize(domain);
                             }
@@ -306,19 +344,50 @@ public class MailInboxActivity extends AppCompatActivity implements MailInboxAda
                         long newJobId = dbHelper.insertJobCall(newCall);
                         dbHelper.insertJobEmail(newJobId, email.getGmailMessageId(), email.getSender(), email.getRecipient(), email.getSubject(), email.getSnippet(), email.getBody(), email.getReceivedTimestamp());
 
-                        Toast.makeText(MailInboxActivity.this, "Created new log & attached email!", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(MailInboxActivity.this, "Created new log" + (selected.unloggedPhone != null ? " for " + selected.unloggedPhone : "") + " & attached email!", Toast.LENGTH_SHORT).show();
                         triggerAiEmailExtraction(newJobId, newCall, email);
-                    } else {
-                        // Assign to existing call log
-                        JobCall chosenCall = allCalls.get(which - 1);
-                        dbHelper.insertJobEmail(chosenCall.getId(), email.getGmailMessageId(), email.getSender(), email.getRecipient(), email.getSubject(), email.getSnippet(), email.getBody(), email.getReceivedTimestamp());
-
-                        Toast.makeText(MailInboxActivity.this, "Attached email to " + chosenCall.getCompanyName() + " log!", Toast.LENGTH_SHORT).show();
-                        triggerAiEmailExtraction(chosenCall.getId(), chosenCall, email);
                     }
                 })
                 .setNegativeButton("Cancel", null)
                 .show();
+    }
+
+    private List<String> getUnloggedPhoneNumbers(Context context) {
+        List<String> list = new ArrayList<>();
+        if (androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_CALL_LOG) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            return list;
+        }
+        try {
+            android.database.Cursor cursor = context.getContentResolver().query(
+                    android.provider.CallLog.Calls.CONTENT_URI,
+                    new String[]{android.provider.CallLog.Calls.NUMBER},
+                    null, null, android.provider.CallLog.Calls.DATE + " DESC"
+            );
+            if (cursor != null) {
+                List<DatabaseHelper.PhoneJobMapping> mappings = dbHelper.getAllPhoneJobMappings();
+                int count = 0;
+                while (cursor.moveToNext() && count < 5) {
+                    String number = cursor.getString(0);
+                    if (number != null && !number.trim().isEmpty()) {
+                        boolean alreadyLogged = false;
+                        for (DatabaseHelper.PhoneJobMapping m : mappings) {
+                            if (android.telephony.PhoneNumberUtils.compare(context, m.phoneNumber, number)) {
+                                alreadyLogged = true;
+                                break;
+                            }
+                        }
+                        if (!alreadyLogged && !list.contains(number)) {
+                            list.add(number);
+                            count++;
+                        }
+                    }
+                }
+                cursor.close();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return list;
     }
 
     private void triggerAiEmailExtraction(long targetJobId, JobCall jobCall, EmailMessage email) {
