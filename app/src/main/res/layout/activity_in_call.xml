@@ -341,15 +341,22 @@
                     android:letterSpacing="0.08"
                     android:layout_marginBottom="8dp" />
 
-                <TextView
-                    android:id="@+id/tv_overlay_jd_text"
+                <ScrollView
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text=""
-                    android:textColor="#EDEDED"
-                    android:textSize="13sp"
-                    android:lineSpacingMultiplier="1.25"
-                    android:textIsSelectable="true" />
+                    android:layout_height="180dp"
+                    android:scrollbars="vertical"
+                    android:nestedScrollingEnabled="true">
+
+                    <TextView
+                        android:id="@+id/tv_overlay_jd_text"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text=""
+                        android:textColor="#EDEDED"
+                        android:textSize="13sp"
+                        android:lineSpacingMultiplier="1.25"
+                        android:textIsSelectable="true" />
+                </ScrollView>
             </LinearLayout>
 
             <!-- Skills Match glass card -->

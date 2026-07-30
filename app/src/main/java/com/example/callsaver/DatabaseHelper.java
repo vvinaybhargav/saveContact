@@ -1041,6 +1041,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     public long insertJobEmail(long jobCallId, String gmailMsgId, String sender, String recipient, String subject, String snippet, String body, long timestamp) {
+        return insertJobEmail(null, jobCallId, gmailMsgId, sender, recipient, subject, snippet, body, timestamp);
+    }
+
+    public long insertJobEmail(final Context context, final long jobCallId, String gmailMsgId, String sender, String recipient, final String subject, String snippet, final String body, final long timestamp) {
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues v = new ContentValues();
         v.put(COLUMN_EMAIL_JOB_ID, jobCallId);
@@ -1054,9 +1058,43 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         long id = db.insert(TABLE_EMAILS, null, v);
         db.close();
 
-        // Add to call timeline notes as well for seamless timeline visibility
         String noteText = "📧 Email: " + (subject != null ? subject : "(No Subject)") + "\nFrom: " + sender + "\n" + (snippet != null ? snippet : "");
         insertNote(jobCallId, noteText, timestamp, NOTE_SOURCE_EMAIL);
+
+        if (context != null && (body != null || snippet != null)) {
+            String textToParse = "Email Subject: " + (subject != null ? subject : "") + "\nEmail Body:\n" + (body != null && !body.isEmpty() ? body : snippet);
+            OpenAiClient.extractFields(context, textToParse, new OpenAiClient.OpenAiCallback() {
+                @Override
+                public void onSuccess(org.json.JSONObject result) {
+                    if (result == null) return;
+                    String extractedJd = result.optString("job_description", "").trim();
+                    org.json.JSONArray points = result.optJSONArray("key_discussion_points");
+
+                    SQLiteDatabase wdb = getWritableDatabase();
+                    if (!extractedJd.isEmpty() && !"null".equalsIgnoreCase(extractedJd)) {
+                        ContentValues cv = new ContentValues();
+                        cv.put(COLUMN_JD_TEXT, extractedJd);
+                        wdb.update(TABLE_NAME, cv, COLUMN_ID + "=?", new String[]{String.valueOf(jobCallId)});
+                    }
+
+                    if (points != null && points.length() > 0) {
+                        StringBuilder sb = new StringBuilder();
+                        sb.append("📧 Email Keywords:\n");
+                        for (int i = 0; i < points.length(); i++) {
+                            String pt = points.optString(i, "").trim();
+                            if (!pt.isEmpty()) {
+                                sb.append("• ").append(pt).append("\n");
+                            }
+                        }
+                        insertNote(jobCallId, sb.toString().trim(), timestamp, NOTE_SOURCE_EMAIL);
+                    }
+                    wdb.close();
+                }
+
+                @Override
+                public void onError(String error) {}
+            });
+        }
 
         return id;
     }
