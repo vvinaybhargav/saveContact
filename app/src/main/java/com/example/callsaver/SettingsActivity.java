@@ -83,7 +83,10 @@ public class SettingsActivity extends AppCompatActivity {
             btnSetDefaultDialer.setOnClickListener(v -> requestDefaultDialerRole());
         }
 
+        EditText etDeepgramKey = findViewById(R.id.settings_deepgram_key);
+
         // Load preferences
+        if (etDeepgramKey != null) etDeepgramKey.setText(prefs.getString("deepgram_api_key", ""));
         if (etOpenAiKey != null) etOpenAiKey.setText(prefs.getString("openai_api_key", ""));
         if (etUserName != null) etUserName.setText(prefs.getString("user_full_name", ""));
         if (etUserInterests != null) etUserInterests.setText(prefs.getString("user_talking_points", ""));
@@ -94,6 +97,7 @@ public class SettingsActivity extends AppCompatActivity {
         // Setup save action
         if (btnSave != null) {
             btnSave.setOnClickListener(v -> {
+                String deepgram = etDeepgramKey != null ? etDeepgramKey.getText().toString().trim() : "";
                 String openAi = etOpenAiKey != null ? etOpenAiKey.getText().toString().trim() : "";
                 String userName = etUserName != null ? etUserName.getText().toString().trim() : "";
                 String interests = etUserInterests != null ? etUserInterests.getText().toString().trim() : "";
@@ -102,6 +106,7 @@ public class SettingsActivity extends AppCompatActivity {
                 String gmailRefreshToken = etGmailRefreshToken != null ? etGmailRefreshToken.getText().toString().trim() : "";
 
                 prefs.edit()
+                        .putString("deepgram_api_key", deepgram)
                         .putString("openai_api_key", openAi)
                         .putString("user_full_name", userName)
                         .putString("user_talking_points", interests)
