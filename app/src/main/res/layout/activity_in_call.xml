@@ -660,6 +660,20 @@
                         android:contentDescription="Dictate voice note" />
                 </RelativeLayout>
 
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_pick_recording_file"
+                    android:layout_width="match_parent"
+                    android:layout_height="44dp"
+                    android:layout_marginBottom="10dp"
+                    android:text="🎙️ Upload Call Recording File (Deepgram)"
+                    android:textAllCaps="false"
+                    android:textColor="@color/white_constant"
+                    android:textSize="13sp"
+                    app:cornerRadius="10dp"
+                    app:strokeColor="@color/accent_glow"
+                    app:strokeWidth="1dp"
+                    android:backgroundTint="#2C2C3E"/>
+
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"

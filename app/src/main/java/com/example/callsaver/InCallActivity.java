@@ -877,6 +877,11 @@ public class InCallActivity extends AppCompatActivity {
             btnMicDictate.setOnClickListener(v -> startVoiceDictation());
         }
 
+        View btnPickRecording = findViewById(R.id.btn_pick_recording_file);
+        if (btnPickRecording != null) {
+            btnPickRecording.setOnClickListener(v -> pickAudioRecordingFile());
+        }
+
         // Prefill from the latest DB state (falls back to what CallSaverInCallService passed in).
         JobCall currentForPrefill = jobCallId != -1 ? new DatabaseHelper(this).getJobCallById(jobCallId) : null;
         String prefillName = currentForPrefill != null ? currentForPrefill.getRecruiterName() : recruiter;
@@ -1497,6 +1502,7 @@ public class InCallActivity extends AppCompatActivity {
     }
 
     private static final int REQ_CODE_SPEECH_INPUT = 9002;
+    private static final int REQ_CODE_PICK_AUDIO_FILE = 9005;
 
     private void startVoiceDictation() {
         Intent intent = new Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
@@ -1510,7 +1516,121 @@ public class InCallActivity extends AppCompatActivity {
         }
     }
 
+    private void pickAudioRecordingFile() {
+        try {
+            Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+            intent.setType("audio/*");
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            startActivityForResult(Intent.createChooser(intent, "Select Call Recording"), REQ_CODE_PICK_AUDIO_FILE);
+        } catch (Exception e) {
+            Toast.makeText(this, "Could not launch audio file picker: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
 
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQ_CODE_SPEECH_INPUT && resultCode == RESULT_OK && data != null) {
+            ArrayList<String> result = data.getStringArrayListExtra(android.speech.RecognizerIntent.EXTRA_RESULTS);
+            if (result != null && !result.isEmpty()) {
+                String spokenText = result.get(0);
+                if (etOverlayNoteInput != null) {
+                    String existing = etOverlayNoteInput.getText().toString();
+                    if (!existing.trim().isEmpty()) {
+                        etOverlayNoteInput.setText(existing + " " + spokenText);
+                    } else {
+                        etOverlayNoteInput.setText(spokenText);
+                    }
+                    etOverlayNoteInput.setSelection(etOverlayNoteInput.getText().length());
+                }
+            }
+        } else if (requestCode == REQ_CODE_PICK_AUDIO_FILE && resultCode == RESULT_OK && data != null && data.getData() != null) {
+            processAudioRecordingFile(data.getData());
+        }
+    }
+
+    private void processAudioRecordingFile(Uri uri) {
+        if (uri == null) return;
+        Toast.makeText(this, "⚡ Transcribing audio file via Deepgram...", Toast.LENGTH_LONG).show();
+
+        new Thread(() -> {
+            try {
+                java.io.InputStream inputStream = getContentResolver().openInputStream(uri);
+                if (inputStream == null) return;
+
+                File cacheDir = getCacheDir();
+                File tempAudioFile = new File(cacheDir, "manual_recording_" + System.currentTimeMillis() + ".m4a");
+                java.io.FileOutputStream outputStream = new java.io.FileOutputStream(tempAudioFile);
+
+                byte[] buffer = new byte[8192];
+                int bytesRead;
+                while ((bytesRead = inputStream.read(buffer)) != -1) {
+                    outputStream.write(buffer, 0, bytesRead);
+                }
+                outputStream.close();
+                inputStream.close();
+
+                runOnUiThread(() -> {
+                    Transcriber.transcribeCallRecording(InCallActivity.this, tempAudioFile, new Transcriber.TranscriptionCallback() {
+                        @Override
+                        public void onSuccess(String transcriptText) {
+                            if (transcriptText == null || transcriptText.trim().isEmpty()) {
+                                Toast.makeText(InCallActivity.this, "Audio file was silent or empty.", Toast.LENGTH_SHORT).show();
+                                return;
+                            }
+                            Toast.makeText(InCallActivity.this, "Extracting summary via OpenAI...", Toast.LENGTH_SHORT).show();
+                            OpenAiClient.extractFields(InCallActivity.this, "Call Transcript:\n" + transcriptText, new OpenAiClient.OpenAiCallback() {
+                                @Override
+                                public void onSuccess(JSONObject result) {
+                                    if (result == null) return;
+                                    String comp = result.optString("company_name", "").trim();
+                                    String role = result.optString("applied_role", "").trim();
+                                    String rec = result.optString("recruiter_name", "").trim();
+                                    JSONArray points = result.optJSONArray("key_discussion_points");
+
+                                    if (!comp.isEmpty() && !"null".equalsIgnoreCase(comp) && etOverlayCompany != null) etOverlayCompany.setText(comp);
+                                    if (!rec.isEmpty() && !"null".equalsIgnoreCase(rec) && etOverlayName != null) etOverlayName.setText(rec);
+
+                                    StringBuilder sb = new StringBuilder();
+                                    if (points != null && points.length() > 0) {
+                                        for (int i = 0; i < points.length(); i++) {
+                                            String pt = points.optString(i, "").trim();
+                                            if (!pt.isEmpty()) {
+                                                if (sb.length() > 0) sb.append("\n");
+                                                sb.append("• ").append(pt);
+                                            }
+                                        }
+                                    }
+                                    if (sb.length() > 0 && etOverlayNoteInput != null) {
+                                        String existing = etOverlayNoteInput.getText().toString();
+                                        if (!existing.trim().isEmpty()) {
+                                            etOverlayNoteInput.setText(existing + "\n" + sb.toString());
+                                        } else {
+                                            etOverlayNoteInput.setText(sb.toString());
+                                        }
+                                    }
+                                    persistNoteAndDetails(true);
+                                    Toast.makeText(InCallActivity.this, "✅ Audio recording transcribed & notes saved!", Toast.LENGTH_SHORT).show();
+                                }
+
+                                @Override
+                                public void onError(String error) {
+                                    Toast.makeText(InCallActivity.this, "OpenAI summary error: " + error, Toast.LENGTH_SHORT).show();
+                                }
+                            });
+                        }
+
+                        @Override
+                        public void onError(String error) {
+                            Toast.makeText(InCallActivity.this, "Deepgram transcription error: " + error, Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                });
+            } catch (Exception e) {
+                runOnUiThread(() -> Toast.makeText(InCallActivity.this, "Error reading audio file: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+            }
+        }).start();
+    }
 
     private String getOrdinalSuffix(int number) {
         if (number >= 11 && number <= 13) return "th";
