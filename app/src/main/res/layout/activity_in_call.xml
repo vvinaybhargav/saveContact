@@ -235,7 +235,32 @@
                         android:text="First call - -  |  Recent call - NA"
                         android:textColor="#C7C7CC"
                         android:textSize="12sp" />
-                </LinearLayout>
+            <!-- Attached Emails glass card -->
+            <LinearLayout
+                android:id="@+id/ll_overlay_attached_emails_card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/bg_glass_card"
+                android:padding="16dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="📧 ATTACHED EMAILS"
+                    android:textColor="#ABABB0"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.08"
+                    android:layout_marginBottom="8dp" />
+
+                <LinearLayout
+                    android:id="@+id/ll_overlay_emails_list"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
             </LinearLayout>
 
             <!-- Skills Match glass card -->

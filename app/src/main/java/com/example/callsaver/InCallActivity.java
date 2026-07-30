@@ -16,6 +16,13 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
+import android.app.Dialog;
+import android.text.Html;
+import android.text.format.DateFormat;
+import android.view.LayoutInflater;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
 
@@ -690,7 +697,112 @@ public class InCallActivity extends AppCompatActivity {
             }
         }
 
+        View cardAttachedEmails = findViewById(R.id.ll_overlay_attached_emails_card);
+        android.widget.LinearLayout llEmailsList = findViewById(R.id.ll_overlay_emails_list);
+        if (cardAttachedEmails != null && llEmailsList != null && jobCallId != -1) {
+            List<EmailMessage> attachedEmails = dbHelper.getEmailsForJob(jobCallId);
+            if (attachedEmails != null && !attachedEmails.isEmpty()) {
+                cardAttachedEmails.setVisibility(View.VISIBLE);
+                llEmailsList.removeAllViews();
+
+                java.text.SimpleDateFormat emailSdf = new java.text.SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault());
+
+                for (EmailMessage email : attachedEmails) {
+                    View row = LayoutInflater.from(this).inflate(R.layout.item_attached_email_log, llEmailsList, false);
+
+                    TextView tvSub = row.findViewById(R.id.tv_log_email_subject);
+                    TextView tvSender = row.findViewById(R.id.tv_log_email_sender);
+                    TextView tvSnippet = row.findViewById(R.id.tv_log_email_snippet);
+                    TextView tvTime = row.findViewById(R.id.tv_log_email_time);
+
+                    if (tvSub != null) tvSub.setText(email.getSubject().isEmpty() ? "(No Subject)" : email.getSubject());
+                    if (tvSender != null) tvSender.setText("From: " + email.getSender());
+                    if (tvSnippet != null) tvSnippet.setText(email.getSnippet());
+                    if (tvTime != null) {
+                        long ts = email.getReceivedTimestamp();
+                        tvTime.setText(ts > 0 ? emailSdf.format(new java.util.Date(ts)) : "");
+                    }
+
+                    row.setOnClickListener(v -> showEmailDetailDialog(email));
+                    llEmailsList.addView(row);
+                }
+            } else {
+                cardAttachedEmails.setVisibility(View.GONE);
+            }
+        }
+
         bindNoteEditor(tvNotesTimeline, tvCallerStatusRef());
+    }
+
+    private void showEmailDetailDialog(EmailMessage email) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_NoActionBar_Fullscreen);
+        View view = LayoutInflater.from(this).inflate(R.layout.dialog_mail_detail, null);
+        builder.setView(view);
+
+        Dialog dialog = builder.create();
+
+        TextView tvSubject = view.findViewById(R.id.tv_detail_subject);
+        TextView tvFrom = view.findViewById(R.id.tv_detail_from);
+        TextView tvTo = view.findViewById(R.id.tv_detail_to);
+        TextView tvDate = view.findViewById(R.id.tv_detail_date);
+        TextView tvBody = view.findViewById(R.id.tv_detail_body);
+        WebView webView = view.findViewById(R.id.webview_detail_body);
+        ImageView btnClose = view.findViewById(R.id.btn_close_detail);
+        View btnAssign = view.findViewById(R.id.btn_detail_assign);
+
+        if (tvSubject != null) tvSubject.setText(email.getSubject());
+        if (tvFrom != null) tvFrom.setText("From: " + email.getSender());
+        if (tvTo != null) tvTo.setText("To: " + (email.getRecipient().isEmpty() ? GmailService.getAccountEmail(this) : email.getRecipient()));
+
+        if (tvDate != null) {
+            long ts = email.getReceivedTimestamp();
+            if (ts > 0) {
+                tvDate.setText("Date: " + DateFormat.format("E, dd MMM yyyy, h:mm a", new java.util.Date(ts)));
+            }
+        }
+
+        String body = email.getBody();
+        if (body == null || body.trim().isEmpty()) {
+            body = email.getSnippet();
+        }
+
+        if (body != null && !body.trim().isEmpty()) {
+            boolean isHtml = body.contains("<html") || body.contains("<div") || body.contains("<p>") || body.contains("<span") || body.contains("<br") || body.contains("<table");
+            if (isHtml && webView != null) {
+                webView.setVisibility(View.VISIBLE);
+                if (tvBody != null) tvBody.setVisibility(View.GONE);
+
+                WebSettings webSettings = webView.getSettings();
+                webSettings.setJavaScriptEnabled(true);
+                webSettings.setDomStorageEnabled(true);
+                webSettings.setLoadWithOverviewMode(true);
+                webSettings.setUseWideViewPort(true);
+
+                String styledHtml = "<html><head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><style>" +
+                        "body { color: #E0E0E0; background-color: #121212; font-family: sans-serif; font-size: 14px; padding: 12px; line-height: 1.6; word-wrap: break-word; }" +
+                        "a { color: #818CF8; }" +
+                        "img { max-width: 100% !important; height: auto !important; }" +
+                        "table { max-width: 100% !important; width: 100% !important; }" +
+                        "</style></head><body>" + body + "</body></html>";
+
+                webView.loadDataWithBaseURL(null, styledHtml, "text/html", "UTF-8", null);
+            } else if (tvBody != null) {
+                tvBody.setText(isHtml ? Html.fromHtml(body, Html.FROM_HTML_MODE_LEGACY) : body);
+                tvBody.setVisibility(View.VISIBLE);
+                if (webView != null) webView.setVisibility(View.GONE);
+            }
+        } else {
+            if (tvBody != null) {
+                tvBody.setText("(No email content available)");
+                tvBody.setVisibility(View.VISIBLE);
+            }
+            if (webView != null) webView.setVisibility(View.GONE);
+        }
+
+        if (btnClose != null) btnClose.setOnClickListener(v -> dialog.dismiss());
+        if (btnAssign != null) btnAssign.setVisibility(View.GONE);
+
+        dialog.show();
     }
 
     private TextView tvCallerStatusRef() {

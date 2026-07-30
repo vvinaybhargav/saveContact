@@ -307,16 +307,68 @@ public class MailInboxActivity extends AppCompatActivity implements MailInboxAda
                         dbHelper.insertJobEmail(newJobId, email.getGmailMessageId(), email.getSender(), email.getRecipient(), email.getSubject(), email.getSnippet(), email.getBody(), email.getReceivedTimestamp());
 
                         Toast.makeText(MailInboxActivity.this, "Created new log & attached email!", Toast.LENGTH_SHORT).show();
+                        triggerAiEmailExtraction(newJobId, newCall, email);
                     } else {
                         // Assign to existing call log
                         JobCall chosenCall = allCalls.get(which - 1);
                         dbHelper.insertJobEmail(chosenCall.getId(), email.getGmailMessageId(), email.getSender(), email.getRecipient(), email.getSubject(), email.getSnippet(), email.getBody(), email.getReceivedTimestamp());
 
                         Toast.makeText(MailInboxActivity.this, "Attached email to " + chosenCall.getCompanyName() + " log!", Toast.LENGTH_SHORT).show();
+                        triggerAiEmailExtraction(chosenCall.getId(), chosenCall, email);
                     }
                 })
                 .setNegativeButton("Cancel", null)
                 .show();
+    }
+
+    private void triggerAiEmailExtraction(long targetJobId, JobCall jobCall, EmailMessage email) {
+        OpenAiClient.extractFieldsFromEmail(this, email.getSubject(), email.getBody(), new OpenAiClient.OpenAiCallback() {
+            @Override
+            public void onSuccess(org.json.JSONObject result) {
+                if (result == null) return;
+                String aiComp = result.optString("company_name", "").trim();
+                String aiRole = result.optString("applied_role", "").trim();
+                String aiRec = result.optString("recruiter_name", "").trim();
+                org.json.JSONArray aiPoints = result.optJSONArray("key_discussion_points");
+
+                boolean updated = false;
+                if (!aiComp.isEmpty() && !"null".equalsIgnoreCase(aiComp) && (jobCall.getCompanyName() == null || jobCall.getCompanyName().isEmpty() || jobCall.getCompanyName().contains("@"))) {
+                    jobCall.setCompanyName(aiComp);
+                    updated = true;
+                }
+                if (!aiRole.isEmpty() && !"null".equalsIgnoreCase(aiRole) && (jobCall.getAppliedRole() == null || jobCall.getAppliedRole().isEmpty())) {
+                    jobCall.setAppliedRole(aiRole);
+                    updated = true;
+                }
+                if (!aiRec.isEmpty() && !"null".equalsIgnoreCase(aiRec) && (jobCall.getRecruiterName() == null || jobCall.getRecruiterName().isEmpty())) {
+                    jobCall.setRecruiterName(aiRec);
+                    updated = true;
+                }
+
+                if (updated) {
+                    dbHelper.updateJobCall(jobCall);
+                }
+
+                if (aiPoints != null && aiPoints.length() > 0) {
+                    StringBuilder sb = new StringBuilder();
+                    for (int i = 0; i < aiPoints.length(); i++) {
+                        String pt = aiPoints.optString(i, "").trim();
+                        if (!pt.isEmpty()) {
+                            if (sb.length() > 0) sb.append("\n");
+                            sb.append("• ").append(pt);
+                        }
+                    }
+                    if (sb.length() > 0) {
+                        dbHelper.addCallNote(targetJobId, sb.toString(), false);
+                    }
+                }
+                Toast.makeText(MailInboxActivity.this, "🤖 AI auto-filled details & summary notes from email!", Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onError(String error) {
+            }
+        });
     }
 
     private static String extractDomain(String email) {

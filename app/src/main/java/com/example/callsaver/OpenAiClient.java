@@ -231,6 +231,11 @@ public class OpenAiClient {
         return roundRank(incoming) > roundRank(existing);
     }
 
+    public static void extractFieldsFromEmail(Context context, String subject, String bodyText, OpenAiCallback callback) {
+        String fullEmail = "Email Subject: " + (subject != null ? subject : "") + "\n\nEmail Body:\n" + (bodyText != null ? bodyText : "");
+        extractFields(context, fullEmail, callback);
+    }
+
     private static int roundRank(String status) {
         if (status == null) return 1;
         switch (status) {
