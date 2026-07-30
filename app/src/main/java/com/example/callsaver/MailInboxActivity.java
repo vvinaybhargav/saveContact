@@ -333,9 +333,32 @@ public class MailInboxActivity extends AppCompatActivity implements MailInboxAda
                 org.json.JSONArray aiPoints = result.optJSONArray("key_discussion_points");
 
                 boolean updated = false;
-                if (!aiComp.isEmpty() && !"null".equalsIgnoreCase(aiComp) && (jobCall.getCompanyName() == null || jobCall.getCompanyName().isEmpty() || jobCall.getCompanyName().contains("@"))) {
-                    jobCall.setCompanyName(aiComp);
-                    updated = true;
+                String existingComp = jobCall.getCompanyName() != null ? jobCall.getCompanyName().trim() : "";
+                if (!aiComp.isEmpty() && !"null".equalsIgnoreCase(aiComp)) {
+                    if (existingComp.isEmpty() || existingComp.contains("@")) {
+                        jobCall.setCompanyName(aiComp);
+                        updated = true;
+                    } else if (!existingComp.equalsIgnoreCase(aiComp) && !existingComp.toLowerCase().contains(aiComp.toLowerCase())) {
+                        final String newComp = aiComp;
+                        final String combinedComp = newComp + ", " + existingComp;
+                        runOnUiThread(() -> {
+                            new AlertDialog.Builder(MailInboxActivity.this)
+                                    .setTitle("⚠️ Company Name Difference Detected")
+                                    .setMessage("Note/Log says: \"" + existingComp + "\"\nEmail extracted: \"" + newComp + "\"\n\nWhich format would you like to use?")
+                                    .setPositiveButton("Use \"" + newComp + "\"", (dialog, which) -> {
+                                        jobCall.setCompanyName(newComp);
+                                        dbHelper.updateJobCall(jobCall);
+                                        Toast.makeText(MailInboxActivity.this, "Updated company to " + newComp, Toast.LENGTH_SHORT).show();
+                                    })
+                                    .setNeutralButton("Combine: \"" + combinedComp + "\"", (dialog, which) -> {
+                                        jobCall.setCompanyName(combinedComp);
+                                        dbHelper.updateJobCall(jobCall);
+                                        Toast.makeText(MailInboxActivity.this, "Updated company to " + combinedComp, Toast.LENGTH_SHORT).show();
+                                    })
+                                    .setNegativeButton("Keep \"" + existingComp + "\"", null)
+                                    .show();
+                        });
+                    }
                 }
                 if (!aiRole.isEmpty() && !"null".equalsIgnoreCase(aiRole) && (jobCall.getAppliedRole() == null || jobCall.getAppliedRole().isEmpty())) {
                     jobCall.setAppliedRole(aiRole);

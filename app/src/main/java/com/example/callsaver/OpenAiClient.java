@@ -97,7 +97,7 @@ public class OpenAiClient {
                     "Return a strict JSON object with the following keys:\n" +
                     "{\n" +
                     "  \"candidate_name\": string or null,\n" +
-                    "  \"company_name\": string or null,\n" +
+                    "  \"company_name\": string or null (Extract official company or client name. If a consultancy mentions recruiting for an end-client, format as 'ClientName, ConsultancyName', e.g. 'Infosys, Mphasis'),\n" +
                     "  \"recruiter_name\": string or null,\n" +
                     "  \"applied_role\": string or null,\n" +
                     "  \"job_description\": string or null,\n" +
