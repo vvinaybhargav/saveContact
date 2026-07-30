@@ -48,16 +48,16 @@ jobs:
       run: |
         export TZ='Asia/Kolkata'
         TIMESTAMP=$(date +'%b%d-%I%M%p-IST')
-        cp app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/CallSaver-${TIMESTAMP}.apk
+        cp app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/CallSaver-Latest-IST.apk
         echo "BUILD_TIMESTAMP=${TIMESTAMP}" >> $GITHUB_ENV
 
     - name: Publish Direct APK to GitHub Release
       uses: ncipollo/release-action@v1
       with:
-        artifacts: "app/build/outputs/apk/debug/CallSaver-*.apk"
+        artifacts: "app/build/outputs/apk/debug/CallSaver-Latest-IST.apk"
         tag: "latest"
         name: "CallSaver IST Build (${{ env.BUILD_TIMESTAMP }})"
-        body: "Latest CallSaver APK Build (${{ env.BUILD_TIMESTAMP }} IST). Tap the CallSaver-${{ env.BUILD_TIMESTAMP }}.apk file below on your phone to install directly."
+        body: "Latest CallSaver APK Build (${{ env.BUILD_TIMESTAMP }} IST). Direct 1-tap download link: https://github.com/vvinaybhargav/saveContact/releases/download/latest/CallSaver-Latest-IST.apk"
         allowUpdates: true
         recreate: true
         removeArtifacts: true
