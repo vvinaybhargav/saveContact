@@ -122,9 +122,19 @@ public class GmailService {
     }
 
     public static void fetchInboxMessagesAsync(Context context, int maxResults, FetchCallback<List<EmailMessage>> callback) {
+        fetchInboxMessagesAsync(context, null, maxResults, callback);
+    }
+
+    /**
+     * Same as fetchInboxMessagesAsync(context, maxResults, callback), but with an
+     * optional free-text query run server-side against Gmail's own search (not just
+     * filtered client-side over whatever's already been fetched) - so searching finds
+     * old mail too, not only whatever happens to be in the last N cached messages.
+     */
+    public static void fetchInboxMessagesAsync(Context context, String query, int maxResults, FetchCallback<List<EmailMessage>> callback) {
         new Thread(() -> {
             try {
-                List<EmailMessage> messages = fetchInboxMessagesSync(context, maxResults);
+                List<EmailMessage> messages = fetchInboxMessagesSync(context, query, maxResults);
                 callback.onSuccess(messages);
             } catch (Exception e) {
                 Log.e(TAG, "Error fetching inbox", e);
@@ -134,8 +144,17 @@ public class GmailService {
     }
 
     public static List<EmailMessage> fetchInboxMessagesSync(Context context, int maxResults) throws Exception {
+        return fetchInboxMessagesSync(context, null, maxResults);
+    }
+
+    public static List<EmailMessage> fetchInboxMessagesSync(Context context, String query, int maxResults) throws Exception {
         String token = getAccessToken(context);
-        URL url = new URL("https://gmail.googleapis.com/gmail/v1/users/me/messages?q=in:inbox&maxResults=" + Math.max(1, maxResults));
+        String gmailQuery = "in:inbox";
+        if (query != null && !query.trim().isEmpty()) {
+            gmailQuery += " " + query.trim();
+        }
+        URL url = new URL("https://gmail.googleapis.com/gmail/v1/users/me/messages?q="
+                + java.net.URLEncoder.encode(gmailQuery, "UTF-8") + "&maxResults=" + Math.max(1, maxResults));
 
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("GET");

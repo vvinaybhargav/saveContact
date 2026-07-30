@@ -44,6 +44,9 @@ public class MailInboxFragment extends Fragment implements MailInboxAdapter.OnMa
     private DatabaseHelper dbHelper;
     private final List<EmailMessage> allFetchedEmails = new ArrayList<>();
 
+    private final android.os.Handler searchHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private Runnable searchRunnable;
+
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
@@ -87,7 +90,17 @@ public class MailInboxFragment extends Fragment implements MailInboxAdapter.OnMa
 
                 @Override
                 public void onTextChanged(CharSequence s, int start, int before, int count) {
+                    // Instant filter over whatever's already cached/fetched...
                     filterEmails(s.toString());
+                    // ...then, after a short pause, actually search Gmail's server for
+                    // this term - otherwise search only ever finds mail within the last
+                    // 30 fetched messages, missing anything older.
+                    searchHandler.removeCallbacks(searchRunnable);
+                    String query = s.toString();
+                    if (!query.trim().isEmpty()) {
+                        searchRunnable = () -> searchGmailServerSide(query);
+                        searchHandler.postDelayed(searchRunnable, 500);
+                    }
                 }
 
                 @Override
@@ -131,6 +144,12 @@ public class MailInboxFragment extends Fragment implements MailInboxAdapter.OnMa
     public void onResume() {
         super.onResume();
         loadInboxEmails();
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        if (searchRunnable != null) searchHandler.removeCallbacks(searchRunnable);
     }
 
     private void loadInboxEmails() {
@@ -186,6 +205,46 @@ public class MailInboxFragment extends Fragment implements MailInboxAdapter.OnMa
     }
 
     private int selectedFilterMode = 0; // 0 = All, 1 = Unassigned, 2 = Interview Invites
+
+    /**
+     * Runs the typed query against Gmail's own server-side search instead of only the
+     * last ~30 cached messages, so searching finds old mail too. Results are merged
+     * into the working list (existing matches from the local cache are kept, server
+     * results are added on top, deduped by message id) and re-filtered/displayed.
+     */
+    private void searchGmailServerSide(String query) {
+        if (getContext() == null || query == null || query.trim().isEmpty()) return;
+        GmailService.fetchInboxMessagesAsync(requireContext(), query, 50, new GmailService.FetchCallback<List<EmailMessage>>() {
+            @Override
+            public void onSuccess(List<EmailMessage> result) {
+                if (getActivity() == null || result == null) return;
+                requireActivity().runOnUiThread(() -> {
+                    // gmailMessageId (not the local DB row id, which is 0/unset for
+                    // messages fetched fresh from the server and not yet cached) is the
+                    // actual unique identifier to dedup on.
+                    java.util.Set<String> existingIds = new java.util.HashSet<>();
+                    for (EmailMessage m : allFetchedEmails) existingIds.add(m.getGmailMessageId());
+                    for (EmailMessage m : result) {
+                        if (!existingIds.contains(m.getGmailMessageId())) {
+                            allFetchedEmails.add(m);
+                            existingIds.add(m.getGmailMessageId());
+                        }
+                    }
+                    // Still showing the same search box text? Re-apply the filter now
+                    // that older matching mail has been merged in.
+                    if (etSearch != null && query.equals(etSearch.getText().toString())) {
+                        filterEmails(query);
+                    }
+                });
+            }
+
+            @Override
+            public void onError(String error) {
+                // Silent - the local filter already showed whatever was cached; no need
+                // to interrupt the user with an error for a background search refinement.
+            }
+        });
+    }
 
     private void filterEmails(String query) {
         String q = query != null ? query.trim().toLowerCase() : "";
