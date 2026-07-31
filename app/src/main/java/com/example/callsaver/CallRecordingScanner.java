@@ -22,6 +22,7 @@ public class CallRecordingScanner {
                 Environment.getExternalStorageDirectory() + "/Sounds/Call",
                 Environment.getExternalStorageDirectory() + "/Sounds/CallRecord",
                 Environment.getExternalStorageDirectory() + "/Music/Recordings",
+                Environment.getExternalStorageDirectory() + "/Music/Recordings/Call Recordings",
                 Environment.getExternalStorageDirectory() + "/Music/CallRecord",
                 Environment.getExternalStorageDirectory() + "/Music/Call",
                 // ColorOS/OPPO/Realme
@@ -33,18 +34,26 @@ public class CallRecordingScanner {
         };
 
         for (String path : searchPaths) {
+            scanDirectory(new File(path), maxAgeMs, candidateFiles);
+        }
+
+        // Also recurse one level into common parent folders, so naming variations we
+        // haven't explicitly listed above (e.g. a differently-cased or spaced
+        // subfolder under Music/Recordings) still get picked up.
+        String[] parentDirs = new String[]{
+                Environment.getExternalStorageDirectory() + "/Music",
+                Environment.getExternalStorageDirectory() + "/Music/Recordings",
+                Environment.getExternalStorageDirectory() + "/Recordings",
+                Environment.getExternalStorageDirectory() + "/Sounds"
+        };
+        for (String parentPath : parentDirs) {
             try {
-                File dir = new File(path);
-                if (dir.exists() && dir.isDirectory()) {
-                    File[] files = dir.listFiles();
-                    if (files != null) {
-                        for (File f : files) {
-                            if (f.isFile() && f.lastModified() >= maxAgeMs) {
-                                String name = f.getName().toLowerCase();
-                                if (name.endsWith(".m4a") || name.endsWith(".mp3") || name.endsWith(".wav") || name.endsWith(".3gp") || name.endsWith(".aac") || name.endsWith(".amr")) {
-                                    candidateFiles.add(f);
-                                }
-                            }
+                File parent = new File(parentPath);
+                File[] subDirs = parent.listFiles();
+                if (subDirs != null) {
+                    for (File subDir : subDirs) {
+                        if (subDir.isDirectory() && subDir.getName().toLowerCase().contains("call")) {
+                            scanDirectory(subDir, maxAgeMs, candidateFiles);
                         }
                     }
                 }
@@ -79,5 +88,23 @@ public class CallRecordingScanner {
         // Sort by newest first
         Collections.sort(candidateFiles, (f1, f2) -> Long.compare(f2.lastModified(), f1.lastModified()));
         return candidateFiles.get(0);
+    }
+
+    private static void scanDirectory(File dir, long maxAgeMs, List<File> candidateFiles) {
+        try {
+            if (dir.exists() && dir.isDirectory()) {
+                File[] files = dir.listFiles();
+                if (files != null) {
+                    for (File f : files) {
+                        if (f.isFile() && f.lastModified() >= maxAgeMs) {
+                            String name = f.getName().toLowerCase();
+                            if (name.endsWith(".m4a") || name.endsWith(".mp3") || name.endsWith(".wav") || name.endsWith(".3gp") || name.endsWith(".aac") || name.endsWith(".amr")) {
+                                candidateFiles.add(f);
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
     }
 }
