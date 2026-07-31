@@ -43,6 +43,7 @@ public class CallerIdBannerService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        DebugLogger.log(this, "[Banner] CallerIdBannerService.onStartCommand: action=" + (intent != null ? intent.getAction() : "null intent"));
         showForegroundNotification();
 
         if (intent == null || ACTION_DISMISS.equals(intent.getAction())) {
@@ -59,6 +60,7 @@ public class CallerIdBannerService extends Service {
         String callState = intent.getStringExtra("call_state"); // "Incoming call" / "In call"
 
         if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
+            DebugLogger.log(this, "[Banner] ABORTED - no phone_number extra in intent.");
             removeOverlay();
             stopSelf();
             return START_NOT_STICKY;
@@ -72,6 +74,7 @@ public class CallerIdBannerService extends Service {
                               String recruiter, long jobCallId, String callState) {
         windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
         if (windowManager == null) {
+            DebugLogger.log(this, "[Banner] ABORTED - WindowManager service unavailable.");
             stopSelf();
             return;
         }
@@ -159,8 +162,10 @@ public class CallerIdBannerService extends Service {
 
         try {
             windowManager.addView(overlayView, params);
+            DebugLogger.log(this, "[Banner] windowManager.addView succeeded for \"" + title + "\".");
         } catch (Exception e) {
             e.printStackTrace();
+            DebugLogger.log(this, "[Banner] EXCEPTION on windowManager.addView: " + e.getClass().getSimpleName() + " - " + e.getMessage());
         }
     }
 

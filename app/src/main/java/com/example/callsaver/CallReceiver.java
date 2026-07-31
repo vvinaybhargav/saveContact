@@ -124,12 +124,15 @@ public class CallReceiver extends BroadcastReceiver {
      * actually surfaces caller info during a live call.
      */
     private void showCallerIdBanner(Context context, String phoneNumber, String callStateLabel) {
+        DebugLogger.log(context, "[Banner] showCallerIdBanner called: number=" + phoneNumber + ", state=" + callStateLabel);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !android.provider.Settings.canDrawOverlays(context)) {
+            DebugLogger.log(context, "[Banner] ABORTED - overlay permission (Settings.canDrawOverlays) not granted.");
             return; // Overlay permission not granted - MainActivity already prompts for it.
         }
         try {
             DatabaseHelper db = new DatabaseHelper(context);
             JobCall call = db.getJobCallByNumber(context, phoneNumber);
+            DebugLogger.log(context, "[Banner] Matched JobCall: " + (call != null ? call.getCompanyName() : "none (unlogged number)"));
 
             Intent serviceIntent = new Intent(context, CallerIdBannerService.class);
             serviceIntent.putExtra("phone_number", phoneNumber);
@@ -148,8 +151,10 @@ public class CallReceiver extends BroadcastReceiver {
             } else {
                 context.startService(serviceIntent);
             }
+            DebugLogger.log(context, "[Banner] startForegroundService/startService call completed without throwing.");
         } catch (Exception e) {
             Log.e(TAG, "Could not show caller ID banner: " + e.getMessage());
+            DebugLogger.log(context, "[Banner] EXCEPTION starting CallerIdBannerService: " + e.getClass().getSimpleName() + " - " + e.getMessage());
         }
     }
 
