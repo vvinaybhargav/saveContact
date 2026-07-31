@@ -24,6 +24,11 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+    <!-- Without this, raw folder scanning for the call-recorder's output file
+         (CallRecordingScanner) silently finds nothing on Android 11+ due to scoped
+         storage - only the MediaStore query half of the scan works without it, and
+         that only helps if the OEM's recorder app indexes into MediaStore.Audio at all. -->
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
 
     <!-- Permission to post notifications (Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -111,6 +116,13 @@
                 <action android:name="android.intent.action.NEW_OUTGOING_CALL" />
             </intent-filter>
         </receiver>
+
+        <!-- Truecaller-style floating overlay banner shown during calls, since
+             CallSaver no longer requires being the default dialer. -->
+        <service
+            android:name=".CallerIdBannerService"
+            android:exported="false"
+            android:foregroundServiceType="phoneCall" />
 
         <!-- Handles Answer/Decline tapped from the incoming-call heads-up notification -->
         <receiver

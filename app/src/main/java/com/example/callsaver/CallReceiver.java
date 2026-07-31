@@ -45,9 +45,7 @@ public class CallReceiver extends BroadcastReceiver {
                         .putString(KEY_LAST_STATE, "OUTGOING")
                         .apply();
                 Log.d(TAG, "Outgoing call detected to: " + outgoingNumber);
-                // Call UI is now handled exclusively by CallSaverInCallService's
-                // onCallAdded(), which launches the full-screen InCallActivity - no
-                // separate overlay banner needed here anymore.
+                showCallerIdBanner(context, outgoingNumber, "Calling…");
             }
             return;
         }
@@ -73,9 +71,7 @@ public class CallReceiver extends BroadcastReceiver {
                 editor.putString(KEY_INCOMING_NUMBER, incomingNumber);
                 Log.d(TAG, "Incoming call detected from number: " + incomingNumber);
                 DebugLogger.log(context, "[Receiver] Incoming call number: " + incomingNumber);
-                // Call UI is now handled exclusively by CallSaverInCallService's
-                // onCallAdded(), which launches the full-screen InCallActivity - no
-                // separate overlay banner needed here anymore.
+                showCallerIdBanner(context, incomingNumber, "Incoming call");
             } else {
                 DebugLogger.log(context, "[Receiver] Incoming call (No Number Extra)");
             }
@@ -89,8 +85,13 @@ public class CallReceiver extends BroadcastReceiver {
                     .apply();
             Log.d(TAG, "Call active (OFFHOOK). Answered incoming: " + answeredIncoming);
             DebugLogger.log(context, "[Receiver] Offhook active. answeredIncoming: " + answeredIncoming);
+            String activeNumber = prefs.getString(KEY_INCOMING_NUMBER, null);
+            if (activeNumber != null && !activeNumber.isEmpty()) {
+                showCallerIdBanner(context, activeNumber, "In call");
+            }
         } else if (stateStr.equals(TelephonyManager.EXTRA_STATE_IDLE)) {
             DebugLogger.log(context, "[Receiver] Idle transition. Scanning Call Log in background...");
+            dismissCallerIdBanner(context);
 
             final String incomingNumber = prefs.getString(KEY_INCOMING_NUMBER, null);
 
@@ -113,6 +114,58 @@ public class CallReceiver extends BroadcastReceiver {
                     processRecentCalls(context, 1, incomingNumber);
                 }
             }).start();
+        }
+    }
+
+    /**
+     * Starts (or updates) the floating Truecaller-style caller-ID banner for the given
+     * number - CallSaver isn't the default dialer, so this overlay (not
+     * CallSaverInCallService, which only fires while holding that role) is what
+     * actually surfaces caller info during a live call.
+     */
+    private void showCallerIdBanner(Context context, String phoneNumber, String callStateLabel) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !android.provider.Settings.canDrawOverlays(context)) {
+            return; // Overlay permission not granted - MainActivity already prompts for it.
+        }
+        try {
+            DatabaseHelper db = new DatabaseHelper(context);
+            JobCall call = db.getJobCallByNumber(context, phoneNumber);
+
+            Intent serviceIntent = new Intent(context, CallerIdBannerService.class);
+            serviceIntent.putExtra("phone_number", phoneNumber);
+            serviceIntent.putExtra("call_state", callStateLabel);
+            if (call != null) {
+                serviceIntent.putExtra("company_name", call.getCompanyName());
+                serviceIntent.putExtra("round_status", call.getRoundStatus());
+                serviceIntent.putExtra("job_call_id", (long) call.getId());
+                serviceIntent.putExtra("recruiter_name", call.getRecruiterName());
+            } else {
+                serviceIntent.putExtra("job_call_id", -1L);
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(serviceIntent);
+            } else {
+                context.startService(serviceIntent);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Could not show caller ID banner: " + e.getMessage());
+        }
+    }
+
+    private void dismissCallerIdBanner(Context context) {
+        try {
+            Intent dismissIntent = new Intent(context, CallerIdBannerService.class)
+                    .setAction(CallerIdBannerService.ACTION_DISMISS);
+            // startForegroundService (not startService) - the service calls
+            // startForeground() immediately regardless of the action, satisfying
+            // Android 8+'s requirement when started from a background context.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(dismissIntent);
+            } else {
+                context.startService(dismissIntent);
+            }
+        } catch (Exception ignored) {
         }
     }
 

@@ -288,14 +288,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void checkOverlayPermission() {
-        // "Display over other apps" is still used to launch the post-call popup from the
-        // background. The call-screening role is no longer requested here - now that
-        // CallSaver is the full default dialer, its InCallService sees every call
-        // directly, so screening was a redundant extra permission prompt.
+        // "Display over other apps" is required for the floating Truecaller-style
+        // caller-ID banner (CallerIdBannerService), shown over the system's own dialer
+        // during calls - CallSaver no longer requires being the default dialer.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !android.provider.Settings.canDrawOverlays(this)) {
             new androidx.appcompat.app.AlertDialog.Builder(this)
                     .setTitle("Overlay Permission Required")
-                    .setMessage("This app displays a full-screen Caller ID layout on recruiter calls. Tap 'OK' to enable this in settings.")
+                    .setMessage("This app shows a floating caller-ID banner during calls with recruiter/company info. Tap 'OK' to enable this in settings.")
                     .setPositiveButton("OK", (dialog, which) -> {
                         Intent intent = new Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                                 Uri.parse("package:" + getPackageName()));
