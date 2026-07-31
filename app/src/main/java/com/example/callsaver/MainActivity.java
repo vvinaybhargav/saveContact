@@ -134,6 +134,7 @@ public class MainActivity extends AppCompatActivity {
     private void placeCallDirectly(String number) {
         if (number == null || number.trim().isEmpty()) return;
         Uri uri = Uri.fromParts("tel", number.trim(), null);
+        CallReceiver.recordOutgoingNumber(this, number);
         boolean canCall = ContextCompat.checkSelfPermission(this, Manifest.permission.CALL_PHONE)
                 == PackageManager.PERMISSION_GRANTED;
         if (canCall) {

@@ -27,6 +27,23 @@ public class CallReceiver extends BroadcastReceiver {
     private static final String KEY_ANSWERED = "answered";
     private static final String CHANNEL_ID = "recruiter_save_channel";
 
+    /**
+     * Since Android 10, ACTION_NEW_OUTGOING_CALL is only delivered to the default dialer/
+     * system apps, so CallSaver never sees it and would otherwise have no number to show
+     * when OFFHOOK fires for a call it placed itself. Callers that place a call directly
+     * (JobCallAdapter, RecentsFragment, MainActivity) call this first so the banner still
+     * has a number to work with.
+     */
+    public static void recordOutgoingNumber(Context context, String number) {
+        if (number == null || number.trim().isEmpty()) return;
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
+                .putString(KEY_INCOMING_NUMBER, number.trim())
+                .putBoolean(KEY_ANSWERED, true)
+                .putString(KEY_LAST_STATE, "OUTGOING")
+                .apply();
+        DebugLogger.log(context, "[Banner] recordOutgoingNumber called: " + number.trim());
+    }
+
     @Override
     public void onReceive(Context context, Intent intent) {
         if (intent == null) {

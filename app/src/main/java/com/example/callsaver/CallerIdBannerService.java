@@ -102,8 +102,19 @@ public class CallerIdBannerService extends Service {
         TextView tvName = overlayView.findViewById(R.id.tv_overlay_caller_name);
         TextView tvStatus = overlayView.findViewById(R.id.tv_overlay_caller_status);
         TextView tvAvatar = overlayView.findViewById(R.id.tv_overlay_avatar_letter);
-        View btnLog = overlayView.findViewById(R.id.btn_overlay_view_log);
+        TextView tvNotes = overlayView.findViewById(R.id.tv_overlay_notes_summary);
+        View btnLog = overlayView.findViewById(R.id.btn_overlay_expand);
         View btnClose = overlayView.findViewById(R.id.btn_overlay_close);
+
+        if (tvNotes != null) {
+            String summary = buildNotesSummary(jobCallId);
+            if (notEmpty(summary)) {
+                tvNotes.setText(summary);
+                tvNotes.setVisibility(View.VISIBLE);
+            } else {
+                tvNotes.setVisibility(View.GONE);
+            }
+        }
 
         if (tvName != null) tvName.setText(title);
         if (tvStatus != null) {
@@ -156,8 +167,10 @@ public class CallerIdBannerService extends Service {
                         | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
                         | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
                 PixelFormat.TRANSLUCENT);
+        // Positioned below the top of the screen (not Gravity.TOP) so it doesn't overlap
+        // Truecaller's own overlay banner - both can be visible at once this way.
         params.gravity = Gravity.TOP;
-        params.y = 80;
+        params.y = (int) (280 * getResources().getDisplayMetrics().density);
         params.x = 0;
 
         try {
@@ -211,6 +224,33 @@ public class CallerIdBannerService extends Service {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    /** Builds a short keyword-style notes preview (up to 3 bullet lines) for the matched job call. */
+    private String buildNotesSummary(long jobCallId) {
+        if (jobCallId <= 0) return null;
+        java.util.List<CallNote> notes = new DatabaseHelper(this).getNotesForJob(jobCallId);
+        if (notes == null || notes.isEmpty()) return null;
+
+        StringBuilder sb = new StringBuilder();
+        int lines = 0;
+        for (CallNote n : notes) {
+            if (lines >= 3) break;
+            if (n.note == null || n.note.trim().isEmpty()) continue;
+            for (String rawLine : n.note.split("\n")) {
+                if (lines >= 3) break;
+                String line = rawLine.trim();
+                if (line.isEmpty()) continue;
+                if (line.startsWith("•") || line.startsWith("-")) {
+                    line = line.substring(1).trim();
+                }
+                if (line.isEmpty()) continue;
+                if (sb.length() > 0) sb.append("\n");
+                sb.append("• ").append(line);
+                lines++;
+            }
+        }
+        return sb.length() > 0 ? sb.toString() : null;
     }
 
     private boolean notEmpty(String s) {

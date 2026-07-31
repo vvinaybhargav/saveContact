@@ -308,6 +308,7 @@ public class RecentsFragment extends Fragment implements RecentsAdapter.OnCallAc
     private void placeCallWithSim(String number, int simIndex) {
         if (number == null || number.isEmpty()) return;
         Uri uri = Uri.fromParts("tel", number, null);
+        CallReceiver.recordOutgoingNumber(requireContext(), number);
 
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CALL_PHONE)
                 != PackageManager.PERMISSION_GRANTED) {
@@ -599,6 +600,7 @@ public class RecentsFragment extends Fragment implements RecentsAdapter.OnCallAc
     public void onDialClick(String phoneNumber) {
         if (phoneNumber == null || phoneNumber.isEmpty()) return;
         Uri uri = Uri.fromParts("tel", phoneNumber, null);
+        CallReceiver.recordOutgoingNumber(requireContext(), phoneNumber);
 
         boolean canCall = ContextCompat.checkSelfPermission(requireContext(),
                 Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED;

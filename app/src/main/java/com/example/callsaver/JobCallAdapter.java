@@ -275,6 +275,7 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
         // instead of placing the call. Place it directly via Telecom instead, same as
         // RecentsFragment.onDialClick.
         Uri uri = Uri.fromParts("tel", number.trim(), null);
+        CallReceiver.recordOutgoingNumber(context, number);
         boolean canCall = androidx.core.content.ContextCompat.checkSelfPermission(context,
                 android.Manifest.permission.CALL_PHONE) == android.content.pm.PackageManager.PERMISSION_GRANTED;
         if (canCall) {
