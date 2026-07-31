@@ -717,6 +717,20 @@
                             android:clickable="true"
                             android:focusable="true"
                             android:layout_marginStart="8dp"/>
+
+                        <TextView
+                            android:id="@+id/btn_test_banner"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Test Banner"
+                            android:textColor="@color/status_green"
+                            android:textSize="12sp"
+                            android:textStyle="bold"
+                            android:paddingHorizontal="8dp"
+                            android:paddingVertical="4dp"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:layout_marginStart="8dp"/>
                     </LinearLayout>
 
                     <FrameLayout

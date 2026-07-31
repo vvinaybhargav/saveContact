@@ -30,6 +30,7 @@ public class SettingsActivity extends AppCompatActivity {
     private TextView tvLogs;
     private TextView btnClearLogs;
     private TextView btnRefreshLogs;
+    private TextView btnTestBanner;
 
     private SharedPreferences prefs;
 
@@ -58,6 +59,7 @@ public class SettingsActivity extends AppCompatActivity {
         tvLogs = findViewById(R.id.tv_diagnostic_logs);
         btnClearLogs = findViewById(R.id.btn_clear_logs);
         btnRefreshLogs = findViewById(R.id.btn_refresh_logs);
+        btnTestBanner = findViewById(R.id.btn_test_banner);
 
         // Gmail & Mail Inbox UI elements
         Button btnOpenMailInbox = findViewById(R.id.btn_open_mail_inbox);
@@ -163,6 +165,9 @@ public class SettingsActivity extends AppCompatActivity {
             loadDiagnosticLogs();
             Toast.makeText(this, "Logs cleared.", Toast.LENGTH_SHORT).show();
         });
+        if (btnTestBanner != null) {
+            btnTestBanner.setOnClickListener(v -> testCallerIdBanner());
+        }
 
         // Setup duplicates check button
         Button btnCheckDuplicates = findViewById(R.id.btn_settings_check_duplicates);
@@ -210,6 +215,47 @@ public class SettingsActivity extends AppCompatActivity {
                 etUserInterests.setText(current.isEmpty() ? spoken : current + " " + spoken);
                 etUserInterests.setSelection(etUserInterests.getText().length());
             }
+        }
+    }
+
+    /**
+     * Manually triggers the floating caller-ID banner with sample data, bypassing the
+     * whole call-detection pipeline (CallReceiver/PHONE_STATE broadcasts) - isolates
+     * whether the overlay/service itself works from whether calls are even being
+     * detected, since a live-call test conflates both.
+     */
+    private void testCallerIdBanner() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M && !android.provider.Settings.canDrawOverlays(this)) {
+            Toast.makeText(this, "\"Display over other apps\" isn't granted yet - enable it first.", Toast.LENGTH_LONG).show();
+            checkOverlayPermissionForTest();
+            return;
+        }
+        Intent testIntent = new Intent(this, CallerIdBannerService.class);
+        testIntent.putExtra("phone_number", "+91 98765 43210");
+        testIntent.putExtra("company_name", "Test Company");
+        testIntent.putExtra("round_status", "1st Round");
+        testIntent.putExtra("recruiter_name", "Test Recruiter");
+        testIntent.putExtra("job_call_id", -1L);
+        testIntent.putExtra("call_state", "Test banner");
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                startForegroundService(testIntent);
+            } else {
+                startService(testIntent);
+            }
+            Toast.makeText(this, "Banner triggered - check your screen. See Diagnostic Logs below for [Banner] entries.", Toast.LENGTH_LONG).show();
+            loadDiagnosticLogs();
+        } catch (Exception e) {
+            Toast.makeText(this, "Could not start banner: " + e.getMessage(), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void checkOverlayPermissionForTest() {
+        try {
+            Intent intent = new Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    android.net.Uri.parse("package:" + getPackageName()));
+            startActivity(intent);
+        } catch (Exception ignored) {
         }
     }
 
