@@ -126,7 +126,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
     private android.content.SharedPreferences.OnSharedPreferenceChangeListener prefsListener;
     private String selectedStatus = "All";
     private TextView[] chips;
-    private final String[] statuses = {"All", "Scheduled"};
+    private final String[] statuses = {"All", "First time", "Processing"};
 
     // WRITE_CONTACTS/GET_ACCOUNTS are intentionally NOT in this list: on some OEM
     // Settings UIs (confirmed on at least one ColorOS device) they never appear as a
@@ -295,7 +295,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
 
 
     private void setupFilterChips(View view) {
-        int[] chipIds = {R.id.chip_all, R.id.chip_scheduled};
+        int[] chipIds = {R.id.chip_all, R.id.chip_first_time, R.id.chip_processing};
 
         chips = new TextView[chipIds.length];
         for (int i = 0; i < chipIds.length; i++) {
@@ -321,13 +321,19 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         int unselectedText = ContextCompat.getColor(requireContext(), R.color.text_secondary);
 
         int allCount = 0;
-        int scheduledCount = 0;
+        int firstTimeCount = 0;
+        int processingCount = 0;
         for (JobCall call : allCallsList) {
             if (call.getId() <= 0) continue;
             allCount++;
-            if ("Scheduled".equals(call.getInterestRating())) scheduledCount++;
+            String status = call.getRoundStatus();
+            if (status == null || status.isEmpty() || "First time".equals(status)) {
+                firstTimeCount++;
+            } else {
+                processingCount++;
+            }
         }
-        String[] labels = {"All (" + allCount + ")", "Scheduled (" + scheduledCount + ")"};
+        String[] labels = {"All (" + allCount + ")", "First time (" + firstTimeCount + ")", "Processing (" + processingCount + ")"};
 
         for (int i = 0; i < chips.length; i++) {
             if (chips[i] == null) continue;
@@ -410,9 +416,12 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                     (call.getNotes() != null && call.getNotes().toLowerCase().contains(query.toLowerCase()));
             
             // Unlogged calls (id <= 0) are never shown in Tracker - only leads actually
-            // turned into a log entry.
+            // turned into a log entry. "Processing" = everything past First time.
+            String callRound = call.getRoundStatus();
+            boolean isFirstTime = callRound == null || callRound.isEmpty() || "First time".equals(callRound);
             boolean matchesStatus = call.getId() > 0 && ("All".equals(status)
-                    || ("Scheduled".equals(status) && "Scheduled".equals(call.getInterestRating())));
+                    || ("First time".equals(status) && isFirstTime)
+                    || ("Processing".equals(status) && !isFirstTime));
 
             if (matchesQuery && matchesStatus) {
                 filteredList.add(call);

@@ -1008,7 +1008,7 @@ public class InCallActivity extends AppCompatActivity {
         if (spinnerOverlayRound != null) {
             ArrayAdapter<String> roundAdapter = new ArrayAdapter<>(this,
                     R.layout.item_spinner_white,
-                    new String[]{"First time", "1st Round", "2nd Round", "Final Round", "HR / Salary", "Offered"});
+                    new String[]{"First time", "1st Round", "2nd Round", "Final Round", "BGV", "HR / Salary", "Offered"});
             roundAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
             spinnerOverlayRound.setAdapter(roundAdapter);
             if (prefillRound != null) {

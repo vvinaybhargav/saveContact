@@ -147,7 +147,8 @@
                         android:paddingBottom="4dp">
 
                         <TextView android:id="@+id/chip_all" android:text="All" style="@style/TrackerChipStyle" android:tag="selected" />
-                        <TextView android:id="@+id/chip_scheduled" android:text="Scheduled" style="@style/TrackerChipStyle" />
+                        <TextView android:id="@+id/chip_first_time" android:text="First time" style="@style/TrackerChipStyle" />
+                        <TextView android:id="@+id/chip_processing" android:text="Processing" style="@style/TrackerChipStyle" />
                     </LinearLayout>
                 </HorizontalScrollView>
             </LinearLayout>
