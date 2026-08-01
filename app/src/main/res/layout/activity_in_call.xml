@@ -239,59 +239,6 @@
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- Log Detail Quick Section Chips -->
-            <HorizontalScrollView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:scrollbars="none"
-                android:layout_marginTop="12dp">
-
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal">
-
-                    <com.google.android.material.chip.Chip
-                        android:id="@+id/chip_sec_summary"
-                        style="@style/Widget.MaterialComponents.Chip.Action"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="📌 Summary"
-                        android:textColor="@color/white"
-                        app:chipBackgroundColor="@color/card_bg_dark" />
-
-                    <com.google.android.material.chip.Chip
-                        android:id="@+id/chip_sec_notes"
-                        style="@style/Widget.MaterialComponents.Chip.Action"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="6dp"
-                        android:text="📝 Notes"
-                        android:textColor="@color/white"
-                        app:chipBackgroundColor="@color/card_bg_dark" />
-
-                    <com.google.android.material.chip.Chip
-                        android:id="@+id/chip_sec_emails"
-                        style="@style/Widget.MaterialComponents.Chip.Action"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="6dp"
-                        android:text="📧 Emails"
-                        android:textColor="@color/white"
-                        app:chipBackgroundColor="@color/card_bg_dark" />
-
-                    <com.google.android.material.chip.Chip
-                        android:id="@+id/chip_sec_jd"
-                        style="@style/Widget.MaterialComponents.Chip.Action"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="6dp"
-                        android:text="📄 JD"
-                        android:textColor="@color/white"
-                        app:chipBackgroundColor="@color/card_bg_dark" />
-                </LinearLayout>
-            </HorizontalScrollView>
-
             <!-- Attached Emails glass card -->
             <LinearLayout
                 android:id="@+id/ll_overlay_attached_emails_card"
@@ -739,23 +686,6 @@
                         android:clickable="true"
                         android:textColor="@color/white_constant" />
                 </com.google.android.material.textfield.TextInputLayout>
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="JD SCREENSHOTS"
-                    android:textColor="#9C9CA3"
-                    android:textSize="10sp"
-                    android:textStyle="bold"
-                    android:letterSpacing="0.08"
-                    android:layout_marginBottom="6dp" />
-
-                <LinearLayout
-                    android:id="@+id/ll_overlay_jd_row"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:layout_marginBottom="12dp" />
 
                 <LinearLayout
                     android:layout_width="match_parent"
