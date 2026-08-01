@@ -320,25 +320,30 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         int unselectedBg = ContextCompat.getColor(requireContext(), R.color.divider);
         int unselectedText = ContextCompat.getColor(requireContext(), R.color.text_secondary);
 
-        int allCount = 0;
-        int scheduledCount = 0;
-        int feedbackPendingCount = 0;
-        int firstTimeCount = 0;
+        // Counts are of distinct COMPANIES matching each filter, not raw lead rows - a
+        // company with 3 leads all "Scheduled" counts once, same grouping as everywhere
+        // else in Tracker.
+        java.util.Set<String> allCompanies = new java.util.HashSet<>();
+        java.util.Set<String> scheduledCompanies = new java.util.HashSet<>();
+        java.util.Set<String> feedbackPendingCompanies = new java.util.HashSet<>();
+        java.util.Set<String> firstTimeCompanies = new java.util.HashSet<>();
         for (JobCall call : allCallsList) {
             if (call.getId() <= 0) continue;
-            allCount++;
+            String key = normalizeCompanyKey(call.getCompanyName());
+            if (key.isEmpty()) continue;
+            allCompanies.add(key);
             String feedback = call.getInterestRating();
-            if ("Scheduled".equals(feedback)) scheduledCount++;
-            if ("Feedback Pending".equals(feedback)) feedbackPendingCount++;
+            if ("Scheduled".equals(feedback)) scheduledCompanies.add(key);
+            if ("Feedback Pending".equals(feedback)) feedbackPendingCompanies.add(key);
             String status = call.getRoundStatus();
-            if (status == null || status.isEmpty() || "First time".equals(status)) firstTimeCount++;
+            if (status == null || status.isEmpty() || "First time".equals(status)) firstTimeCompanies.add(key);
         }
         // Count shown on its own line below the label, not inline in parens.
         String[] labels = {
-                "All\n" + allCount,
-                "Scheduled\n" + scheduledCount,
-                "Feedback Pending\n" + feedbackPendingCount,
-                "First time\n" + firstTimeCount
+                "All\n" + allCompanies.size(),
+                "Scheduled\n" + scheduledCompanies.size(),
+                "Feedback Pending\n" + feedbackPendingCompanies.size(),
+                "First time\n" + firstTimeCompanies.size()
         };
 
         for (int i = 0; i < chips.length; i++) {
