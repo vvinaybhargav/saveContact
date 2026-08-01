@@ -13,7 +13,7 @@ import java.util.List;
 public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "JobTracker.db";
-    private static final int DATABASE_VERSION = 15; // V15: add jd_text column for dedicated Job Description section
+    private static final int DATABASE_VERSION = 16; // V16: add company_meta table (company-level note/status)
 
     public static final String TABLE_NAME = "job_calls";
     public static final String COLUMN_ID = "id";
@@ -90,6 +90,14 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public static final String COLUMN_EMAIL_BODY = "body";
     public static final String COLUMN_EMAIL_TIMESTAMP = "received_timestamp";
 
+    // V16: context that applies to a whole company (e.g. all leads at "TCS"), not one
+    // specific lead - a persistent note and/or status keyed by normalized company name.
+    public static final String TABLE_COMPANY_META = "company_meta";
+    public static final String COLUMN_CM_COMPANY_KEY = "company_key";
+    public static final String COLUMN_CM_NOTE = "note";
+    public static final String COLUMN_CM_STATUS = "status";
+    public static final String COLUMN_CM_UPDATED_AT = "updated_at";
+
     public DatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
     }
@@ -127,6 +135,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         db.execSQL(createHistoryTableSql());
         db.execSQL(createPhonesTableSql());
         db.execSQL(createEmailsTableSql());
+        db.execSQL(createCompanyMetaTableSql());
     }
 
     @Override
@@ -196,6 +205,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             } catch (Exception ignored) {
             }
         }
+        if (oldVersion < 16) {
+            db.execSQL(createCompanyMetaTableSql());
+        }
     }
 
     private static String createNotesTableSql() {
@@ -225,6 +237,55 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 + COLUMN_PHONE_NUMBER + " TEXT,"
                 + COLUMN_PHONE_RECRUITER_NAME + " TEXT"
                 + ")";
+    }
+
+    private static String createCompanyMetaTableSql() {
+        return "CREATE TABLE IF NOT EXISTS " + TABLE_COMPANY_META + "("
+                + COLUMN_CM_COMPANY_KEY + " TEXT PRIMARY KEY,"
+                + COLUMN_CM_NOTE + " TEXT,"
+                + COLUMN_CM_STATUS + " TEXT,"
+                + COLUMN_CM_UPDATED_AT + " INTEGER"
+                + ")";
+    }
+
+    public static class CompanyMeta {
+        public final String note;
+        public final String status;
+        public CompanyMeta(String note, String status) {
+            this.note = note;
+            this.status = status;
+        }
+    }
+
+    /** Company-level note/status keyed by normalized (trimmed, lowercased) company name. */
+    public CompanyMeta getCompanyMeta(String companyKey) {
+        if (companyKey == null || companyKey.trim().isEmpty()) return new CompanyMeta(null, null);
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor c = db.query(TABLE_COMPANY_META, null, COLUMN_CM_COMPANY_KEY + "=?",
+                new String[]{companyKey}, null, null, null);
+        CompanyMeta result = new CompanyMeta(null, null);
+        if (c != null) {
+            if (c.moveToFirst()) {
+                result = new CompanyMeta(
+                        c.getString(c.getColumnIndexOrThrow(COLUMN_CM_NOTE)),
+                        c.getString(c.getColumnIndexOrThrow(COLUMN_CM_STATUS)));
+            }
+            c.close();
+        }
+        db.close();
+        return result;
+    }
+
+    public void upsertCompanyMeta(String companyKey, String note, String status) {
+        if (companyKey == null || companyKey.trim().isEmpty()) return;
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues v = new ContentValues();
+        v.put(COLUMN_CM_COMPANY_KEY, companyKey);
+        v.put(COLUMN_CM_NOTE, note);
+        v.put(COLUMN_CM_STATUS, status);
+        v.put(COLUMN_CM_UPDATED_AT, System.currentTimeMillis());
+        db.insertWithOnConflict(TABLE_COMPANY_META, null, v, SQLiteDatabase.CONFLICT_REPLACE);
+        db.close();
     }
 
     private static String createEmailsTableSql() {

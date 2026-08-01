@@ -234,9 +234,24 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
 
         holder.tvPhoneNumber.setVisibility(View.GONE);
         holder.tvTags.setVisibility(View.GONE);
-        holder.tvNotesPreview.setVisibility(View.GONE);
-        holder.tvStatusBadge.setVisibility(View.GONE);
         if (holder.rowFooter != null) holder.rowFooter.setVisibility(View.GONE);
+
+        // Company-level note/status - context that applies to the whole company, distinct
+        // from any one lead's per-call notes/status. Long-press to edit.
+        DatabaseHelper.CompanyMeta meta = new DatabaseHelper(context).getCompanyMeta(groupKey);
+        if (meta.note != null && !meta.note.trim().isEmpty()) {
+            holder.tvNotesPreview.setVisibility(View.VISIBLE);
+            holder.tvNotesPreview.setText(meta.note.trim());
+        } else {
+            holder.tvNotesPreview.setVisibility(View.GONE);
+        }
+        if (meta.status != null && !meta.status.trim().isEmpty()) {
+            holder.tvStatusBadge.setVisibility(View.VISIBLE);
+            holder.tvStatusBadge.setText(meta.status.trim());
+            applyStatusColors(holder.tvStatusBadge, meta.status.trim());
+        } else {
+            holder.tvStatusBadge.setVisibility(View.GONE);
+        }
 
         String initial = displayCompany.isEmpty() ? "?" : String.valueOf(displayCompany.charAt(0)).toUpperCase();
         holder.tvAvatarText.setText(initial);
@@ -257,6 +272,51 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
                 notifyDataSetChanged();
             }
         });
+        holder.itemView.setOnLongClickListener(v -> {
+            showCompanyMetaEditDialog(groupKey, displayCompany, meta);
+            return true;
+        });
+    }
+
+    /** Long-press on a company header: edit its persistent note and/or overall status. */
+    private void showCompanyMetaEditDialog(String groupKey, String displayCompany, DatabaseHelper.CompanyMeta meta) {
+        android.widget.LinearLayout container = new android.widget.LinearLayout(context);
+        container.setOrientation(android.widget.LinearLayout.VERTICAL);
+        int pad = (int) (16 * context.getResources().getDisplayMetrics().density);
+        container.setPadding(pad, pad, pad, pad);
+
+        final android.widget.EditText etNote = new android.widget.EditText(context);
+        etNote.setHint("Company note (e.g. cold, low priority)");
+        if (meta.note != null) etNote.setText(meta.note);
+        container.addView(etNote);
+
+        String[] statuses = context.getResources().getStringArray(R.array.round_statuses);
+        String[] statusOptions = new String[statuses.length + 1];
+        statusOptions[0] = "(none)";
+        System.arraycopy(statuses, 0, statusOptions, 1, statuses.length);
+        final android.widget.Spinner spinner = new android.widget.Spinner(context);
+        android.widget.ArrayAdapter<String> spinnerAdapter = new android.widget.ArrayAdapter<>(
+                context, android.R.layout.simple_spinner_item, statusOptions);
+        spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinner.setAdapter(spinnerAdapter);
+        if (meta.status != null) {
+            int idx = spinnerAdapter.getPosition(meta.status);
+            if (idx >= 0) spinner.setSelection(idx);
+        }
+        container.addView(spinner);
+
+        new androidx.appcompat.app.AlertDialog.Builder(context)
+                .setTitle(displayCompany)
+                .setView(container)
+                .setPositiveButton("Save", (dialog, which) -> {
+                    String note = etNote.getText().toString().trim();
+                    String selectedStatus = spinner.getSelectedItemPosition() > 0
+                            ? (String) spinner.getSelectedItem() : null;
+                    new DatabaseHelper(context).upsertCompanyMeta(groupKey, note.isEmpty() ? null : note, selectedStatus);
+                    notifyDataSetChanged();
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     private void setupStatusBadge(TextView tv, JobCall call) {
@@ -293,10 +353,14 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
             badgeText += " (" + call.getInterestRating() + ")";
         }
         tv.setText(badgeText);
-        
+        applyStatusColors(tv, status);
+    }
+
+    /** Shared status → color mapping, used for both per-lead and company-level status badges. */
+    private void applyStatusColors(TextView tv, String status) {
         int textColor;
         int bgColor;
-        
+
         switch (status) {
             case "Negative":
             case "Not Interested":
@@ -326,7 +390,6 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
                 break;
         }
 
-        // Apply rounded corner programmatically to status badge
         GradientDrawable gd = new GradientDrawable();
         gd.setColor(bgColor);
         float density = context.getResources().getDisplayMetrics().density;
