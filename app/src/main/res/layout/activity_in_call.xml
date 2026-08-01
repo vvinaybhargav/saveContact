@@ -563,6 +563,14 @@
                     android:textColor="@color/white_constant"
                     android:textSize="14sp" />
 
+                <!-- Hidden: field removed from UI, kept invisible so R.id.et_overlay_expected_ctc
+                     still resolves for the (harmless, null-checked) code still referencing it. -->
+                <EditText
+                    android:id="@+id/et_overlay_expected_ctc"
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:visibility="gone" />
+
                 <RelativeLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -673,6 +681,14 @@
                         android:clickable="true"
                         android:textColor="@color/white_constant" />
                 </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- Hidden: JD screenshots UI removed, kept invisible so R.id.ll_overlay_jd_row
+                     still resolves for the (harmless, null-checked) code still referencing it. -->
+                <LinearLayout
+                    android:id="@+id/ll_overlay_jd_row"
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:visibility="gone" />
 
                 <LinearLayout
                     android:layout_width="match_parent"
