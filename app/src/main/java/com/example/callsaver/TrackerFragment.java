@@ -373,11 +373,10 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
     }
 
     /**
-     * Companies with 2+ logged calls are collapsed into one representative row (the most
-     * recent one, since allCallsList/filteredList is already sorted newest-first) with a
-     * "N leads" badge; tapping it toggles the rest of that company's calls into view right
-     * below it, instead of merging them into a single record. Duplicate leads stay
-     * individually editable.
+     * The Tracker shows one company-name-only row per company; tapping it toggles the
+     * full detail cards for every logged call under that company into view right below,
+     * exactly like the regular tracker cards. Nothing is merged - each lead stays its
+     * own individually editable record, just grouped for display.
      */
     private List<JobCall> applyCompanyGrouping(List<JobCall> filteredList) {
         java.util.Map<String, List<JobCall>> groups = new java.util.LinkedHashMap<>();
@@ -390,28 +389,31 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
 
         java.util.Map<String, Integer> groupSizes = new java.util.HashMap<>();
         for (java.util.Map.Entry<String, List<JobCall>> e : groups.entrySet()) {
-            if (e.getValue().size() > 1) groupSizes.put(e.getKey(), e.getValue().size());
+            groupSizes.put(e.getKey(), e.getValue().size());
         }
-        if (adapter != null) adapter.setCompanyGroups(groupSizes, expandedGroupCompanies);
 
         java.util.Set<String> handledKeys = new java.util.HashSet<>();
         List<JobCall> result = new ArrayList<>();
+        List<Boolean> headerFlags = new ArrayList<>();
         for (JobCall call : filteredList) {
             String key = call.getId() > 0 ? normalizeCompanyKey(call.getCompanyName()) : "";
-            Integer size = groupSizes.get(key);
-            if (size == null) {
+            if (key.isEmpty()) {
                 result.add(call);
+                headerFlags.add(false);
                 continue;
             }
             if (handledKeys.contains(key)) continue; // rest of the group already emitted
             handledKeys.add(key);
-            result.add(call); // representative / header row
+            result.add(call); // header row (company name only)
+            headerFlags.add(true);
             if (expandedGroupCompanies.contains(key)) {
                 for (JobCall member : groups.get(key)) {
-                    if (member != call) result.add(member);
+                    result.add(member); // full detail card, same as always
+                    headerFlags.add(false);
                 }
             }
         }
+        if (adapter != null) adapter.setCompanyGroups(groupSizes, expandedGroupCompanies, headerFlags);
         return result;
     }
 

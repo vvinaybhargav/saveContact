@@ -26,6 +26,7 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
     private final OnItemClickListener listener;
     private java.util.Map<String, Integer> companyGroupSizes = new java.util.HashMap<>();
     private java.util.Set<String> expandedGroupCompanies = new java.util.HashSet<>();
+    private List<Boolean> headerFlags = new java.util.ArrayList<>();
 
     public interface OnItemClickListener {
         void onItemClick(JobCall jobCall);
@@ -45,9 +46,10 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
     }
 
     /** Called by TrackerFragment after each list rebuild to update company-group badges/toggle state. */
-    public void setCompanyGroups(java.util.Map<String, Integer> groupSizes, java.util.Set<String> expandedCompanies) {
+    public void setCompanyGroups(java.util.Map<String, Integer> groupSizes, java.util.Set<String> expandedCompanies, List<Boolean> headerFlags) {
         this.companyGroupSizes = groupSizes;
         this.expandedGroupCompanies = expandedCompanies;
+        this.headerFlags = headerFlags;
     }
 
     private String normalizeCompanyKey(String companyName) {
@@ -65,7 +67,17 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         JobCall call = callList.get(position);
         final String groupKeyForRow = call.getId() > 0 ? normalizeCompanyKey(call.getCompanyName()) : "";
-        final boolean isGroupHeaderRow = companyGroupSizes.containsKey(groupKeyForRow);
+        final boolean isGroupHeaderRow = position < headerFlags.size() && Boolean.TRUE.equals(headerFlags.get(position));
+
+        if (isGroupHeaderRow) {
+            bindHeaderRow(holder, call, groupKeyForRow);
+            return;
+        }
+
+        // Undo bindHeaderRow's hiding, in case this ViewHolder is a recycled header row.
+        holder.tvPhoneNumber.setVisibility(View.VISIBLE);
+        holder.tvStatusBadge.setVisibility(View.VISIBLE);
+        if (holder.rowFooter != null) holder.rowFooter.setVisibility(View.VISIBLE);
 
         if (call.getId() <= 0) {
             // Unlogged Call Design
@@ -123,11 +135,6 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
                 displayCompany = recruiter.trim();
             } else {
                 displayCompany = call.getPhoneNumber();
-            }
-            if (isGroupHeaderRow) {
-                int groupSize = companyGroupSizes.get(groupKeyForRow);
-                boolean expanded = expandedGroupCompanies.contains(groupKeyForRow);
-                displayCompany = displayCompany + "  ·  " + groupSize + " leads " + (expanded ? "▾" : "▸");
             }
             holder.tvCompanyName.setText(displayCompany);
             holder.tvPhoneNumber.setText(call.getPhoneNumber());
@@ -209,20 +216,45 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
             });
         }
 
-        // Card Click Action - a company-group header toggles expansion instead of opening
-        // the (ambiguous) representative lead; individual/expanded rows open as normal.
+        // Card Click Action
         holder.itemView.setOnClickListener(v -> {
-            if (isGroupHeaderRow) {
-                if (!expandedGroupCompanies.remove(groupKeyForRow)) {
-                    expandedGroupCompanies.add(groupKeyForRow);
-                }
-                if (listener instanceof OnGroupToggleListener) {
-                    ((OnGroupToggleListener) listener).onGroupToggled();
-                } else {
-                    notifyDataSetChanged();
-                }
-            } else if (listener != null) {
+            if (listener != null) {
                 listener.onItemClick(call);
+            }
+        });
+    }
+
+    /** Minimal collapsed/expanded company row: just the company name, count, and a chevron - tap toggles. */
+    private void bindHeaderRow(ViewHolder holder, JobCall call, String groupKey) {
+        int size = companyGroupSizes.containsKey(groupKey) ? companyGroupSizes.get(groupKey) : 1;
+        boolean expanded = expandedGroupCompanies.contains(groupKey);
+        String company = call.getCompanyName();
+        String displayCompany = (company == null || company.trim().isEmpty()) ? call.getPhoneNumber() : company.trim();
+        holder.tvCompanyName.setText(displayCompany + "   " + size + (size == 1 ? " lead" : " leads") + "  " + (expanded ? "▾" : "▸"));
+
+        holder.tvPhoneNumber.setVisibility(View.GONE);
+        holder.tvTags.setVisibility(View.GONE);
+        holder.tvNotesPreview.setVisibility(View.GONE);
+        holder.tvStatusBadge.setVisibility(View.GONE);
+        if (holder.rowFooter != null) holder.rowFooter.setVisibility(View.GONE);
+
+        String initial = displayCompany.isEmpty() ? "?" : String.valueOf(displayCompany.charAt(0)).toUpperCase();
+        holder.tvAvatarText.setText(initial);
+        int[] avatarColors = {0xFF6E6E76, 0xFF10B981, 0xFF3B82F6, 0xFF64748B, 0xFFEC4899, 0xFFF59E0B, 0xFF14B8A6};
+        holder.cardAvatar.setCardBackgroundColor(avatarColors[Math.abs(displayCompany.hashCode()) % avatarColors.length]);
+
+        holder.parentCard.setCardBackgroundColor(context.getResources().getColor(R.color.white));
+        holder.parentCard.setStrokeColor(context.getResources().getColor(R.color.divider));
+        holder.parentCard.setStrokeWidth(1);
+
+        holder.itemView.setOnClickListener(v -> {
+            if (!expandedGroupCompanies.remove(groupKey)) {
+                expandedGroupCompanies.add(groupKey);
+            }
+            if (listener instanceof OnGroupToggleListener) {
+                ((OnGroupToggleListener) listener).onGroupToggled();
+            } else {
+                notifyDataSetChanged();
             }
         });
     }
@@ -348,6 +380,7 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
     public static class ViewHolder extends RecyclerView.ViewHolder {
         TextView tvCompanyName, tvPhoneNumber, tvTags, tvNotesPreview, tvCallTime, tvAvatarText, tvStatusBadge, tvEmailBadgeCount;
         MaterialCardView cardAvatar, btnActionCall, btnActionFollowup, btnActionEmails, parentCard;
+        View rowFooter;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -364,6 +397,7 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
             btnActionCall = itemView.findViewById(R.id.btn_action_call);
             btnActionFollowup = itemView.findViewById(R.id.btn_action_followup);
             btnActionEmails = itemView.findViewById(R.id.btn_action_emails);
+            rowFooter = itemView.findViewById(R.id.row_footer);
         }
     }
 }
