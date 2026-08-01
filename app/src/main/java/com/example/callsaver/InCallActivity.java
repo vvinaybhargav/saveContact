@@ -1603,10 +1603,9 @@ public class InCallActivity extends AppCompatActivity {
      * wants to browse elsewhere.
      */
     private void pickAudioRecordingFile() {
-        List<android.util.Pair<String, Uri>> recent = queryRecentCallRecordingFiles(40);
-        if (recent.isEmpty()) {
-            recent = queryRecentAudioFiles(40); // fall back to whole-device audio if the Call Recordings folders are empty/inaccessible
-        }
+        List<android.util.Pair<String, Uri>> folderResults = queryRecentCallRecordingFiles(40);
+        // Fall back to whole-device audio if the Call Recordings folders are empty/inaccessible.
+        final List<android.util.Pair<String, Uri>> recent = folderResults.isEmpty() ? queryRecentAudioFiles(40) : folderResults;
         if (recent.isEmpty()) {
             launchSystemAudioPicker();
             return;
