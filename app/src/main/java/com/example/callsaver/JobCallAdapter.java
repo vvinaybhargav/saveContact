@@ -368,9 +368,15 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
         if (currentNext != null) etNextSteps.setText(currentNext);
         container.addView(etNextSteps);
 
+        // Wrapped in a ScrollView: with note + status + next-call fields stacked, this can
+        // exceed screen height on smaller phones and push the Save button off-screen,
+        // making it look like saving silently does nothing when it's actually unreachable.
+        android.widget.ScrollView scrollView = new android.widget.ScrollView(context);
+        scrollView.addView(container);
+
         new androidx.appcompat.app.AlertDialog.Builder(context)
                 .setTitle(displayCompany)
-                .setView(container)
+                .setView(scrollView)
                 .setPositiveButton("Save", (dialog, which) -> {
                     String note = etNote.getText().toString().trim();
                     DatabaseHelper db = new DatabaseHelper(context);

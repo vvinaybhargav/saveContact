@@ -795,6 +795,37 @@ public class InCallActivity extends AppCompatActivity {
             timeTv.setTextSize(11);
             timeTv.setLayoutParams(new android.widget.LinearLayout.LayoutParams(0, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
 
+            final long noteId = note.id;
+            final String rawNoteText = note.note;
+
+            TextView editTv = new TextView(this);
+            editTv.setText("✏️ Edit");
+            editTv.setTextColor(0xFF818CF8);
+            editTv.setTextSize(12);
+            editTv.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+            editTv.setPadding(4, 4, 12, 4);
+            editTv.setClickable(true);
+            editTv.setFocusable(true);
+            editTv.setOnClickListener(v -> {
+                final android.widget.EditText etEdit = new android.widget.EditText(this);
+                etEdit.setText(rawNoteText);
+                etEdit.setMinLines(3);
+                int pad = (int) (16 * getResources().getDisplayMetrics().density);
+                etEdit.setPadding(pad, pad, pad, pad);
+                new androidx.appcompat.app.AlertDialog.Builder(this)
+                        .setTitle("Edit note")
+                        .setView(etEdit)
+                        .setPositiveButton("Save", (d, w) -> {
+                            String updated = etEdit.getText().toString().trim();
+                            if (updated.isEmpty()) return;
+                            new DatabaseHelper(this).updateNoteText(noteId, jobCallId, updated);
+                            bindNotesAndSkills();
+                            Toast.makeText(this, "Note updated", Toast.LENGTH_SHORT).show();
+                        })
+                        .setNegativeButton("Cancel", null)
+                        .show();
+            });
+
             TextView deleteTv = new TextView(this);
             deleteTv.setText("🗑️ Delete");
             deleteTv.setTextColor(0xFFFB7185);
@@ -803,7 +834,6 @@ public class InCallActivity extends AppCompatActivity {
             deleteTv.setPadding(12, 4, 4, 4);
             deleteTv.setClickable(true);
             deleteTv.setFocusable(true);
-            final long noteId = note.id;
             deleteTv.setOnClickListener(v -> {
                 new androidx.appcompat.app.AlertDialog.Builder(this)
                         .setTitle("Delete this note?")
@@ -820,6 +850,7 @@ public class InCallActivity extends AppCompatActivity {
             });
 
             titleRow.addView(timeTv);
+            titleRow.addView(editTv);
             titleRow.addView(deleteTv);
 
             TextView pointsTv = new TextView(this);

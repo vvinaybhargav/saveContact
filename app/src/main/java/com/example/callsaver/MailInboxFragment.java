@@ -388,56 +388,156 @@ public class MailInboxFragment extends Fragment implements MailInboxAdapter.OnMa
         String label;
         JobCall existingCall;
         String unloggedPhone;
+        String companyName;        // set on company-selection-step options
+        List<JobCall> companyMembers; // set when this option represents a whole company (step 1)
     }
 
     private void showAssignMailDialog(EmailMessage email) {
         if (getContext() == null || dbHelper == null) return;
 
-        List<AssignOption> assignOptions = new ArrayList<>();
         List<JobCall> allCalls = dbHelper.getAllJobCalls();
         String domain = extractDomain(email.getSenderEmail());
 
-        // 1. Check existing logged calls
+        // Group existing logs by company first, so assigning is "pick the company, then
+        // (if it has more than one lead) pick the specific person" instead of one long
+        // flat list mixing every lead from every company together.
+        java.util.Map<String, List<JobCall>> byCompany = new java.util.LinkedHashMap<>();
         for (JobCall call : allCalls) {
-            String company = call.getCompanyName() != null ? call.getCompanyName() : "Call #" + call.getId();
+            String company = call.getCompanyName() != null && !call.getCompanyName().trim().isEmpty()
+                    ? call.getCompanyName().trim() : "Call #" + call.getId();
+            byCompany.computeIfAbsent(company, k -> new ArrayList<>()).add(call);
+        }
+
+        List<AssignOption> companyOptions = new ArrayList<>();
+        for (java.util.Map.Entry<String, List<JobCall>> e : byCompany.entrySet()) {
+            String company = e.getKey();
+            List<JobCall> members = e.getValue();
             boolean matchesDomain = !domain.isEmpty() && company.toLowerCase().contains(domain);
-            
+
             AssignOption opt = new AssignOption();
-            opt.existingCall = call;
-            opt.label = (matchesDomain ? "⭐ RECOMMENDED: " : "📌 ") + company;
-            if (call.getAppliedRole() != null && !call.getAppliedRole().isEmpty()) {
-                opt.label += " (" + call.getAppliedRole() + ")";
-            }
-            if (call.getPhoneNumber() != null && !call.getPhoneNumber().isEmpty()) {
-                opt.label += " - " + call.getPhoneNumber();
-            }
+            opt.companyName = company;
+            opt.companyMembers = members;
+            opt.label = (matchesDomain ? "⭐ RECOMMENDED: " : "📌 ") + company
+                    + (members.size() > 1 ? "  (" + members.size() + " leads)" : "");
             if (matchesDomain) {
-                assignOptions.add(0, opt); // Put recommended match at top!
+                companyOptions.add(0, opt);
             } else {
-                assignOptions.add(opt);
+                companyOptions.add(opt);
             }
         }
 
-        // 2. Check unlogged recent calls from system phone history
+        // Unlogged recent calls from system phone history
         List<String> unloggedPhones = getUnloggedPhoneNumbers(requireContext());
         for (String phone : unloggedPhones) {
             AssignOption opt = new AssignOption();
             opt.unloggedPhone = phone;
             opt.label = "➕ Create Log for Recent Call: " + phone;
-            assignOptions.add(opt);
+            companyOptions.add(opt);
         }
 
-        // 3. Option for blank new log
         AssignOption blankOpt = new AssignOption();
         blankOpt.label = "➕ Create New Blank Log";
-        assignOptions.add(blankOpt);
+        companyOptions.add(blankOpt);
 
-        List<String> labels = new ArrayList<>();
-        for (AssignOption opt : assignOptions) {
-            labels.add(opt.label);
+        new AlertDialog.Builder(requireContext())
+                .setTitle("📌 Assign Mail - Select Company\n" + email.getSubject())
+                .setAdapter(buildAssignAdapter(companyOptions), (dialog, which) -> {
+                    AssignOption selected = companyOptions.get(which);
+                    if (selected.companyMembers != null) {
+                        if (selected.companyMembers.size() == 1) {
+                            attachEmailToExistingCall(selected.companyMembers.get(0), email);
+                        } else {
+                            showAssignLeadWithinCompanyDialog(selected.companyName, selected.companyMembers, email);
+                        }
+                    } else {
+                        createNewLogAndAttach(selected.unloggedPhone, domain, email);
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    /** Second step, only shown when the chosen company has 2+ leads: pick which one by name/role/phone. */
+    private void showAssignLeadWithinCompanyDialog(String companyName, List<JobCall> members, EmailMessage email) {
+        List<AssignOption> leadOptions = new ArrayList<>();
+        for (JobCall call : members) {
+            AssignOption opt = new AssignOption();
+            opt.existingCall = call;
+            String recruiter = call.getRecruiterName();
+            opt.label = "👤 " + (recruiter != null && !recruiter.trim().isEmpty() ? recruiter.trim() : "(no name)");
+            if (call.getAppliedRole() != null && !call.getAppliedRole().isEmpty()) {
+                opt.label += " - " + call.getAppliedRole();
+            }
+            if (call.getPhoneNumber() != null && !call.getPhoneNumber().isEmpty()) {
+                opt.label += "  " + call.getPhoneNumber();
+            }
+            leadOptions.add(opt);
         }
+        AssignOption newLeadOpt = new AssignOption();
+        newLeadOpt.label = "➕ New lead under " + companyName;
+        newLeadOpt.companyName = companyName;
+        leadOptions.add(newLeadOpt);
 
-        ArrayAdapter<String> adapter = new ArrayAdapter<String>(requireContext(), android.R.layout.simple_list_item_1, labels) {
+        new AlertDialog.Builder(requireContext())
+                .setTitle("📌 " + companyName + " - Select Person")
+                .setAdapter(buildAssignAdapter(leadOptions), (dialog, which) -> {
+                    AssignOption selected = leadOptions.get(which);
+                    if (selected.existingCall != null) {
+                        attachEmailToExistingCall(selected.existingCall, email);
+                    } else {
+                        JobCall newCall = new JobCall();
+                        newCall.setCompanyName(selected.companyName);
+                        newCall.setAppliedRole(email.getSubject());
+                        newCall.setRoundStatus("Lead");
+                        newCall.setTimestamp(System.currentTimeMillis());
+                        checkAutoInterviewInvite(newCall, email);
+                        long newJobId = dbHelper.insertJobCall(newCall);
+                        dbHelper.insertJobEmail(newJobId, email.getGmailMessageId(), email.getSender(), email.getRecipient(), email.getSubject(), email.getSnippet(), email.getBody(), email.getReceivedTimestamp());
+                        Toast.makeText(requireContext(), "Created new lead under " + selected.companyName + " & attached email!", Toast.LENGTH_SHORT).show();
+                        triggerAiEmailExtraction(newJobId, newCall, email);
+                    }
+                })
+                .setNegativeButton("Back", null)
+                .show();
+    }
+
+    private void attachEmailToExistingCall(JobCall chosenCall, EmailMessage email) {
+        checkAutoInterviewInvite(chosenCall, email);
+        dbHelper.updateJobCall(chosenCall);
+        dbHelper.insertJobEmail(chosenCall.getId(), email.getGmailMessageId(), email.getSender(), email.getRecipient(), email.getSubject(), email.getSnippet(), email.getBody(), email.getReceivedTimestamp());
+        Toast.makeText(requireContext(), "Attached email to " + chosenCall.getCompanyName() + " log!", Toast.LENGTH_SHORT).show();
+        triggerAiEmailExtraction(chosenCall.getId(), chosenCall, email);
+    }
+
+    private void createNewLogAndAttach(String unloggedPhone, String domain, EmailMessage email) {
+        JobCall newCall = new JobCall();
+        if (unloggedPhone != null) {
+            newCall.setPhoneNumber(unloggedPhone);
+        }
+        String companyName = email.getSenderDisplayName();
+        if (companyName.equalsIgnoreCase(email.getSenderEmail())) {
+            if (!domain.isEmpty()) {
+                companyName = capitalize(domain);
+            }
+        }
+        newCall.setCompanyName(companyName);
+        newCall.setAppliedRole(email.getSubject());
+        newCall.setRoundStatus("Lead");
+        newCall.setTimestamp(System.currentTimeMillis());
+
+        checkAutoInterviewInvite(newCall, email);
+
+        long newJobId = dbHelper.insertJobCall(newCall);
+        dbHelper.insertJobEmail(newJobId, email.getGmailMessageId(), email.getSender(), email.getRecipient(), email.getSubject(), email.getSnippet(), email.getBody(), email.getReceivedTimestamp());
+
+        Toast.makeText(requireContext(), "Created new log" + (unloggedPhone != null ? " for " + unloggedPhone : "") + " & attached email!", Toast.LENGTH_SHORT).show();
+        triggerAiEmailExtraction(newJobId, newCall, email);
+    }
+
+    private ArrayAdapter<String> buildAssignAdapter(List<AssignOption> options) {
+        List<String> labels = new ArrayList<>();
+        for (AssignOption opt : options) labels.add(opt.label);
+        return new ArrayAdapter<String>(requireContext(), android.R.layout.simple_list_item_1, labels) {
             @NonNull
             @Override
             public View getView(int position, View convertView, @NonNull ViewGroup parent) {
@@ -452,48 +552,6 @@ public class MailInboxFragment extends Fragment implements MailInboxAdapter.OnMa
                 return v;
             }
         };
-
-        new AlertDialog.Builder(requireContext())
-                .setTitle("📌 Assign Mail to Log\n" + email.getSubject())
-                .setAdapter(adapter, (dialog, which) -> {
-                    AssignOption selected = assignOptions.get(which);
-                    if (selected.existingCall != null) {
-                        // Attach to existing log
-                        JobCall chosenCall = selected.existingCall;
-                        checkAutoInterviewInvite(chosenCall, email);
-                        dbHelper.updateJobCall(chosenCall);
-
-                        dbHelper.insertJobEmail(chosenCall.getId(), email.getGmailMessageId(), email.getSender(), email.getRecipient(), email.getSubject(), email.getSnippet(), email.getBody(), email.getReceivedTimestamp());
-                        Toast.makeText(requireContext(), "Attached email to " + chosenCall.getCompanyName() + " log!", Toast.LENGTH_SHORT).show();
-                        triggerAiEmailExtraction(chosenCall.getId(), chosenCall, email);
-                    } else {
-                        // Create new log (either from unlogged phone number or blank)
-                        JobCall newCall = new JobCall();
-                        if (selected.unloggedPhone != null) {
-                            newCall.setPhoneNumber(selected.unloggedPhone);
-                        }
-                        String companyName = email.getSenderDisplayName();
-                        if (companyName.equalsIgnoreCase(email.getSenderEmail())) {
-                            if (!domain.isEmpty()) {
-                                companyName = capitalize(domain);
-                            }
-                        }
-                        newCall.setCompanyName(companyName);
-                        newCall.setAppliedRole(email.getSubject());
-                        newCall.setRoundStatus("Lead");
-                        newCall.setTimestamp(System.currentTimeMillis());
-
-                        checkAutoInterviewInvite(newCall, email);
-
-                        long newJobId = dbHelper.insertJobCall(newCall);
-                        dbHelper.insertJobEmail(newJobId, email.getGmailMessageId(), email.getSender(), email.getRecipient(), email.getSubject(), email.getSnippet(), email.getBody(), email.getReceivedTimestamp());
-
-                        Toast.makeText(requireContext(), "Created new log" + (selected.unloggedPhone != null ? " for " + selected.unloggedPhone : "") + " & attached email!", Toast.LENGTH_SHORT).show();
-                        triggerAiEmailExtraction(newJobId, newCall, email);
-                    }
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
     }
 
     private List<String> getUnloggedPhoneNumbers(Context context) {
