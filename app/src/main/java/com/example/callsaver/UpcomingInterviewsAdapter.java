@@ -10,8 +10,12 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 
 public class UpcomingInterviewsAdapter extends RecyclerView.Adapter<UpcomingInterviewsAdapter.ViewHolder> {
 
@@ -21,9 +25,19 @@ public class UpcomingInterviewsAdapter extends RecyclerView.Adapter<UpcomingInte
     private final DatabaseHelper dbHelper;
     private final SimpleDateFormat sdf = new SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault());
 
+    private Map<String, Integer> companyGroupSizes = new HashMap<>();
+    private Map<String, List<JobCall>> companyGroupMembers = new HashMap<>();
+    private Set<String> expandedGroupCompanies = new HashSet<>();
+    private List<Boolean> headerFlags = new java.util.ArrayList<>();
+
     public interface OnInterviewClickListener {
         void onInterviewClick(JobCall call);
         void onFollowUpClick(JobCall call);
+    }
+
+    /** Optional: implement on the OnInterviewClickListener to rebuild the grouped list after a toggle. */
+    public interface OnGroupToggleListener {
+        void onGroupToggled();
     }
 
     public UpcomingInterviewsAdapter(Context context, List<JobCall> interviewList, OnInterviewClickListener listener) {
@@ -31,6 +45,19 @@ public class UpcomingInterviewsAdapter extends RecyclerView.Adapter<UpcomingInte
         this.interviewList = interviewList;
         this.listener = listener;
         this.dbHelper = new DatabaseHelper(context);
+    }
+
+    /** Called by UpcomingFragment after each list rebuild to update company-group state. */
+    public void setCompanyGroups(Map<String, Integer> groupSizes, Map<String, List<JobCall>> groupMembers,
+                                  Set<String> expandedCompanies, List<Boolean> headerFlags) {
+        this.companyGroupSizes = groupSizes;
+        this.companyGroupMembers = groupMembers;
+        this.expandedGroupCompanies = expandedCompanies;
+        this.headerFlags = headerFlags;
+    }
+
+    private String normalizeCompanyKey(String companyName) {
+        return companyName == null ? "" : companyName.trim().toLowerCase(Locale.getDefault());
     }
 
     @NonNull
@@ -43,7 +70,20 @@ public class UpcomingInterviewsAdapter extends RecyclerView.Adapter<UpcomingInte
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         JobCall call = interviewList.get(position);
-        
+        String groupKey = normalizeCompanyKey(call.getCompanyName());
+        boolean isGroupHeaderRow = position < headerFlags.size() && Boolean.TRUE.equals(headerFlags.get(position));
+
+        if (isGroupHeaderRow) {
+            bindHeaderRow(holder, call, groupKey);
+            return;
+        }
+
+        // Undo bindHeaderRow's hiding, in case this ViewHolder is a recycled header row.
+        holder.tvRole.setVisibility(View.VISIBLE);
+        if (holder.divider != null) holder.divider.setVisibility(View.VISIBLE);
+        if (holder.rowSchedule != null) holder.rowSchedule.setVisibility(View.VISIBLE);
+        if (holder.rowCallTimes != null) holder.rowCallTimes.setVisibility(View.VISIBLE);
+
         // No placeholder like "Unknown Company" - fall back to whatever else is filled
         // in (recruiter name, then phone number), same as everywhere else in the app.
         String company = call.getCompanyName();
@@ -96,6 +136,33 @@ public class UpcomingInterviewsAdapter extends RecyclerView.Adapter<UpcomingInte
         });
     }
 
+    /** Minimal collapsed/expanded company row: just the company name, lead count, and a chevron - tap toggles. */
+    private void bindHeaderRow(ViewHolder holder, JobCall call, String groupKey) {
+        int size = companyGroupSizes.containsKey(groupKey) ? companyGroupSizes.get(groupKey) : 1;
+        boolean expanded = expandedGroupCompanies.contains(groupKey);
+        String company = call.getCompanyName();
+        String displayCompany = (company == null || company.trim().isEmpty()) ? call.getPhoneNumber() : company.trim();
+        holder.tvCompany.setText(displayCompany);
+        holder.tvRound.setText(size + (size == 1 ? " lead" : " leads") + " " + (expanded ? "▾" : "▸"));
+
+        holder.tvRole.setVisibility(View.GONE);
+        if (holder.divider != null) holder.divider.setVisibility(View.GONE);
+        if (holder.rowSchedule != null) holder.rowSchedule.setVisibility(View.GONE);
+        if (holder.rowCallTimes != null) holder.rowCallTimes.setVisibility(View.GONE);
+        holder.tvFollowUp.setVisibility(View.GONE);
+
+        holder.itemView.setOnClickListener(v -> {
+            if (!expandedGroupCompanies.remove(groupKey)) {
+                expandedGroupCompanies.add(groupKey);
+            }
+            if (listener instanceof OnGroupToggleListener) {
+                ((OnGroupToggleListener) listener).onGroupToggled();
+            } else {
+                notifyDataSetChanged();
+            }
+        });
+    }
+
     @Override
     public int getItemCount() {
         return interviewList.size();
@@ -109,6 +176,9 @@ public class UpcomingInterviewsAdapter extends RecyclerView.Adapter<UpcomingInte
         TextView tvFirstCall;
         TextView tvRecentCall;
         TextView tvFollowUp;
+        View divider;
+        View rowSchedule;
+        View rowCallTimes;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -119,6 +189,9 @@ public class UpcomingInterviewsAdapter extends RecyclerView.Adapter<UpcomingInte
             tvFirstCall = itemView.findViewById(R.id.tv_item_ui_first_call);
             tvRecentCall = itemView.findViewById(R.id.tv_item_ui_recent_call);
             tvFollowUp = itemView.findViewById(R.id.tv_item_ui_followup);
+            divider = itemView.findViewById(R.id.view_item_ui_divider);
+            rowSchedule = itemView.findViewById(R.id.row_item_ui_schedule);
+            rowCallTimes = itemView.findViewById(R.id.row_item_ui_call_times);
         }
     }
 }

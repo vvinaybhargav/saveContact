@@ -64,6 +64,7 @@
 
         <!-- Divider -->
         <View
+            android:id="@+id/view_item_ui_divider"
             android:layout_width="match_parent"
             android:layout_height="0.5dp"
             android:background="@color/divider"
@@ -71,6 +72,7 @@
 
         <!-- Schedule info (Datetime and icon) -->
         <LinearLayout
+            android:id="@+id/row_item_ui_schedule"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
@@ -112,6 +114,7 @@
 
         <!-- First call / Recent call row -->
         <LinearLayout
+            android:id="@+id/row_item_ui_call_times"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"

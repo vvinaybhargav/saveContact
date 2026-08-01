@@ -47,7 +47,7 @@ import java.util.Set;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdapter.OnInterviewClickListener {
+public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdapter.OnInterviewClickListener, UpcomingInterviewsAdapter.OnGroupToggleListener {
 
     private RecyclerView rvUpcomingList;
     private View emptyStateLayout;
@@ -55,6 +55,7 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
     private UpcomingInterviewsAdapter adapter;
     private List<JobCall> allUpcomingList;
     private List<JobCall> filteredList;
+    private final java.util.Set<String> expandedGroupCompanies = new java.util.HashSet<>();
 
     // Multi-select: any card matching ANY selected filter is shown (union). "All"
     // is mutually exclusive with everything else - picking a specific filter clears
@@ -365,6 +366,60 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
         isUpdatingTabs = false;
     }
 
+    /**
+     * Every company shows as one name-only row here too (same pattern as Tracker) - a
+     * company with several leads scheduled was otherwise showing up once per lead, which
+     * reads as duplicates. Tapping the row reveals the individual leads underneath so you
+     * can still open each one's log.
+     */
+    private List<JobCall> applyCompanyGrouping(List<JobCall> filteredIn) {
+        java.util.Map<String, List<JobCall>> groups = new java.util.LinkedHashMap<>();
+        for (JobCall call : filteredIn) {
+            String key = normalizeCompanyKeyForGrouping(call);
+            if (key.isEmpty()) continue;
+            groups.computeIfAbsent(key, k -> new ArrayList<>()).add(call);
+        }
+
+        java.util.Map<String, Integer> groupSizes = new java.util.HashMap<>();
+        for (java.util.Map.Entry<String, List<JobCall>> e : groups.entrySet()) {
+            groupSizes.put(e.getKey(), e.getValue().size());
+        }
+
+        java.util.Set<String> handledKeys = new java.util.HashSet<>();
+        List<JobCall> result = new ArrayList<>();
+        List<Boolean> headerFlags = new ArrayList<>();
+        for (JobCall call : filteredIn) {
+            String key = normalizeCompanyKeyForGrouping(call);
+            if (key.isEmpty()) {
+                result.add(call);
+                headerFlags.add(false);
+                continue;
+            }
+            if (handledKeys.contains(key)) continue;
+            handledKeys.add(key);
+            result.add(call); // header row (company name only)
+            headerFlags.add(true);
+            if (expandedGroupCompanies.contains(key)) {
+                for (JobCall member : groups.get(key)) {
+                    result.add(member); // full detail card, same as always
+                    headerFlags.add(false);
+                }
+            }
+        }
+        if (adapter != null) adapter.setCompanyGroups(groupSizes, groups, expandedGroupCompanies, headerFlags);
+        return result;
+    }
+
+    private String normalizeCompanyKeyForGrouping(JobCall call) {
+        String company = call.getCompanyName();
+        return company == null ? "" : company.trim().toLowerCase(Locale.getDefault());
+    }
+
+    @Override
+    public void onGroupToggled() {
+        filterList();
+    }
+
     private void filterList() {
         List<JobCall> chipFiltered = new ArrayList<>();
         for (JobCall call : allUpcomingList) {
@@ -411,7 +466,7 @@ public class UpcomingFragment extends Fragment implements UpcomingInterviewsAdap
         });
 
         filteredList.clear();
-        filteredList.addAll(filtered);
+        filteredList.addAll(applyCompanyGrouping(filtered));
         adapter.notifyDataSetChanged();
 
         if (filteredList.isEmpty()) {
