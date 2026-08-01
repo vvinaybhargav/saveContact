@@ -96,6 +96,7 @@ public class InCallActivity extends AppCompatActivity {
     private EditText etOverlayExpectedCtc;
     private EditText etOverlayNextCall;
     private Spinner spinnerOverlayRound;
+    private Spinner spinnerOverlayFeedback;
     private TextView tvNotesTimelineField;
     private TextView tvCallerStatusField;
     private int prefillRoundPosition = -1;
@@ -956,6 +957,7 @@ public class InCallActivity extends AppCompatActivity {
         etOverlayNextCall = findViewById(R.id.et_overlay_next_call);
         TextInputLayout tilOverlayNextCall = findViewById(R.id.til_overlay_next_call);
         spinnerOverlayRound = findViewById(R.id.spinner_overlay_round);
+        spinnerOverlayFeedback = findViewById(R.id.spinner_overlay_feedback);
         View btnOverlayCancelNote = findViewById(R.id.btn_overlay_cancel_note);
         View btnOverlaySaveNote = findViewById(R.id.btn_overlay_save_note);
 
@@ -976,6 +978,7 @@ public class InCallActivity extends AppCompatActivity {
         String prefillCtc = currentForPrefill != null ? currentForPrefill.getExpectedCtc() : "";
         String prefillNextCall = currentForPrefill != null ? currentForPrefill.getTentativeSchedule() : "";
         String prefillRound = currentForPrefill != null ? currentForPrefill.getRoundStatus() : roundStatus;
+        String prefillFeedback = currentForPrefill != null ? currentForPrefill.getInterestRating() : "";
         tagsValue = currentForPrefill != null && notEmpty(currentForPrefill.getTags()) ? currentForPrefill.getTags() : tags;
         if (tagsValue == null) tagsValue = "";
         renderTagsRow();
@@ -1012,6 +1015,21 @@ public class InCallActivity extends AppCompatActivity {
                 for (int i = 0; i < roundAdapter.getCount(); i++) {
                     if (roundAdapter.getItem(i).equalsIgnoreCase(prefillRound)) {
                         spinnerOverlayRound.setSelection(i);
+                        break;
+                    }
+                }
+            }
+        }
+        if (spinnerOverlayFeedback != null) {
+            ArrayAdapter<String> feedbackAdapter = new ArrayAdapter<>(this,
+                    R.layout.item_spinner_white,
+                    new String[]{"", "Feedback Pending", "Interested", "Not Interested", "Negative"});
+            feedbackAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+            spinnerOverlayFeedback.setAdapter(feedbackAdapter);
+            if (prefillFeedback != null) {
+                for (int i = 0; i < feedbackAdapter.getCount(); i++) {
+                    if (feedbackAdapter.getItem(i).equalsIgnoreCase(prefillFeedback)) {
+                        spinnerOverlayFeedback.setSelection(i);
                         break;
                     }
                 }
@@ -1403,6 +1421,8 @@ public class InCallActivity extends AppCompatActivity {
         String nextCallVal = etOverlayNextCall != null ? etOverlayNextCall.getText().toString().trim() : "";
         String selectedRound = spinnerOverlayRound != null && spinnerOverlayRound.getSelectedItem() != null
                 ? spinnerOverlayRound.getSelectedItem().toString() : "First time";
+        String selectedFeedback = spinnerOverlayFeedback != null && spinnerOverlayFeedback.getSelectedItem() != null
+                ? spinnerOverlayFeedback.getSelectedItem().toString() : "";
 
         // Nothing typed and nothing to update - skip silent auto-saves so we don't create
         // an empty lead just because the panel was opened and closed.
@@ -1444,6 +1464,7 @@ public class InCallActivity extends AppCompatActivity {
             newLead.setExpectedCtc(ctcVal);
             newLead.setTentativeSchedule(nextCallVal);
             newLead.setJdImagePath(jdImagePathVal);
+            newLead.setInterestRating(selectedFeedback);
             targetJobId = db.insertJobCall(newLead);
             jobCallId = targetJobId;
             company = leadCompany;
@@ -1461,6 +1482,7 @@ public class InCallActivity extends AppCompatActivity {
                 current.setRoundStatus(selectedRound);
                 current.setTags(tagsValue);
                 current.setJdImagePath(jdImagePathVal);
+                current.setInterestRating(selectedFeedback);
                 db.updateJobCall(current);
                 if (notEmpty(phoneNumber)) {
                     db.linkPhoneToJob(targetJobId, phoneNumber, nameVal, true);
