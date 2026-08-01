@@ -147,37 +147,14 @@
                         android:paddingBottom="4dp">
 
                         <TextView android:id="@+id/chip_all" android:text="All" style="@style/TrackerChipStyle" android:tag="selected" />
+                        <TextView android:id="@+id/chip_scheduled" android:text="Scheduled" style="@style/TrackerChipStyle" />
+                        <TextView android:id="@+id/chip_feedback_pending" android:text="Feedback Pending" style="@style/TrackerChipStyle" />
                         <TextView android:id="@+id/chip_first_time" android:text="First time" style="@style/TrackerChipStyle" />
-                        <TextView android:id="@+id/chip_processing" android:text="Processing" style="@style/TrackerChipStyle" />
                     </LinearLayout>
                 </HorizontalScrollView>
             </LinearLayout>
 
         </LinearLayout>
-
-        <!-- Company-grouped status breakdown (e.g. "First time  3", "1st Round  1") -
-             populated in code from TrackerFragment.updateAnalyticsByStatus(). -->
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/card_analytics_by_status"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            app:layout_scrollFlags="scroll"
-            android:layout_marginHorizontal="16dp"
-            android:layout_marginBottom="8dp"
-            app:cardCornerRadius="14dp"
-            app:cardElevation="0dp"
-            app:strokeWidth="1dp"
-            app:strokeColor="@color/divider"
-            app:cardBackgroundColor="@color/glass_fill_strong"
-            android:visibility="gone">
-
-            <GridLayout
-                android:id="@+id/grid_analytics_by_status"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:padding="12dp"
-                android:columnCount="2" />
-        </com.google.android.material.card.MaterialCardView>
 
         <!-- Missing Permissions Alert Banner -->
         <com.google.android.material.card.MaterialCardView

@@ -126,7 +126,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
     private android.content.SharedPreferences.OnSharedPreferenceChangeListener prefsListener;
     private String selectedStatus = "All";
     private TextView[] chips;
-    private final String[] statuses = {"All", "First time", "Processing"};
+    private final String[] statuses = {"All", "Scheduled", "Feedback Pending", "First time"};
 
     // WRITE_CONTACTS/GET_ACCOUNTS are intentionally NOT in this list: on some OEM
     // Settings UIs (confirmed on at least one ColorOS device) they never appear as a
@@ -295,7 +295,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
 
 
     private void setupFilterChips(View view) {
-        int[] chipIds = {R.id.chip_all, R.id.chip_first_time, R.id.chip_processing};
+        int[] chipIds = {R.id.chip_all, R.id.chip_scheduled, R.id.chip_feedback_pending, R.id.chip_first_time};
 
         chips = new TextView[chipIds.length];
         for (int i = 0; i < chipIds.length; i++) {
@@ -321,19 +321,25 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         int unselectedText = ContextCompat.getColor(requireContext(), R.color.text_secondary);
 
         int allCount = 0;
+        int scheduledCount = 0;
+        int feedbackPendingCount = 0;
         int firstTimeCount = 0;
-        int processingCount = 0;
         for (JobCall call : allCallsList) {
             if (call.getId() <= 0) continue;
             allCount++;
+            String feedback = call.getInterestRating();
+            if ("Scheduled".equals(feedback)) scheduledCount++;
+            if ("Feedback Pending".equals(feedback)) feedbackPendingCount++;
             String status = call.getRoundStatus();
-            if (status == null || status.isEmpty() || "First time".equals(status)) {
-                firstTimeCount++;
-            } else {
-                processingCount++;
-            }
+            if (status == null || status.isEmpty() || "First time".equals(status)) firstTimeCount++;
         }
-        String[] labels = {"All (" + allCount + ")", "First time (" + firstTimeCount + ")", "Processing (" + processingCount + ")"};
+        // Count shown on its own line below the label, not inline in parens.
+        String[] labels = {
+                "All\n" + allCount,
+                "Scheduled\n" + scheduledCount,
+                "Feedback Pending\n" + feedbackPendingCount,
+                "First time\n" + firstTimeCount
+        };
 
         for (int i = 0; i < chips.length; i++) {
             if (chips[i] == null) continue;
@@ -416,12 +422,14 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                     (call.getNotes() != null && call.getNotes().toLowerCase().contains(query.toLowerCase()));
             
             // Unlogged calls (id <= 0) are never shown in Tracker - only leads actually
-            // turned into a log entry. "Processing" = everything past First time.
+            // turned into a log entry.
             String callRound = call.getRoundStatus();
             boolean isFirstTime = callRound == null || callRound.isEmpty() || "First time".equals(callRound);
+            String callFeedback = call.getInterestRating();
             boolean matchesStatus = call.getId() > 0 && ("All".equals(status)
                     || ("First time".equals(status) && isFirstTime)
-                    || ("Processing".equals(status) && !isFirstTime));
+                    || ("Scheduled".equals(status) && "Scheduled".equals(callFeedback))
+                    || ("Feedback Pending".equals(status) && "Feedback Pending".equals(callFeedback)));
 
             if (matchesQuery && matchesStatus) {
                 filteredList.add(call);
@@ -489,90 +497,9 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         if (tvStatOffers != null) tvStatOffers.setText(String.valueOf(offers));
 
         refreshDuplicateSuggestionVisibility();
-        updateChipsUI(); // refresh the All/Scheduled counts now that allCallsList changed
-        updateAnalyticsByStatus();
+        updateChipsUI(); // refresh the filter chip counts now that allCallsList changed
 
         filterList(searchQuery, selectedStatus);
-    }
-
-    /**
-     * Small breakdown grid on the Tracker page (not duplicated elsewhere): for each round
-     * status, how many distinct COMPANIES currently have a lead in that status - grouped
-     * by company like the list itself, so a company with 3 leads all in "1st Round"
-     * counts once, not three times.
-     */
-    private void updateAnalyticsByStatus() {
-        if (getView() == null) return;
-        View card = getView().findViewById(R.id.card_analytics_by_status);
-        android.widget.GridLayout grid = getView().findViewById(R.id.grid_analytics_by_status);
-        if (card == null || grid == null) return;
-
-        String[] roundStatuses = getResources().getStringArray(R.array.round_statuses);
-        java.util.Map<String, java.util.Set<String>> companiesByStatus = new java.util.LinkedHashMap<>();
-        for (String status : roundStatuses) companiesByStatus.put(status, new java.util.HashSet<>());
-
-        for (JobCall call : allCallsList) {
-            if (call.getId() <= 0) continue;
-            String company = call.getCompanyName();
-            if (company == null || company.trim().isEmpty()) continue;
-            String key = company.trim().toLowerCase(Locale.getDefault());
-            String status = call.getRoundStatus();
-            java.util.Set<String> bucket = status != null ? companiesByStatus.get(status) : null;
-            if (bucket != null) bucket.add(key);
-        }
-
-        boolean anyData = false;
-        for (java.util.Set<String> set : companiesByStatus.values()) {
-            if (!set.isEmpty()) { anyData = true; break; }
-        }
-        if (!anyData) {
-            card.setVisibility(View.GONE);
-            return;
-        }
-        card.setVisibility(View.VISIBLE);
-
-        grid.removeAllViews();
-        int pad = (int) (6 * getResources().getDisplayMetrics().density);
-        // Two statuses per block: a row of labels, then a row of their counts right below
-        // (e.g. "First time / 1st Round" over "3 / 1"), instead of all labels then all
-        // counts stacked separately.
-        for (int i = 0; i < roundStatuses.length; i += 2) {
-            String statusA = roundStatuses[i];
-            String statusB = (i + 1 < roundStatuses.length) ? roundStatuses[i + 1] : null;
-
-            grid.addView(analyticsLabelView(statusA, pad));
-            if (statusB != null) grid.addView(analyticsLabelView(statusB, pad));
-
-            grid.addView(analyticsCountView(companiesByStatus.get(statusA).size(), pad));
-            if (statusB != null) grid.addView(analyticsCountView(companiesByStatus.get(statusB).size(), pad));
-        }
-    }
-
-    private TextView analyticsLabelView(String text, int pad) {
-        TextView tv = new TextView(requireContext());
-        tv.setText(text);
-        tv.setTextColor(ContextCompat.getColor(requireContext(), R.color.text_secondary));
-        tv.setTextSize(11);
-        tv.setPadding(pad, pad, pad, 0);
-        android.widget.GridLayout.LayoutParams lp = new android.widget.GridLayout.LayoutParams();
-        lp.width = 0;
-        lp.columnSpec = android.widget.GridLayout.spec(android.widget.GridLayout.UNDEFINED, 1f);
-        tv.setLayoutParams(lp);
-        return tv;
-    }
-
-    private TextView analyticsCountView(int count, int pad) {
-        TextView tv = new TextView(requireContext());
-        tv.setText(String.valueOf(count));
-        tv.setTextColor(ContextCompat.getColor(requireContext(), R.color.text_primary));
-        tv.setTextSize(16);
-        tv.setTypeface(null, android.graphics.Typeface.BOLD);
-        tv.setPadding(pad, 0, pad, pad);
-        android.widget.GridLayout.LayoutParams lp = new android.widget.GridLayout.LayoutParams();
-        lp.width = 0;
-        lp.columnSpec = android.widget.GridLayout.spec(android.widget.GridLayout.UNDEFINED, 1f);
-        tv.setLayoutParams(lp);
-        return tv;
     }
 
     /**
