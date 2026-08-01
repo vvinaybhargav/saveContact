@@ -82,8 +82,9 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
             return;
         }
 
-        // Undo bindHeaderRow's hiding, in case this ViewHolder is a recycled header row.
+        // Undo bindHeaderRow's hiding/recoloring, in case this ViewHolder is a recycled header row.
         holder.tvPhoneNumber.setVisibility(View.VISIBLE);
+        holder.tvPhoneNumber.setTextColor(context.getResources().getColor(R.color.text_secondary));
         holder.tvStatusBadge.setVisibility(View.VISIBLE);
         if (holder.rowFooter != null) holder.rowFooter.setVisibility(View.VISIBLE);
 
@@ -240,13 +241,18 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
         String displayCompany = (company == null || company.trim().isEmpty()) ? call.getPhoneNumber() : company.trim();
         holder.tvCompanyName.setText(displayCompany + "   " + size + (size == 1 ? " lead" : " leads") + "  " + (expanded ? "▾" : "▸"));
 
-        holder.tvPhoneNumber.setVisibility(View.GONE);
+        // tv_status_badge sits inline next to the company name in this layout (by design,
+        // for the normal full-card row) - for the header row we want status+feedback on
+        // their OWN line below the name, so it's always hidden here and tv_phone_number
+        // (which IS on its own full-width line, and unused by header rows otherwise) is
+        // repurposed to show it instead.
+        holder.tvStatusBadge.setVisibility(View.GONE);
         if (holder.rowFooter != null) holder.rowFooter.setVisibility(View.GONE);
 
-        // Company-level note is independent context; the status badge instead reflects
-        // the leads' own round_status - if they all currently agree, that shared status
-        // shows here, so editing/cascading it never lets this badge drift out of sync
-        // with the actual leads underneath.
+        // Company-level note is independent context; the status line instead reflects
+        // the leads' own round_status/feedback - if they all currently agree, that shared
+        // status shows here, so editing/cascading it never lets this line drift out of
+        // sync with the actual leads underneath.
         DatabaseHelper.CompanyMeta meta = new DatabaseHelper(context).getCompanyMeta(groupKey);
         if (meta.note != null && !meta.note.trim().isEmpty()) {
             holder.tvNotesPreview.setVisibility(View.VISIBLE);
@@ -254,9 +260,8 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
         } else {
             holder.tvNotesPreview.setVisibility(View.GONE);
         }
-        // Status and feedback shown side by side on one line when the leads agree on
-        // either (e.g. "1st Round  ·  Scheduled"), so the header reads status + feedback
-        // together at a glance, same as the badge already does on individual lead cards.
+        // Status and feedback shown side by side on one line, below the company name,
+        // when the leads agree on either (e.g. "1st Round  ·  Scheduled").
         String commonStatus = commonStatusForGroup(groupKey);
         String commonFeedback = commonFeedbackForGroup(groupKey);
         if (commonStatus != null || commonFeedback != null) {
@@ -264,11 +269,11 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
             if (commonFeedback != null) {
                 combined += combined.isEmpty() ? commonFeedback : "  ·  " + commonFeedback;
             }
-            holder.tvStatusBadge.setVisibility(View.VISIBLE);
-            holder.tvStatusBadge.setText(combined);
-            applyStatusColors(holder.tvStatusBadge, commonStatus != null ? commonStatus : commonFeedback);
+            holder.tvPhoneNumber.setVisibility(View.VISIBLE);
+            holder.tvPhoneNumber.setText(combined);
+            holder.tvPhoneNumber.setTextColor(0xFFC7C7CC);
         } else {
-            holder.tvStatusBadge.setVisibility(View.GONE);
+            holder.tvPhoneNumber.setVisibility(View.GONE);
         }
         String commonNextCall = commonNextCallForGroup(groupKey);
         if (commonNextCall != null) {
