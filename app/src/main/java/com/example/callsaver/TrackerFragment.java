@@ -70,7 +70,7 @@ import java.io.File;
 import java.util.Locale;
 import java.util.Set;
 
-public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemClickListener {
+public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemClickListener, JobCallAdapter.OnGroupToggleListener {
 
     private static final int ALL_PERMISSIONS_REQUEST_CODE = 200;
 
@@ -119,6 +119,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
     private JobCallAdapter adapter;
     private List<JobCall> callList; // Current filtered list bound to adapter
     private List<JobCall> allCallsList; // Master copy of all database calls
+    private final java.util.Set<String> expandedGroupCompanies = new java.util.HashSet<>();
 
     private String searchQuery = "";
     private View cardLiveTranscribeStatus;
@@ -371,6 +372,53 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         }
     }
 
+    /**
+     * Companies with 2+ logged calls are collapsed into one representative row (the most
+     * recent one, since allCallsList/filteredList is already sorted newest-first) with a
+     * "N leads" badge; tapping it toggles the rest of that company's calls into view right
+     * below it, instead of merging them into a single record. Duplicate leads stay
+     * individually editable.
+     */
+    private List<JobCall> applyCompanyGrouping(List<JobCall> filteredList) {
+        java.util.Map<String, List<JobCall>> groups = new java.util.LinkedHashMap<>();
+        for (JobCall call : filteredList) {
+            if (call.getId() <= 0) continue; // unlogged calls are never grouped
+            String key = normalizeCompanyKey(call.getCompanyName());
+            if (key.isEmpty()) continue;
+            groups.computeIfAbsent(key, k -> new ArrayList<>()).add(call);
+        }
+
+        java.util.Map<String, Integer> groupSizes = new java.util.HashMap<>();
+        for (java.util.Map.Entry<String, List<JobCall>> e : groups.entrySet()) {
+            if (e.getValue().size() > 1) groupSizes.put(e.getKey(), e.getValue().size());
+        }
+        if (adapter != null) adapter.setCompanyGroups(groupSizes, expandedGroupCompanies);
+
+        java.util.Set<String> handledKeys = new java.util.HashSet<>();
+        List<JobCall> result = new ArrayList<>();
+        for (JobCall call : filteredList) {
+            String key = call.getId() > 0 ? normalizeCompanyKey(call.getCompanyName()) : "";
+            Integer size = groupSizes.get(key);
+            if (size == null) {
+                result.add(call);
+                continue;
+            }
+            if (handledKeys.contains(key)) continue; // rest of the group already emitted
+            handledKeys.add(key);
+            result.add(call); // representative / header row
+            if (expandedGroupCompanies.contains(key)) {
+                for (JobCall member : groups.get(key)) {
+                    if (member != call) result.add(member);
+                }
+            }
+        }
+        return result;
+    }
+
+    private String normalizeCompanyKey(String companyName) {
+        return companyName == null ? "" : companyName.trim().toLowerCase(Locale.getDefault());
+    }
+
     private void filterList(String query, String status) {
         List<JobCall> filteredList = new ArrayList<>();
         for (JobCall call : allCallsList) {
@@ -398,7 +446,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         }
 
         callList.clear();
-        callList.addAll(filteredList);
+        callList.addAll(applyCompanyGrouping(filteredList));
         adapter.notifyDataSetChanged();
 
         View btnClear = getView() != null ? getView().findViewById(R.id.btn_clear_all_unlogged) : null;
@@ -788,6 +836,11 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             simple.add(idx >= 0 ? p.substring(idx + 1) : p);
         }
         return simple;
+    }
+
+    @Override
+    public void onGroupToggled() {
+        filterList(searchQuery, selectedStatus);
     }
 
     @Override

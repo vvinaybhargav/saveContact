@@ -1603,7 +1603,10 @@ public class InCallActivity extends AppCompatActivity {
      * wants to browse elsewhere.
      */
     private void pickAudioRecordingFile() {
-        List<android.util.Pair<String, Uri>> recent = queryRecentAudioFiles(40);
+        List<android.util.Pair<String, Uri>> recent = queryRecentCallRecordingFiles(40);
+        if (recent.isEmpty()) {
+            recent = queryRecentAudioFiles(40); // fall back to whole-device audio if the Call Recordings folders are empty/inaccessible
+        }
         if (recent.isEmpty()) {
             launchSystemAudioPicker();
             return;
@@ -1624,6 +1627,29 @@ public class InCallActivity extends AppCompatActivity {
                 })
                 .setNegativeButton("Cancel", null)
                 .show();
+    }
+
+    /**
+     * Newest-first list from the device's actual Call Recordings folders (e.g.
+     * Music/Recordings/Call Recordings), sorted by file last-modified time - unlike
+     * queryRecentAudioFiles() below, this doesn't pull in the whole device music library
+     * and isn't affected by MediaStore's DATE_ADDED (indexing time, which can drift from
+     * when the recording was actually made).
+     */
+    private List<android.util.Pair<String, Uri>> queryRecentCallRecordingFiles(int limit) {
+        List<android.util.Pair<String, Uri>> results = new ArrayList<>();
+        try {
+            java.util.List<java.io.File> files = CallRecordingScanner.listAllCallRecordings(this);
+            java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault());
+            for (java.io.File f : files) {
+                if (results.size() >= limit) break;
+                String label = f.getName() + "  ·  " + sdf.format(new java.util.Date(f.lastModified()));
+                results.add(new android.util.Pair<>(label, Uri.fromFile(f)));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return results;
     }
 
     private void launchSystemAudioPicker() {
@@ -1706,13 +1732,9 @@ public class InCallActivity extends AppCompatActivity {
                                 @Override
                                 public void onSuccess(JSONObject result) {
                                     if (result == null) return;
-                                    String comp = result.optString("company_name", "").trim();
-                                    String role = result.optString("applied_role", "").trim();
-                                    String rec = result.optString("recruiter_name", "").trim();
+                                    // Recording uploads only ever populate notes - name/company are
+                                    // manual-edit-only fields, never overwritten by AI extraction here.
                                     JSONArray points = result.optJSONArray("key_discussion_points");
-
-                                    if (!comp.isEmpty() && !"null".equalsIgnoreCase(comp) && etOverlayCompany != null) etOverlayCompany.setText(comp);
-                                    if (!rec.isEmpty() && !"null".equalsIgnoreCase(rec) && etOverlayName != null) etOverlayName.setText(rec);
 
                                     StringBuilder sb = new StringBuilder();
                                     if (points != null && points.length() > 0) {

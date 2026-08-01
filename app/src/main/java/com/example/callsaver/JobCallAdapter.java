@@ -24,6 +24,8 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
     private final List<JobCall> callList;
     private final Context context;
     private final OnItemClickListener listener;
+    private java.util.Map<String, Integer> companyGroupSizes = new java.util.HashMap<>();
+    private java.util.Set<String> expandedGroupCompanies = new java.util.HashSet<>();
 
     public interface OnItemClickListener {
         void onItemClick(JobCall jobCall);
@@ -31,10 +33,25 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
         void onViewEmailsClick(JobCall jobCall);
     }
 
+    /** Optional: implement on the OnItemClickListener to rebuild the grouped list after a toggle. */
+    public interface OnGroupToggleListener {
+        void onGroupToggled();
+    }
+
     public JobCallAdapter(Context context, List<JobCall> callList, OnItemClickListener listener) {
         this.context = context;
         this.callList = callList;
         this.listener = listener;
+    }
+
+    /** Called by TrackerFragment after each list rebuild to update company-group badges/toggle state. */
+    public void setCompanyGroups(java.util.Map<String, Integer> groupSizes, java.util.Set<String> expandedCompanies) {
+        this.companyGroupSizes = groupSizes;
+        this.expandedGroupCompanies = expandedCompanies;
+    }
+
+    private String normalizeCompanyKey(String companyName) {
+        return companyName == null ? "" : companyName.trim().toLowerCase(Locale.getDefault());
     }
 
     @NonNull
@@ -47,6 +64,8 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         JobCall call = callList.get(position);
+        final String groupKeyForRow = call.getId() > 0 ? normalizeCompanyKey(call.getCompanyName()) : "";
+        final boolean isGroupHeaderRow = companyGroupSizes.containsKey(groupKeyForRow);
 
         if (call.getId() <= 0) {
             // Unlogged Call Design
@@ -104,6 +123,11 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
                 displayCompany = recruiter.trim();
             } else {
                 displayCompany = call.getPhoneNumber();
+            }
+            if (isGroupHeaderRow) {
+                int groupSize = companyGroupSizes.get(groupKeyForRow);
+                boolean expanded = expandedGroupCompanies.contains(groupKeyForRow);
+                displayCompany = displayCompany + "  ·  " + groupSize + " leads " + (expanded ? "▾" : "▸");
             }
             holder.tvCompanyName.setText(displayCompany);
             holder.tvPhoneNumber.setText(call.getPhoneNumber());
@@ -185,9 +209,19 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
             });
         }
 
-        // Card Click Action
+        // Card Click Action - a company-group header toggles expansion instead of opening
+        // the (ambiguous) representative lead; individual/expanded rows open as normal.
         holder.itemView.setOnClickListener(v -> {
-            if (listener != null) {
+            if (isGroupHeaderRow) {
+                if (!expandedGroupCompanies.remove(groupKeyForRow)) {
+                    expandedGroupCompanies.add(groupKeyForRow);
+                }
+                if (listener instanceof OnGroupToggleListener) {
+                    ((OnGroupToggleListener) listener).onGroupToggled();
+                } else {
+                    notifyDataSetChanged();
+                }
+            } else if (listener != null) {
                 listener.onItemClick(call);
             }
         });
