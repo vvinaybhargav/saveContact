@@ -126,7 +126,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
     private android.content.SharedPreferences.OnSharedPreferenceChangeListener prefsListener;
     private String selectedStatus = "All";
     private TextView[] chips;
-    private final String[] statuses = {"All", "Scheduled", "Feedback Pending", "First time", "-"};
+    private final String[] statuses = {"All", "Scheduled", "Yet to Schedule", "Feedback Pending", "First time", "-"};
 
     // WRITE_CONTACTS/GET_ACCOUNTS are intentionally NOT in this list: on some OEM
     // Settings UIs (confirmed on at least one ColorOS device) they never appear as a
@@ -295,7 +295,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
 
 
     private void setupFilterChips(View view) {
-        int[] chipIds = {R.id.chip_all, R.id.chip_scheduled, R.id.chip_feedback_pending, R.id.chip_first_time, R.id.chip_not_interested};
+        int[] chipIds = {R.id.chip_all, R.id.chip_scheduled, R.id.chip_yet_to_schedule, R.id.chip_feedback_pending, R.id.chip_first_time, R.id.chip_not_interested};
 
         chips = new TextView[chipIds.length];
         for (int i = 0; i < chipIds.length; i++) {
@@ -325,6 +325,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         // else in Tracker.
         java.util.Set<String> allCompanies = new java.util.HashSet<>();
         java.util.Set<String> scheduledCompanies = new java.util.HashSet<>();
+        java.util.Set<String> yetToScheduleCompanies = new java.util.HashSet<>();
         java.util.Set<String> feedbackPendingCompanies = new java.util.HashSet<>();
         java.util.Set<String> firstTimeCompanies = new java.util.HashSet<>();
         java.util.Set<String> notInterestedCompanies = new java.util.HashSet<>();
@@ -337,10 +338,11 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             if (isNotInterested) {
                 notInterestedCompanies.add(key);
             } else {
-                // "-" (Not Interested/Negative) leads don't count toward All.
+                // "-" (Not Interested/Negative/No Update) leads don't count toward All.
                 allCompanies.add(key);
             }
             if ("Scheduled".equals(feedback)) scheduledCompanies.add(key);
+            if ("Yet to Schedule".equals(feedback)) yetToScheduleCompanies.add(key);
             if ("Feedback Pending".equals(feedback)) feedbackPendingCompanies.add(key);
             String status = call.getRoundStatus();
             if (status == null || status.isEmpty() || "First time".equals(status)) firstTimeCompanies.add(key);
@@ -349,6 +351,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         String[] labels = {
                 "All\n" + allCompanies.size(),
                 "Scheduled\n" + scheduledCompanies.size(),
+                "Yet to Schedule\n" + yetToScheduleCompanies.size(),
                 "Feedback Pending\n" + feedbackPendingCompanies.size(),
                 "First time\n" + firstTimeCompanies.size(),
                 "-\n" + notInterestedCompanies.size()
@@ -443,6 +446,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             boolean matchesStatus = call.getId() > 0 && (("All".equals(status) && !isNotInterested)
                     || ("First time".equals(status) && isFirstTime)
                     || ("Scheduled".equals(status) && "Scheduled".equals(callFeedback))
+                    || ("Yet to Schedule".equals(status) && "Yet to Schedule".equals(callFeedback))
                     || ("Feedback Pending".equals(status) && "Feedback Pending".equals(callFeedback))
                     || ("-".equals(status) && isNotInterested));
 
