@@ -286,6 +286,16 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         db.close();
     }
 
+    /** Applies the given next-steps/follow-up text to every logged call at this company (bulk cascade). */
+    public void applyNextStepsToAllCompanyLeads(String companyKey, String nextSteps) {
+        if (companyKey == null || companyKey.trim().isEmpty()) return;
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues v = new ContentValues();
+        v.put(COLUMN_NEXT_STEPS, nextSteps);
+        db.update(TABLE_NAME, v, "LOWER(TRIM(" + COLUMN_COMPANY_NAME + "))=?", new String[]{companyKey});
+        db.close();
+    }
+
     public void upsertCompanyMeta(String companyKey, String note, String status) {
         if (companyKey == null || companyKey.trim().isEmpty()) return;
         SQLiteDatabase db = this.getWritableDatabase();

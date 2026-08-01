@@ -241,7 +241,6 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
         holder.tvCompanyName.setText(displayCompany + "   " + size + (size == 1 ? " lead" : " leads") + "  " + (expanded ? "▾" : "▸"));
 
         holder.tvPhoneNumber.setVisibility(View.GONE);
-        holder.tvTags.setVisibility(View.GONE);
         if (holder.rowFooter != null) holder.rowFooter.setVisibility(View.GONE);
 
         // Company-level note is independent context; the status badge instead reflects
@@ -262,6 +261,13 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
             applyStatusColors(holder.tvStatusBadge, commonStatus);
         } else {
             holder.tvStatusBadge.setVisibility(View.GONE);
+        }
+        String commonNextSteps = commonNextStepsForGroup(groupKey);
+        if (commonNextSteps != null) {
+            holder.tvTags.setVisibility(View.VISIBLE);
+            holder.tvTags.setText("Next: " + commonNextSteps);
+        } else {
+            holder.tvTags.setVisibility(View.GONE);
         }
 
         String initial = displayCompany.isEmpty() ? "?" : String.valueOf(displayCompany.charAt(0)).toUpperCase();
@@ -297,6 +303,18 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
         if (first == null || first.trim().isEmpty()) return null;
         for (JobCall m : members) {
             if (!first.equals(m.getRoundStatus())) return null;
+        }
+        return first;
+    }
+
+    /** Null unless every lead in this company group currently shares the same next-steps text. */
+    private String commonNextStepsForGroup(String groupKey) {
+        List<JobCall> members = companyGroupMembers.get(groupKey);
+        if (members == null || members.isEmpty()) return null;
+        String first = members.get(0).getNextSteps();
+        if (first == null || first.trim().isEmpty()) return null;
+        for (JobCall m : members) {
+            if (!first.equals(m.getNextSteps())) return null;
         }
         return first;
     }
@@ -339,6 +357,17 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
         }
         container.addView(spinner);
 
+        android.widget.TextView tvNextLabel = new android.widget.TextView(context);
+        tvNextLabel.setText("Next call / follow-up for all leads (leave blank to keep as-is):");
+        tvNextLabel.setPadding(0, pad, 0, 0);
+        container.addView(tvNextLabel);
+
+        final android.widget.EditText etNextSteps = new android.widget.EditText(context);
+        etNextSteps.setHint("e.g. Call back Thursday 3pm");
+        String currentNext = commonNextStepsForGroup(groupKey);
+        if (currentNext != null) etNextSteps.setText(currentNext);
+        container.addView(etNextSteps);
+
         new androidx.appcompat.app.AlertDialog.Builder(context)
                 .setTitle(displayCompany)
                 .setView(container)
@@ -346,13 +375,20 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
                     String note = etNote.getText().toString().trim();
                     DatabaseHelper db = new DatabaseHelper(context);
                     db.upsertCompanyMeta(groupKey, note.isEmpty() ? null : note, null);
+                    boolean bulkChanged = false;
                     if (spinner.getSelectedItemPosition() > 0) {
                         String selectedStatus = (String) spinner.getSelectedItem();
                         db.applyStatusToAllCompanyLeads(groupKey, selectedStatus);
-                        if (listener instanceof OnCompanyBulkEditListener) {
-                            ((OnCompanyBulkEditListener) listener).onCompanyBulkEdit();
-                            return;
-                        }
+                        bulkChanged = true;
+                    }
+                    String nextSteps = etNextSteps.getText().toString().trim();
+                    if (!nextSteps.isEmpty()) {
+                        db.applyNextStepsToAllCompanyLeads(groupKey, nextSteps);
+                        bulkChanged = true;
+                    }
+                    if (bulkChanged && listener instanceof OnCompanyBulkEditListener) {
+                        ((OnCompanyBulkEditListener) listener).onCompanyBulkEdit();
+                        return;
                     }
                     notifyDataSetChanged();
                 })
