@@ -1023,7 +1023,7 @@ public class InCallActivity extends AppCompatActivity {
         if (spinnerOverlayFeedback != null) {
             ArrayAdapter<String> feedbackAdapter = new ArrayAdapter<>(this,
                     R.layout.item_spinner_white,
-                    new String[]{"", "Feedback Pending", "Interested", "Not Interested", "Negative"});
+                    new String[]{"", "Feedback Pending", "Scheduled", "Yet to Schedule", "Interested", "Not Interested", "Negative"});
             feedbackAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
             spinnerOverlayFeedback.setAdapter(feedbackAdapter);
             if (prefillFeedback != null) {

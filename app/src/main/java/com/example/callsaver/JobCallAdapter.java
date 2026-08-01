@@ -254,11 +254,19 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
         } else {
             holder.tvNotesPreview.setVisibility(View.GONE);
         }
+        // Status and feedback shown side by side on one line when the leads agree on
+        // either (e.g. "1st Round  ·  Scheduled"), so the header reads status + feedback
+        // together at a glance, same as the badge already does on individual lead cards.
         String commonStatus = commonStatusForGroup(groupKey);
-        if (commonStatus != null) {
+        String commonFeedback = commonFeedbackForGroup(groupKey);
+        if (commonStatus != null || commonFeedback != null) {
+            String combined = commonStatus != null ? commonStatus : "";
+            if (commonFeedback != null) {
+                combined += combined.isEmpty() ? commonFeedback : "  ·  " + commonFeedback;
+            }
             holder.tvStatusBadge.setVisibility(View.VISIBLE);
-            holder.tvStatusBadge.setText(commonStatus);
-            applyStatusColors(holder.tvStatusBadge, commonStatus);
+            holder.tvStatusBadge.setText(combined);
+            applyStatusColors(holder.tvStatusBadge, commonStatus != null ? commonStatus : commonFeedback);
         } else {
             holder.tvStatusBadge.setVisibility(View.GONE);
         }
@@ -362,7 +370,7 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
         container.addView(spinner);
         container.addView(fieldLabel("Feedback", gap));
 
-        String[] feedbackOptions = {"(leave unchanged)", "Feedback Pending", "Interested", "Not Interested", "Negative"};
+        String[] feedbackOptions = {"(leave unchanged)", "Feedback Pending", "Scheduled", "Yet to Schedule", "Interested", "Not Interested", "Negative"};
         final android.widget.Spinner feedbackSpinner = new android.widget.Spinner(context);
         android.widget.ArrayAdapter<String> feedbackAdapter = new android.widget.ArrayAdapter<>(
                 context, android.R.layout.simple_spinner_item, feedbackOptions);
