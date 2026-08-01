@@ -357,20 +357,44 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
         }
         container.addView(spinner);
 
+        android.widget.TextView tvFeedbackLabel = new android.widget.TextView(context);
+        tvFeedbackLabel.setText("Set feedback for all leads at this company:");
+        tvFeedbackLabel.setPadding(0, pad, 0, 0);
+        container.addView(tvFeedbackLabel);
+
+        String[] feedbackOptions = {"(leave unchanged)", "Feedback Pending", "Interested", "Not Interested", "Negative"};
+        final android.widget.Spinner feedbackSpinner = new android.widget.Spinner(context);
+        android.widget.ArrayAdapter<String> feedbackAdapter = new android.widget.ArrayAdapter<>(
+                context, android.R.layout.simple_spinner_item, feedbackOptions);
+        feedbackAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        feedbackSpinner.setAdapter(feedbackAdapter);
+        String currentFeedback = commonFeedbackForGroup(groupKey);
+        if (currentFeedback != null) {
+            int idx = feedbackAdapter.getPosition(currentFeedback);
+            if (idx >= 0) feedbackSpinner.setSelection(idx);
+        }
+        container.addView(feedbackSpinner);
+
         android.widget.TextView tvNextLabel = new android.widget.TextView(context);
         tvNextLabel.setText("Next call / follow-up for all leads (leave blank to keep as-is):");
         tvNextLabel.setPadding(0, pad, 0, 0);
         container.addView(tvNextLabel);
 
+        // Same tap-to-open date/time picker as the individual lead's "Next Call" field,
+        // rather than free text.
         final android.widget.EditText etNextSteps = new android.widget.EditText(context);
-        etNextSteps.setHint("e.g. Call back Thursday 3pm");
+        etNextSteps.setHint("Tap to pick date & time");
+        etNextSteps.setFocusable(false);
+        etNextSteps.setClickable(true);
         String currentNext = commonNextStepsForGroup(groupKey);
         if (currentNext != null) etNextSteps.setText(currentNext);
+        etNextSteps.setOnClickListener(v -> showDateTimePicker(etNextSteps));
         container.addView(etNextSteps);
 
-        // Wrapped in a ScrollView: with note + status + next-call fields stacked, this can
-        // exceed screen height on smaller phones and push the Save button off-screen,
-        // making it look like saving silently does nothing when it's actually unreachable.
+        // Wrapped in a ScrollView: with note + status + feedback + next-call fields
+        // stacked, this can exceed screen height on smaller phones and push the Save
+        // button off-screen, making it look like saving silently does nothing when it's
+        // actually unreachable.
         android.widget.ScrollView scrollView = new android.widget.ScrollView(context);
         scrollView.addView(container);
 
@@ -387,6 +411,11 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
                         db.applyStatusToAllCompanyLeads(groupKey, selectedStatus);
                         bulkChanged = true;
                     }
+                    if (feedbackSpinner.getSelectedItemPosition() > 0) {
+                        String selectedFeedback = (String) feedbackSpinner.getSelectedItem();
+                        db.applyFeedbackToAllCompanyLeads(groupKey, selectedFeedback);
+                        bulkChanged = true;
+                    }
                     String nextSteps = etNextSteps.getText().toString().trim();
                     if (!nextSteps.isEmpty()) {
                         db.applyNextStepsToAllCompanyLeads(groupKey, nextSteps);
@@ -400,6 +429,35 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
                 })
                 .setNegativeButton("Cancel", null)
                 .show();
+    }
+
+    /** Same date/time picker flow as InCallActivity's "Next Call" field. */
+    private void showDateTimePicker(android.widget.EditText etTarget) {
+        final java.util.Calendar calendar = java.util.Calendar.getInstance();
+        new android.app.DatePickerDialog(context, (view, year, month, dayOfMonth) -> {
+            calendar.set(java.util.Calendar.YEAR, year);
+            calendar.set(java.util.Calendar.MONTH, month);
+            calendar.set(java.util.Calendar.DAY_OF_MONTH, dayOfMonth);
+
+            new android.app.TimePickerDialog(context, (timeView, hourOfDay, minute) -> {
+                calendar.set(java.util.Calendar.HOUR_OF_DAY, hourOfDay);
+                calendar.set(java.util.Calendar.MINUTE, minute);
+                java.text.SimpleDateFormat format = new java.text.SimpleDateFormat("yyyy-MM-dd 'at' hh:mm a", Locale.getDefault());
+                etTarget.setText(format.format(calendar.getTime()));
+            }, calendar.get(java.util.Calendar.HOUR_OF_DAY), calendar.get(java.util.Calendar.MINUTE), false).show();
+        }, calendar.get(java.util.Calendar.YEAR), calendar.get(java.util.Calendar.MONTH), calendar.get(java.util.Calendar.DAY_OF_MONTH)).show();
+    }
+
+    /** Null unless every lead in this company group currently shares the same feedback (interest_rating). */
+    private String commonFeedbackForGroup(String groupKey) {
+        List<JobCall> members = companyGroupMembers.get(groupKey);
+        if (members == null || members.isEmpty()) return null;
+        String first = members.get(0).getInterestRating();
+        if (first == null || first.trim().isEmpty()) return null;
+        for (JobCall m : members) {
+            if (!first.equals(m.getInterestRating())) return null;
+        }
+        return first;
     }
 
     private void setupStatusBadge(TextView tv, JobCall call) {
