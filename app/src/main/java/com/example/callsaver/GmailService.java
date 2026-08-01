@@ -203,6 +203,7 @@ public class GmailService {
         }
 
         JSONArray msgArray = json.getJSONArray("messages");
+        String lastFailure = null;
         for (int i = 0; i < msgArray.length(); i++) {
             JSONObject msgObj = msgArray.getJSONObject(i);
             String msgId = msgObj.getString("id");
@@ -213,7 +214,17 @@ public class GmailService {
                 }
             } catch (Exception e) {
                 Log.w(TAG, "Could not fetch message " + msgId, e);
+                DebugLogger.log(context, "[Gmail] Failed to fetch message " + msgId + ": " + e.getMessage());
+                lastFailure = e.getMessage();
             }
+        }
+
+        // The list endpoint returned message ids, but every individual fetch failed (e.g.
+        // rate-limited after the first refresh) - surface this as an error instead of
+        // silently returning an empty list, which callers would otherwise mistake for "no
+        // new mail" and leave the stale inbox showing forever with no visible failure.
+        if (resultList.isEmpty() && msgArray.length() > 0) {
+            throw new Exception("Failed to fetch " + msgArray.length() + " message(s): " + lastFailure);
         }
 
         return resultList;

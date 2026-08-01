@@ -198,6 +198,10 @@ public class MailInboxFragment extends Fragment implements MailInboxAdapter.OnMa
                             tvEmpty.setText("⚠️ Failed to sync with Gmail.\n" + error);
                             tvEmpty.setVisibility(View.VISIBLE);
                         }
+                    } else {
+                        // Stale list is still showing - without this, a refresh failure was
+                        // previously silent and the inbox just looked frozen with no feedback.
+                        Toast.makeText(requireContext(), "⚠️ Couldn't refresh inbox: " + error, Toast.LENGTH_LONG).show();
                     }
                 });
             }
