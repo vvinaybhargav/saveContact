@@ -13,7 +13,6 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.ContactsContract;
-import android.provider.CallLog;
 import android.provider.Settings;
 import android.text.Editable;
 import android.text.Html;
@@ -127,7 +126,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
     private android.content.SharedPreferences.OnSharedPreferenceChangeListener prefsListener;
     private String selectedStatus = "All";
     private TextView[] chips;
-    private final String[] statuses = {"All", "Unlogged", "First time", "Screening", "Interested", "1st Round", "2nd Round", "Final Round", "HR / Salary", "Offered", "Not Interested", "Negative"};
+    private final String[] statuses = {"All", "Scheduled"};
 
     // WRITE_CONTACTS/GET_ACCOUNTS are intentionally NOT in this list: on some OEM
     // Settings UIs (confirmed on at least one ColorOS device) they never appear as a
@@ -202,33 +201,6 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
 
         // Setup filter chips
         setupFilterChips(view);
-
-        // Bind Clear All Unlogged button
-        View btnClearAllUnlogged = view.findViewById(R.id.btn_clear_all_unlogged);
-        if (btnClearAllUnlogged != null) {
-            btnClearAllUnlogged.setOnClickListener(v -> {
-                new AlertDialog.Builder(requireContext())
-                        .setTitle("Dismiss All Unlogged Calls")
-                        .setMessage("Are you sure you want to dismiss all current unlogged call logs? This cannot be undone.")
-                        .setPositiveButton("Dismiss All", (dialog, which) -> {
-                            android.content.SharedPreferences p = requireContext().getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE);
-                            java.util.Set<String> dismissed = new java.util.HashSet<>(p.getStringSet("dismissed_unlogged_calls", new java.util.HashSet<>()));
-                            
-                            List<JobCall> unloggedList = getUnloggedCallLogs();
-                            for (JobCall j : unloggedList) {
-                                String key = j.getPhoneNumber() + "_" + j.getTimestamp();
-                                dismissed.add(key);
-                            }
-                            
-                            p.edit().putStringSet("dismissed_unlogged_calls", dismissed).apply();
-                            Toast.makeText(requireContext(), "Dismissed " + unloggedList.size() + " unlogged calls", Toast.LENGTH_SHORT).show();
-                            
-                            refreshDashboardList();
-                        })
-                        .setNegativeButton("Cancel", null)
-                        .show();
-            });
-        }
 
         // Setup Live Search
         setupSearchListener();
@@ -323,11 +295,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
 
 
     private void setupFilterChips(View view) {
-        int[] chipIds = {
-                R.id.chip_all, R.id.chip_unlogged, R.id.chip_first_time, R.id.chip_screening, R.id.chip_interested, R.id.chip_1st_round,
-                R.id.chip_2nd_round, R.id.chip_final, R.id.chip_hr,
-                R.id.chip_offered, R.id.chip_not_interested, R.id.chip_rejected
-        };
+        int[] chipIds = {R.id.chip_all, R.id.chip_scheduled};
 
         chips = new TextView[chipIds.length];
         for (int i = 0; i < chipIds.length; i++) {
@@ -351,8 +319,19 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         int selectedColor = ContextCompat.getColor(requireContext(), R.color.accent_indigo);
         int unselectedBg = ContextCompat.getColor(requireContext(), R.color.divider);
         int unselectedText = ContextCompat.getColor(requireContext(), R.color.text_secondary);
+
+        int allCount = 0;
+        int scheduledCount = 0;
+        for (JobCall call : allCallsList) {
+            if (call.getId() <= 0) continue;
+            allCount++;
+            if ("Scheduled".equals(call.getInterestRating())) scheduledCount++;
+        }
+        String[] labels = {"All (" + allCount + ")", "Scheduled (" + scheduledCount + ")"};
+
         for (int i = 0; i < chips.length; i++) {
             if (chips[i] == null) continue;
+            chips[i].setText(labels[i]);
 
             GradientDrawable drawable = new GradientDrawable();
             drawable.setShape(GradientDrawable.RECTANGLE);
@@ -430,17 +409,10 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                     (call.getPhoneNumber() != null && call.getPhoneNumber().contains(query)) ||
                     (call.getNotes() != null && call.getNotes().toLowerCase().contains(query.toLowerCase()));
             
-            boolean matchesStatus;
-            if ("Unlogged".equals(status)) {
-                matchesStatus = (call.getId() <= 0);
-            } else {
-                if (call.getId() <= 0) {
-                    matchesStatus = false;
-                } else {
-                    matchesStatus = "All".equals(status) ||
-                            (call.getRoundStatus() != null && call.getRoundStatus().equals(status));
-                }
-            }
+            // Unlogged calls (id <= 0) are never shown in Tracker - only leads actually
+            // turned into a log entry.
+            boolean matchesStatus = call.getId() > 0 && ("All".equals(status)
+                    || ("Scheduled".equals(status) && "Scheduled".equals(call.getInterestRating())));
 
             if (matchesQuery && matchesStatus) {
                 filteredList.add(call);
@@ -450,15 +422,6 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         callList.clear();
         callList.addAll(applyCompanyGrouping(filteredList));
         adapter.notifyDataSetChanged();
-
-        View btnClear = getView() != null ? getView().findViewById(R.id.btn_clear_all_unlogged) : null;
-        if (btnClear != null) {
-            if ("Unlogged".equals(status) && !filteredList.isEmpty()) {
-                btnClear.setVisibility(View.VISIBLE);
-            } else {
-                btnClear.setVisibility(View.GONE);
-            }
-        }
 
         if (callList.isEmpty()) {
             emptyStateLayout.setVisibility(View.VISIBLE);
@@ -491,127 +454,6 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         return null;
     }
 
-    private List<JobCall> getUnloggedCallLogs() {
-        List<JobCall> unlogged = new ArrayList<>();
-        if (getContext() == null) return unlogged;
-        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.READ_CALL_LOG) != PackageManager.PERMISSION_GRANTED) {
-            return unlogged;
-        }
-
-        android.content.SharedPreferences prefs = requireContext().getSharedPreferences("CallSaverPrefs", Context.MODE_PRIVATE);
-        java.util.Set<String> dismissed = prefs.getStringSet("dismissed_unlogged_calls", new java.util.HashSet<>());
-
-        List<Long> loggedTimestamps = dbHelper.getAllLoggedTimestamps();
-        List<DatabaseHelper.PhoneJobMapping> mappings = dbHelper.getAllPhoneJobMappings();
-
-        String[] projection = new String[]{
-                CallLog.Calls.NUMBER,
-                CallLog.Calls.TYPE,
-                CallLog.Calls.DATE,
-                CallLog.Calls.DURATION
-        };
-
-        try (Cursor cursor = requireContext().getContentResolver().query(
-                CallLog.Calls.CONTENT_URI,
-                projection,
-                null,
-                null,
-                CallLog.Calls.DATE + " DESC"
-        )) {
-            if (cursor != null && cursor.moveToFirst()) {
-                int numberIdx = cursor.getColumnIndexOrThrow(CallLog.Calls.NUMBER);
-                int typeIdx = cursor.getColumnIndexOrThrow(CallLog.Calls.TYPE);
-                int dateIdx = cursor.getColumnIndexOrThrow(CallLog.Calls.DATE);
-                int durationIdx = cursor.getColumnIndexOrThrow(CallLog.Calls.DURATION);
-
-                int scanCount = 0;
-                int addedCount = 0;
-                do {
-                    String number = cursor.getString(numberIdx);
-                    int type = cursor.getInt(typeIdx);
-                    long date = cursor.getLong(dateIdx);
-                    int duration = cursor.getInt(durationIdx);
-
-                    scanCount++;
-
-                    // Skip missed and rejected calls
-                    if (type == CallLog.Calls.MISSED_TYPE || type == CallLog.Calls.REJECTED_TYPE) {
-                        continue;
-                    }
-                    // For incoming and outgoing, only show if duration > 10 seconds
-                    if (type == CallLog.Calls.INCOMING_TYPE || type == CallLog.Calls.OUTGOING_TYPE) {
-                        if (duration <= 10) {
-                            continue;
-                        }
-                    } else {
-                        // Skip other types (e.g. voicemail, blocked, etc.)
-                        continue;
-                    }
-
-                    long endTime = date + duration * 1000L;
-                    // Check if this call event (by its end time) is already logged in history in memory
-                    boolean isLogged = false;
-                    for (long loggedTime : loggedTimestamps) {
-                        if (Math.abs(loggedTime - endTime) < 5000) {
-                            isLogged = true;
-                            break;
-                        }
-                    }
-
-                    if (!isLogged) {
-                        // Check if dismissed
-                        String key = number + "_" + endTime;
-                        if (!dismissed.contains(key)) {
-                            String badgeType = "Incoming";
-                            String notesDesc = "Call";
-                            if (type == CallLog.Calls.INCOMING_TYPE) {
-                                badgeType = "Incoming";
-                                notesDesc = "Incoming Call";
-                            } else if (type == CallLog.Calls.OUTGOING_TYPE) {
-                                badgeType = "Outgoing";
-                                notesDesc = "Outgoing Call";
-                            }
-
-                            String displayName = getContactNameByNumber(requireContext(), number);
-                            if (displayName == null || displayName.trim().isEmpty()) {
-                                for (DatabaseHelper.PhoneJobMapping mapping : mappings) {
-                                    if (android.telephony.PhoneNumberUtils.compare(requireContext(), mapping.phoneNumber, number)) {
-                                        String recName = mapping.recruiterName;
-                                        String compName = mapping.companyName;
-                                        String result = null;
-                                        if (recName != null && !recName.trim().isEmpty()) {
-                                            result = recName.trim();
-                                        }
-                                        if (compName != null && !compName.trim().isEmpty()) {
-                                            if (result != null && !result.equalsIgnoreCase(compName)) {
-                                                result = result + " @ " + compName.trim();
-                                            } else {
-                                                result = compName.trim();
-                                            }
-                                        }
-                                        displayName = result;
-                                        break;
-                                    }
-                                }
-                            }
-                            if (displayName == null || displayName.trim().isEmpty()) {
-                                displayName = "Unlogged Call";
-                            }
-
-                            JobCall unloggedCall = new JobCall(number, displayName, badgeType, "", notesDesc, duration, endTime);
-                            unloggedCall.setId((int) (-1 * (Math.abs(key.hashCode()) % 1000000 + 1)));
-                            unlogged.add(unloggedCall);
-                            addedCount++;
-                        }
-                    }
-                } while (cursor.moveToNext() && scanCount < 200 && addedCount < 40);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return unlogged;
-    }
-
     private void updateStatsAndFilter() {
         // Calculate Statistics using only tracked calls (positive ID)
         int leads = 0;
@@ -638,8 +480,90 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         if (tvStatOffers != null) tvStatOffers.setText(String.valueOf(offers));
 
         refreshDuplicateSuggestionVisibility();
+        updateChipsUI(); // refresh the All/Scheduled counts now that allCallsList changed
+        updateAnalyticsByStatus();
 
         filterList(searchQuery, selectedStatus);
+    }
+
+    /**
+     * Small breakdown grid on the Tracker page (not duplicated elsewhere): for each round
+     * status, how many distinct COMPANIES currently have a lead in that status - grouped
+     * by company like the list itself, so a company with 3 leads all in "1st Round"
+     * counts once, not three times.
+     */
+    private void updateAnalyticsByStatus() {
+        if (getView() == null) return;
+        View card = getView().findViewById(R.id.card_analytics_by_status);
+        android.widget.GridLayout grid = getView().findViewById(R.id.grid_analytics_by_status);
+        if (card == null || grid == null) return;
+
+        String[] roundStatuses = getResources().getStringArray(R.array.round_statuses);
+        java.util.Map<String, java.util.Set<String>> companiesByStatus = new java.util.LinkedHashMap<>();
+        for (String status : roundStatuses) companiesByStatus.put(status, new java.util.HashSet<>());
+
+        for (JobCall call : allCallsList) {
+            if (call.getId() <= 0) continue;
+            String company = call.getCompanyName();
+            if (company == null || company.trim().isEmpty()) continue;
+            String key = company.trim().toLowerCase(Locale.getDefault());
+            String status = call.getRoundStatus();
+            java.util.Set<String> bucket = status != null ? companiesByStatus.get(status) : null;
+            if (bucket != null) bucket.add(key);
+        }
+
+        boolean anyData = false;
+        for (java.util.Set<String> set : companiesByStatus.values()) {
+            if (!set.isEmpty()) { anyData = true; break; }
+        }
+        if (!anyData) {
+            card.setVisibility(View.GONE);
+            return;
+        }
+        card.setVisibility(View.VISIBLE);
+
+        grid.removeAllViews();
+        int pad = (int) (6 * getResources().getDisplayMetrics().density);
+        // Two statuses per block: a row of labels, then a row of their counts right below
+        // (e.g. "First time / 1st Round" over "3 / 1"), instead of all labels then all
+        // counts stacked separately.
+        for (int i = 0; i < roundStatuses.length; i += 2) {
+            String statusA = roundStatuses[i];
+            String statusB = (i + 1 < roundStatuses.length) ? roundStatuses[i + 1] : null;
+
+            grid.addView(analyticsLabelView(statusA, pad));
+            if (statusB != null) grid.addView(analyticsLabelView(statusB, pad));
+
+            grid.addView(analyticsCountView(companiesByStatus.get(statusA).size(), pad));
+            if (statusB != null) grid.addView(analyticsCountView(companiesByStatus.get(statusB).size(), pad));
+        }
+    }
+
+    private TextView analyticsLabelView(String text, int pad) {
+        TextView tv = new TextView(requireContext());
+        tv.setText(text);
+        tv.setTextColor(ContextCompat.getColor(requireContext(), R.color.text_secondary));
+        tv.setTextSize(11);
+        tv.setPadding(pad, pad, pad, 0);
+        android.widget.GridLayout.LayoutParams lp = new android.widget.GridLayout.LayoutParams();
+        lp.width = 0;
+        lp.columnSpec = android.widget.GridLayout.spec(android.widget.GridLayout.UNDEFINED, 1f);
+        tv.setLayoutParams(lp);
+        return tv;
+    }
+
+    private TextView analyticsCountView(int count, int pad) {
+        TextView tv = new TextView(requireContext());
+        tv.setText(String.valueOf(count));
+        tv.setTextColor(ContextCompat.getColor(requireContext(), R.color.text_primary));
+        tv.setTextSize(16);
+        tv.setTypeface(null, android.graphics.Typeface.BOLD);
+        tv.setPadding(pad, 0, pad, pad);
+        android.widget.GridLayout.LayoutParams lp = new android.widget.GridLayout.LayoutParams();
+        lp.width = 0;
+        lp.columnSpec = android.widget.GridLayout.spec(android.widget.GridLayout.UNDEFINED, 1f);
+        tv.setLayoutParams(lp);
+        return tv;
     }
 
     /**
@@ -648,23 +572,10 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
     public void refreshDashboardList() {
         if (dbHelper == null) return;
         List<JobCall> updatedCalls = dbHelper.getAllJobCallsSortedByRecentActivity();
-        
+
         allCallsList.clear();
         allCallsList.addAll(updatedCalls);
         updateStatsAndFilter();
-
-        new Thread(() -> {
-            List<JobCall> unloggedCalls = getUnloggedCallLogs();
-            if (getActivity() != null) {
-                getActivity().runOnUiThread(() -> {
-                    allCallsList.clear();
-                    allCallsList.addAll(updatedCalls);
-                    allCallsList.addAll(unloggedCalls);
-                    java.util.Collections.sort(allCallsList, (a, b) -> Long.compare(b.getLastActivityTime(), a.getLastActivityTime()));
-                    updateStatsAndFilter();
-                });
-            }
-        }).start();
     }
 
     /**

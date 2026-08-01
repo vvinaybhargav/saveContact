@@ -147,38 +147,36 @@
                         android:paddingBottom="4dp">
 
                         <TextView android:id="@+id/chip_all" android:text="All" style="@style/TrackerChipStyle" android:tag="selected" />
-                        <TextView android:id="@+id/chip_unlogged" android:text="Unlogged" style="@style/TrackerChipStyle" />
-                        <TextView android:id="@+id/chip_first_time" android:text="First time" style="@style/TrackerChipStyle" />
-                        <TextView android:id="@+id/chip_screening" android:text="Screening" style="@style/TrackerChipStyle" />
-                        <TextView android:id="@+id/chip_interested" android:text="Interested" style="@style/TrackerChipStyle" />
-                        <TextView android:id="@+id/chip_1st_round" android:text="1st Round" style="@style/TrackerChipStyle" />
-                        <TextView android:id="@+id/chip_2nd_round" android:text="2nd Round" style="@style/TrackerChipStyle" />
-                        <TextView android:id="@+id/chip_final" android:text="Final Round" style="@style/TrackerChipStyle" />
-                        <TextView android:id="@+id/chip_hr" android:text="HR / Salary" style="@style/TrackerChipStyle" />
-                        <TextView android:id="@+id/chip_offered" android:text="Offered" style="@style/TrackerChipStyle" />
-                        <TextView android:id="@+id/chip_not_interested" android:text="Not Interested" style="@style/TrackerChipStyle" />
-                        <TextView android:id="@+id/chip_rejected" android:text="Negative" style="@style/TrackerChipStyle" />
+                        <TextView android:id="@+id/chip_scheduled" android:text="Scheduled" style="@style/TrackerChipStyle" />
                     </LinearLayout>
                 </HorizontalScrollView>
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btn_clear_all_unlogged"
-                    android:layout_width="wrap_content"
-                    android:layout_height="36dp"
-                    android:layout_marginStart="8dp"
-                    android:text="Clear All"
-                    android:textSize="12sp"
-                    android:textAllCaps="false"
-                    android:textColor="@color/white"
-                    android:backgroundTint="@color/status_error"
-                    app:cornerRadius="8dp"
-                    android:visibility="gone"
-                    android:paddingHorizontal="12dp"
-                    android:insetTop="0dp"
-                    android:insetBottom="0dp" />
             </LinearLayout>
 
         </LinearLayout>
+
+        <!-- Company-grouped status breakdown (e.g. "First time  3", "1st Round  1") -
+             populated in code from TrackerFragment.updateAnalyticsByStatus(). -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_analytics_by_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:layout_scrollFlags="scroll"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginBottom="8dp"
+            app:cardCornerRadius="14dp"
+            app:cardElevation="0dp"
+            app:strokeWidth="1dp"
+            app:strokeColor="@color/divider"
+            app:cardBackgroundColor="@color/glass_fill_strong"
+            android:visibility="gone">
+
+            <GridLayout
+                android:id="@+id/grid_analytics_by_status"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="12dp"
+                android:columnCount="2" />
+        </com.google.android.material.card.MaterialCardView>
 
         <!-- Missing Permissions Alert Banner -->
         <com.google.android.material.card.MaterialCardView
