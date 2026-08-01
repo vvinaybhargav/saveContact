@@ -276,6 +276,16 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return result;
     }
 
+    /** Applies the given round status to every logged call at this company (bulk cascade). */
+    public void applyStatusToAllCompanyLeads(String companyKey, String status) {
+        if (companyKey == null || companyKey.trim().isEmpty() || status == null) return;
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues v = new ContentValues();
+        v.put(COLUMN_ROUND_STATUS, status);
+        db.update(TABLE_NAME, v, "LOWER(TRIM(" + COLUMN_COMPANY_NAME + "))=?", new String[]{companyKey});
+        db.close();
+    }
+
     public void upsertCompanyMeta(String companyKey, String note, String status) {
         if (companyKey == null || companyKey.trim().isEmpty()) return;
         SQLiteDatabase db = this.getWritableDatabase();

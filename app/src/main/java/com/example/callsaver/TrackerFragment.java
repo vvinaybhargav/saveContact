@@ -70,7 +70,7 @@ import java.io.File;
 import java.util.Locale;
 import java.util.Set;
 
-public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemClickListener, JobCallAdapter.OnGroupToggleListener {
+public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemClickListener, JobCallAdapter.OnGroupToggleListener, JobCallAdapter.OnCompanyBulkEditListener {
 
     private static final int ALL_PERMISSIONS_REQUEST_CODE = 200;
 
@@ -413,7 +413,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                 }
             }
         }
-        if (adapter != null) adapter.setCompanyGroups(groupSizes, expandedGroupCompanies, headerFlags);
+        if (adapter != null) adapter.setCompanyGroups(groupSizes, groups, expandedGroupCompanies, headerFlags);
         return result;
     }
 
@@ -843,6 +843,11 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
     @Override
     public void onGroupToggled() {
         filterList(searchQuery, selectedStatus);
+    }
+
+    @Override
+    public void onCompanyBulkEdit() {
+        refreshDashboardList(); // round_status changed on disk for a whole group - reload from DB
     }
 
     @Override

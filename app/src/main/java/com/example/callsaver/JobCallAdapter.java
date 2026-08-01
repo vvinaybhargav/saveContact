@@ -25,6 +25,7 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
     private final Context context;
     private final OnItemClickListener listener;
     private java.util.Map<String, Integer> companyGroupSizes = new java.util.HashMap<>();
+    private java.util.Map<String, List<JobCall>> companyGroupMembers = new java.util.HashMap<>();
     private java.util.Set<String> expandedGroupCompanies = new java.util.HashSet<>();
     private List<Boolean> headerFlags = new java.util.ArrayList<>();
 
@@ -39,6 +40,11 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
         void onGroupToggled();
     }
 
+    /** Optional: implement to reload from the DB after a company-wide status bulk-edit. */
+    public interface OnCompanyBulkEditListener {
+        void onCompanyBulkEdit();
+    }
+
     public JobCallAdapter(Context context, List<JobCall> callList, OnItemClickListener listener) {
         this.context = context;
         this.callList = callList;
@@ -46,8 +52,10 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
     }
 
     /** Called by TrackerFragment after each list rebuild to update company-group badges/toggle state. */
-    public void setCompanyGroups(java.util.Map<String, Integer> groupSizes, java.util.Set<String> expandedCompanies, List<Boolean> headerFlags) {
+    public void setCompanyGroups(java.util.Map<String, Integer> groupSizes, java.util.Map<String, List<JobCall>> groupMembers,
+                                  java.util.Set<String> expandedCompanies, List<Boolean> headerFlags) {
         this.companyGroupSizes = groupSizes;
+        this.companyGroupMembers = groupMembers;
         this.expandedGroupCompanies = expandedCompanies;
         this.headerFlags = headerFlags;
     }
@@ -236,8 +244,10 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
         holder.tvTags.setVisibility(View.GONE);
         if (holder.rowFooter != null) holder.rowFooter.setVisibility(View.GONE);
 
-        // Company-level note/status - context that applies to the whole company, distinct
-        // from any one lead's per-call notes/status. Long-press to edit.
+        // Company-level note is independent context; the status badge instead reflects
+        // the leads' own round_status - if they all currently agree, that shared status
+        // shows here, so editing/cascading it never lets this badge drift out of sync
+        // with the actual leads underneath.
         DatabaseHelper.CompanyMeta meta = new DatabaseHelper(context).getCompanyMeta(groupKey);
         if (meta.note != null && !meta.note.trim().isEmpty()) {
             holder.tvNotesPreview.setVisibility(View.VISIBLE);
@@ -245,10 +255,11 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
         } else {
             holder.tvNotesPreview.setVisibility(View.GONE);
         }
-        if (meta.status != null && !meta.status.trim().isEmpty()) {
+        String commonStatus = commonStatusForGroup(groupKey);
+        if (commonStatus != null) {
             holder.tvStatusBadge.setVisibility(View.VISIBLE);
-            holder.tvStatusBadge.setText(meta.status.trim());
-            applyStatusColors(holder.tvStatusBadge, meta.status.trim());
+            holder.tvStatusBadge.setText(commonStatus);
+            applyStatusColors(holder.tvStatusBadge, commonStatus);
         } else {
             holder.tvStatusBadge.setVisibility(View.GONE);
         }
@@ -278,7 +289,24 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
         });
     }
 
-    /** Long-press on a company header: edit its persistent note and/or overall status. */
+    /** Null unless every lead in this company group currently shares the same round_status. */
+    private String commonStatusForGroup(String groupKey) {
+        List<JobCall> members = companyGroupMembers.get(groupKey);
+        if (members == null || members.isEmpty()) return null;
+        String first = members.get(0).getRoundStatus();
+        if (first == null || first.trim().isEmpty()) return null;
+        for (JobCall m : members) {
+            if (!first.equals(m.getRoundStatus())) return null;
+        }
+        return first;
+    }
+
+    /**
+     * Long-press on a company header: edit its persistent note, and/or bulk-assign a round
+     * status to every lead in the company (e.g. "BGV called, move the whole TCS group to
+     * Final Round") - this writes straight to each lead's own round_status rather than a
+     * separate company-only field, so it can never drift out of sync with the leads.
+     */
     private void showCompanyMetaEditDialog(String groupKey, String displayCompany, DatabaseHelper.CompanyMeta meta) {
         android.widget.LinearLayout container = new android.widget.LinearLayout(context);
         container.setOrientation(android.widget.LinearLayout.VERTICAL);
@@ -290,17 +318,23 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
         if (meta.note != null) etNote.setText(meta.note);
         container.addView(etNote);
 
+        android.widget.TextView tvStatusLabel = new android.widget.TextView(context);
+        tvStatusLabel.setText("Set status for all leads at this company:");
+        tvStatusLabel.setPadding(0, pad, 0, 0);
+        container.addView(tvStatusLabel);
+
         String[] statuses = context.getResources().getStringArray(R.array.round_statuses);
         String[] statusOptions = new String[statuses.length + 1];
-        statusOptions[0] = "(none)";
+        statusOptions[0] = "(leave unchanged)";
         System.arraycopy(statuses, 0, statusOptions, 1, statuses.length);
         final android.widget.Spinner spinner = new android.widget.Spinner(context);
         android.widget.ArrayAdapter<String> spinnerAdapter = new android.widget.ArrayAdapter<>(
                 context, android.R.layout.simple_spinner_item, statusOptions);
         spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinner.setAdapter(spinnerAdapter);
-        if (meta.status != null) {
-            int idx = spinnerAdapter.getPosition(meta.status);
+        String currentCommon = commonStatusForGroup(groupKey);
+        if (currentCommon != null) {
+            int idx = spinnerAdapter.getPosition(currentCommon);
             if (idx >= 0) spinner.setSelection(idx);
         }
         container.addView(spinner);
@@ -310,9 +344,16 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
                 .setView(container)
                 .setPositiveButton("Save", (dialog, which) -> {
                     String note = etNote.getText().toString().trim();
-                    String selectedStatus = spinner.getSelectedItemPosition() > 0
-                            ? (String) spinner.getSelectedItem() : null;
-                    new DatabaseHelper(context).upsertCompanyMeta(groupKey, note.isEmpty() ? null : note, selectedStatus);
+                    DatabaseHelper db = new DatabaseHelper(context);
+                    db.upsertCompanyMeta(groupKey, note.isEmpty() ? null : note, null);
+                    if (spinner.getSelectedItemPosition() > 0) {
+                        String selectedStatus = (String) spinner.getSelectedItem();
+                        db.applyStatusToAllCompanyLeads(groupKey, selectedStatus);
+                        if (listener instanceof OnCompanyBulkEditListener) {
+                            ((OnCompanyBulkEditListener) listener).onCompanyBulkEdit();
+                            return;
+                        }
+                    }
                     notifyDataSetChanged();
                 })
                 .setNegativeButton("Cancel", null)
