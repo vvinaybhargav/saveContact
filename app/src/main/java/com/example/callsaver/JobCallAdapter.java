@@ -394,7 +394,7 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
         container.addView(spinner);
         container.addView(fieldLabel("Feedback", gap));
 
-        String[] feedbackOptions = {"(leave unchanged)", "Feedback Pending", "Scheduled", "Yet to Schedule", "Interested", "Not Interested", "Negative"};
+        String[] feedbackOptions = {"(leave unchanged)", "Feedback Pending", "Scheduled", "Yet to Schedule", "Interested", "Not Interested", "Negative", "No Update"};
         final android.widget.Spinner feedbackSpinner = new android.widget.Spinner(context);
         android.widget.ArrayAdapter<String> feedbackAdapter = new android.widget.ArrayAdapter<>(
                 context, android.R.layout.simple_spinner_item, feedbackOptions);

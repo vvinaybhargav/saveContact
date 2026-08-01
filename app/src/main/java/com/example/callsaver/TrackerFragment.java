@@ -333,7 +333,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             String key = normalizeCompanyKey(call.getCompanyName());
             if (key.isEmpty()) continue;
             String feedback = call.getInterestRating();
-            boolean isNotInterested = "Not Interested".equals(feedback) || "Negative".equals(feedback);
+            boolean isNotInterested = "Not Interested".equals(feedback) || "Negative".equals(feedback) || "No Update".equals(feedback);
             if (isNotInterested) {
                 notInterestedCompanies.add(key);
             } else {
@@ -439,7 +439,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             String callRound = call.getRoundStatus();
             boolean isFirstTime = callRound == null || callRound.isEmpty() || "First time".equals(callRound);
             String callFeedback = call.getInterestRating();
-            boolean isNotInterested = "Not Interested".equals(callFeedback) || "Negative".equals(callFeedback);
+            boolean isNotInterested = "Not Interested".equals(callFeedback) || "Negative".equals(callFeedback) || "No Update".equals(callFeedback);
             boolean matchesStatus = call.getId() > 0 && (("All".equals(status) && !isNotInterested)
                     || ("First time".equals(status) && isFirstTime)
                     || ("Scheduled".equals(status) && "Scheduled".equals(callFeedback))
