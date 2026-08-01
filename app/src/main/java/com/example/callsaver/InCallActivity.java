@@ -1634,6 +1634,34 @@ public class InCallActivity extends AppCompatActivity {
      * wants to browse elsewhere.
      */
     private void pickAudioRecordingFile() {
+        // MANAGE_EXTERNAL_STORAGE is declared in the manifest but the user still has to
+        // grant it explicitly (Android 11+) - without it, raw folder access to Call
+        // Recordings silently returns nothing and this picker falls back to whatever
+        // stray file MediaStore happens to have indexed, which is a much worse result.
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R && !android.os.Environment.isExternalStorageManager()) {
+            new androidx.appcompat.app.AlertDialog.Builder(this)
+                    .setTitle("Allow file access for accurate recordings")
+                    .setMessage("To show your actual Call Recordings folder (sorted correctly, newest first), CallSaver needs \"All files access\". Without it you'll only see whatever few files the system happens to have indexed.")
+                    .setPositiveButton("Grant access", (d, w) -> {
+                        try {
+                            Intent intent = new Intent(android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
+                            intent.setData(Uri.parse("package:" + getPackageName()));
+                            startActivity(intent);
+                        } catch (Exception e) {
+                            try {
+                                startActivity(new Intent(android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION));
+                            } catch (Exception ignored) {
+                            }
+                        }
+                    })
+                    .setNegativeButton("Not now", (d, w) -> pickAudioRecordingFileInternal())
+                    .show();
+            return;
+        }
+        pickAudioRecordingFileInternal();
+    }
+
+    private void pickAudioRecordingFileInternal() {
         List<android.util.Pair<String, Uri>> folderResults = queryRecentCallRecordingFiles(40);
         // Fall back to whole-device audio if the Call Recordings folders are empty/inaccessible.
         final List<android.util.Pair<String, Uri>> recent = folderResults.isEmpty() ? queryRecentAudioFiles(40) : folderResults;
