@@ -126,7 +126,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
     private android.content.SharedPreferences.OnSharedPreferenceChangeListener prefsListener;
     private String selectedStatus = "All";
     private TextView[] chips;
-    private final String[] statuses = {"All", "Scheduled", "Feedback Pending", "First time"};
+    private final String[] statuses = {"All", "Scheduled", "Feedback Pending", "First time", "-"};
 
     // WRITE_CONTACTS/GET_ACCOUNTS are intentionally NOT in this list: on some OEM
     // Settings UIs (confirmed on at least one ColorOS device) they never appear as a
@@ -295,7 +295,7 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
 
 
     private void setupFilterChips(View view) {
-        int[] chipIds = {R.id.chip_all, R.id.chip_scheduled, R.id.chip_feedback_pending, R.id.chip_first_time};
+        int[] chipIds = {R.id.chip_all, R.id.chip_scheduled, R.id.chip_feedback_pending, R.id.chip_first_time, R.id.chip_not_interested};
 
         chips = new TextView[chipIds.length];
         for (int i = 0; i < chipIds.length; i++) {
@@ -327,12 +327,19 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
         java.util.Set<String> scheduledCompanies = new java.util.HashSet<>();
         java.util.Set<String> feedbackPendingCompanies = new java.util.HashSet<>();
         java.util.Set<String> firstTimeCompanies = new java.util.HashSet<>();
+        java.util.Set<String> notInterestedCompanies = new java.util.HashSet<>();
         for (JobCall call : allCallsList) {
             if (call.getId() <= 0) continue;
             String key = normalizeCompanyKey(call.getCompanyName());
             if (key.isEmpty()) continue;
-            allCompanies.add(key);
             String feedback = call.getInterestRating();
+            boolean isNotInterested = "Not Interested".equals(feedback) || "Negative".equals(feedback);
+            if (isNotInterested) {
+                notInterestedCompanies.add(key);
+            } else {
+                // "-" (Not Interested/Negative) leads don't count toward All.
+                allCompanies.add(key);
+            }
             if ("Scheduled".equals(feedback)) scheduledCompanies.add(key);
             if ("Feedback Pending".equals(feedback)) feedbackPendingCompanies.add(key);
             String status = call.getRoundStatus();
@@ -343,7 +350,8 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
                 "All\n" + allCompanies.size(),
                 "Scheduled\n" + scheduledCompanies.size(),
                 "Feedback Pending\n" + feedbackPendingCompanies.size(),
-                "First time\n" + firstTimeCompanies.size()
+                "First time\n" + firstTimeCompanies.size(),
+                "-\n" + notInterestedCompanies.size()
         };
 
         for (int i = 0; i < chips.length; i++) {
@@ -431,10 +439,12 @@ public class TrackerFragment extends Fragment implements JobCallAdapter.OnItemCl
             String callRound = call.getRoundStatus();
             boolean isFirstTime = callRound == null || callRound.isEmpty() || "First time".equals(callRound);
             String callFeedback = call.getInterestRating();
-            boolean matchesStatus = call.getId() > 0 && ("All".equals(status)
+            boolean isNotInterested = "Not Interested".equals(callFeedback) || "Negative".equals(callFeedback);
+            boolean matchesStatus = call.getId() > 0 && (("All".equals(status) && !isNotInterested)
                     || ("First time".equals(status) && isFirstTime)
                     || ("Scheduled".equals(status) && "Scheduled".equals(callFeedback))
-                    || ("Feedback Pending".equals(status) && "Feedback Pending".equals(callFeedback)));
+                    || ("Feedback Pending".equals(status) && "Feedback Pending".equals(callFeedback))
+                    || ("-".equals(status) && isNotInterested));
 
             if (matchesQuery && matchesStatus) {
                 filteredList.add(call);

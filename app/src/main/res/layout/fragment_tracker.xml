@@ -150,6 +150,7 @@
                         <TextView android:id="@+id/chip_scheduled" android:text="Scheduled" style="@style/TrackerChipStyle" />
                         <TextView android:id="@+id/chip_feedback_pending" android:text="Feedback Pending" style="@style/TrackerChipStyle" />
                         <TextView android:id="@+id/chip_first_time" android:text="First time" style="@style/TrackerChipStyle" />
+                        <TextView android:id="@+id/chip_not_interested" android:text="-" style="@style/TrackerChipStyle" />
                     </LinearLayout>
                 </HorizontalScrollView>
             </LinearLayout>
