@@ -262,10 +262,10 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
         } else {
             holder.tvStatusBadge.setVisibility(View.GONE);
         }
-        String commonNextSteps = commonNextStepsForGroup(groupKey);
-        if (commonNextSteps != null) {
+        String commonNextCall = commonNextCallForGroup(groupKey);
+        if (commonNextCall != null) {
             holder.tvTags.setVisibility(View.VISIBLE);
-            holder.tvTags.setText("Next: " + commonNextSteps);
+            holder.tvTags.setText("Next call: " + commonNextCall);
         } else {
             holder.tvTags.setVisibility(View.GONE);
         }
@@ -307,14 +307,14 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
         return first;
     }
 
-    /** Null unless every lead in this company group currently shares the same next-steps text. */
-    private String commonNextStepsForGroup(String groupKey) {
+    /** Null unless every lead in this company group currently shares the same next-call date/time. */
+    private String commonNextCallForGroup(String groupKey) {
         List<JobCall> members = companyGroupMembers.get(groupKey);
         if (members == null || members.isEmpty()) return null;
-        String first = members.get(0).getNextSteps();
+        String first = members.get(0).getTentativeSchedule();
         if (first == null || first.trim().isEmpty()) return null;
         for (JobCall m : members) {
-            if (!first.equals(m.getNextSteps())) return null;
+            if (!first.equals(m.getTentativeSchedule())) return null;
         }
         return first;
     }
@@ -328,18 +328,22 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
     private void showCompanyMetaEditDialog(String groupKey, String displayCompany, DatabaseHelper.CompanyMeta meta) {
         android.widget.LinearLayout container = new android.widget.LinearLayout(context);
         container.setOrientation(android.widget.LinearLayout.VERTICAL);
-        int pad = (int) (16 * context.getResources().getDisplayMetrics().density);
-        container.setPadding(pad, pad, pad, pad);
+        int pad = (int) (20 * context.getResources().getDisplayMetrics().density);
+        int gap = (int) (14 * context.getResources().getDisplayMetrics().density);
+        container.setPadding(pad, (int) (8 * context.getResources().getDisplayMetrics().density), pad, 0);
+
+        android.widget.TextView tvSubtitle = new android.widget.TextView(context);
+        tvSubtitle.setText("Applies to every lead at this company");
+        tvSubtitle.setTextColor(0xFF9C9CA3);
+        tvSubtitle.setTextSize(12);
+        tvSubtitle.setPadding(0, 0, 0, gap);
+        container.addView(tvSubtitle);
 
         final android.widget.EditText etNote = new android.widget.EditText(context);
-        etNote.setHint("Company note (e.g. cold, low priority)");
+        etNote.setHint("Note");
         if (meta.note != null) etNote.setText(meta.note);
         container.addView(etNote);
-
-        android.widget.TextView tvStatusLabel = new android.widget.TextView(context);
-        tvStatusLabel.setText("Set status for all leads at this company:");
-        tvStatusLabel.setPadding(0, pad, 0, 0);
-        container.addView(tvStatusLabel);
+        container.addView(fieldLabel("Status", gap));
 
         String[] statuses = context.getResources().getStringArray(R.array.round_statuses);
         String[] statusOptions = new String[statuses.length + 1];
@@ -356,11 +360,7 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
             if (idx >= 0) spinner.setSelection(idx);
         }
         container.addView(spinner);
-
-        android.widget.TextView tvFeedbackLabel = new android.widget.TextView(context);
-        tvFeedbackLabel.setText("Set feedback for all leads at this company:");
-        tvFeedbackLabel.setPadding(0, pad, 0, 0);
-        container.addView(tvFeedbackLabel);
+        container.addView(fieldLabel("Feedback", gap));
 
         String[] feedbackOptions = {"(leave unchanged)", "Feedback Pending", "Interested", "Not Interested", "Negative"};
         final android.widget.Spinner feedbackSpinner = new android.widget.Spinner(context);
@@ -374,22 +374,24 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
             if (idx >= 0) feedbackSpinner.setSelection(idx);
         }
         container.addView(feedbackSpinner);
-
-        android.widget.TextView tvNextLabel = new android.widget.TextView(context);
-        tvNextLabel.setText("Next call / follow-up for all leads (leave blank to keep as-is):");
-        tvNextLabel.setPadding(0, pad, 0, 0);
-        container.addView(tvNextLabel);
+        container.addView(fieldLabel("Next call", gap));
 
         // Same tap-to-open date/time picker as the individual lead's "Next Call" field,
-        // rather than free text.
-        final android.widget.EditText etNextSteps = new android.widget.EditText(context);
-        etNextSteps.setHint("Tap to pick date & time");
-        etNextSteps.setFocusable(false);
-        etNextSteps.setClickable(true);
-        String currentNext = commonNextStepsForGroup(groupKey);
-        if (currentNext != null) etNextSteps.setText(currentNext);
-        etNextSteps.setOnClickListener(v -> showDateTimePicker(etNextSteps));
-        container.addView(etNextSteps);
+        // rather than free text - and the same underlying column, so a bulk-set date
+        // shows up in Upcoming Interviews and on every lead just like setting it
+        // individually would.
+        final android.widget.EditText etNextCall = new android.widget.EditText(context);
+        etNextCall.setHint("Tap to pick date & time");
+        etNextCall.setFocusable(false);
+        etNextCall.setClickable(true);
+        String currentNext = commonNextCallForGroup(groupKey);
+        if (currentNext != null) etNextCall.setText(currentNext);
+        etNextCall.setOnClickListener(v -> showDateTimePicker(etNextCall));
+        container.addView(etNextCall);
+
+        android.widget.Space bottomSpace = new android.widget.Space(context);
+        bottomSpace.setLayoutParams(new android.widget.LinearLayout.LayoutParams(1, gap));
+        container.addView(bottomSpace);
 
         // Wrapped in a ScrollView: with note + status + feedback + next-call fields
         // stacked, this can exceed screen height on smaller phones and push the Save
@@ -416,9 +418,9 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
                         db.applyFeedbackToAllCompanyLeads(groupKey, selectedFeedback);
                         bulkChanged = true;
                     }
-                    String nextSteps = etNextSteps.getText().toString().trim();
-                    if (!nextSteps.isEmpty()) {
-                        db.applyNextStepsToAllCompanyLeads(groupKey, nextSteps);
+                    String nextCall = etNextCall.getText().toString().trim();
+                    if (!nextCall.isEmpty()) {
+                        db.applyNextCallToAllCompanyLeads(groupKey, nextCall);
                         bulkChanged = true;
                     }
                     if (bulkChanged && listener instanceof OnCompanyBulkEditListener) {
@@ -429,6 +431,16 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
                 })
                 .setNegativeButton("Cancel", null)
                 .show();
+    }
+
+    /** Small compact section label, used to keep the company edit dialog free of repeated long sentences. */
+    private android.widget.TextView fieldLabel(String text, int topMargin) {
+        android.widget.TextView tv = new android.widget.TextView(context);
+        tv.setText(text);
+        tv.setTextColor(0xFF9C9CA3);
+        tv.setTextSize(11);
+        tv.setPadding(0, topMargin, 0, (int) (4 * context.getResources().getDisplayMetrics().density));
+        return tv;
     }
 
     /** Same date/time picker flow as InCallActivity's "Next Call" field. */

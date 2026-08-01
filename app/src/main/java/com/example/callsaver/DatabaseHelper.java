@@ -296,12 +296,17 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         db.close();
     }
 
-    /** Applies the given next-steps/follow-up text to every logged call at this company (bulk cascade). */
-    public void applyNextStepsToAllCompanyLeads(String companyKey, String nextSteps) {
+    /**
+     * Applies the given next-call date/time to every logged call at this company (bulk
+     * cascade) - writes to the SAME column (tentative_schedule) as each individual lead's
+     * own "Next Call" field, so a bulk-set date shows up in Upcoming Interviews and on
+     * every lead exactly like setting it one-by-one would.
+     */
+    public void applyNextCallToAllCompanyLeads(String companyKey, String nextCallDateTime) {
         if (companyKey == null || companyKey.trim().isEmpty()) return;
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues v = new ContentValues();
-        v.put(COLUMN_NEXT_STEPS, nextSteps);
+        v.put(COLUMN_TENTATIVE_SCHEDULE, nextCallDateTime);
         db.update(TABLE_NAME, v, "LOWER(TRIM(" + COLUMN_COMPANY_NAME + "))=?", new String[]{companyKey});
         db.close();
     }
