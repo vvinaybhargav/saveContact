@@ -82,9 +82,18 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
             return;
         }
 
-        // Undo bindHeaderRow's hiding/recoloring, in case this ViewHolder is a recycled header row.
+        // Undo bindHeaderRow's hiding/recoloring/pill-styling, in case this ViewHolder is
+        // a recycled header row.
         holder.tvPhoneNumber.setVisibility(View.VISIBLE);
         holder.tvPhoneNumber.setTextColor(context.getResources().getColor(R.color.text_secondary));
+        holder.tvPhoneNumber.setBackground(null);
+        holder.tvPhoneNumber.setPadding(0, 0, 0, 0);
+        android.widget.LinearLayout.LayoutParams phoneLp =
+                (android.widget.LinearLayout.LayoutParams) holder.tvPhoneNumber.getLayoutParams();
+        if (phoneLp.width != android.widget.LinearLayout.LayoutParams.MATCH_PARENT) {
+            phoneLp.width = android.widget.LinearLayout.LayoutParams.MATCH_PARENT;
+            holder.tvPhoneNumber.setLayoutParams(phoneLp);
+        }
         holder.tvStatusBadge.setVisibility(View.VISIBLE);
         if (holder.rowFooter != null) holder.rowFooter.setVisibility(View.VISIBLE);
 
@@ -271,7 +280,17 @@ public class JobCallAdapter extends RecyclerView.Adapter<JobCallAdapter.ViewHold
             }
             holder.tvPhoneNumber.setVisibility(View.VISIBLE);
             holder.tvPhoneNumber.setText(combined);
-            holder.tvPhoneNumber.setTextColor(0xFFC7C7CC);
+            // Same colored pill styling as the badge on individual lead cards, just on
+            // its own line here - wrap_content + padding so it reads as a compact pill
+            // instead of a full-width color bar.
+            applyStatusColors(holder.tvPhoneNumber, commonStatus != null ? commonStatus : commonFeedback);
+            int hPad = (int) (10 * context.getResources().getDisplayMetrics().density);
+            int vPad = (int) (3 * context.getResources().getDisplayMetrics().density);
+            holder.tvPhoneNumber.setPadding(hPad, vPad, hPad, vPad);
+            android.widget.LinearLayout.LayoutParams lp =
+                    (android.widget.LinearLayout.LayoutParams) holder.tvPhoneNumber.getLayoutParams();
+            lp.width = android.widget.LinearLayout.LayoutParams.WRAP_CONTENT;
+            holder.tvPhoneNumber.setLayoutParams(lp);
         } else {
             holder.tvPhoneNumber.setVisibility(View.GONE);
         }
