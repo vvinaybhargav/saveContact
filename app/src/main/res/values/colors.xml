@@ -6,6 +6,7 @@
     <color name="card_bg_dark">#1C1C1E</color>
     <color name="accent_indigo">#6E6E76</color>
     <color name="accent_indigo_dark">#54545B</color>
+    <color name="accent_cyan">#22D3EE</color>
     
     <!-- System statuses -->
     <color name="status_green">#10B981</color>
