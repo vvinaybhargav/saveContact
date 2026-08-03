@@ -60,6 +60,19 @@
                     android:ellipsize="end" />
 
                 <TextView
+                    android:id="@+id/tv_overlay_caller_recruiter"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text=""
+                    android:textColor="@color/accent_cyan"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    android:visibility="gone" />
+
+                <TextView
                     android:id="@+id/tv_overlay_caller_status"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -94,7 +107,7 @@
             android:textColor="@color/text_secondary"
             android:textSize="12sp"
             android:lineSpacingExtra="2dp"
-            android:maxLines="3"
+            android:maxLines="4"
             android:ellipsize="end"
             android:visibility="gone" />
 

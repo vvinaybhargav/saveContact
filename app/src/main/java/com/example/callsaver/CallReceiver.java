@@ -155,6 +155,7 @@ public class CallReceiver extends BroadcastReceiver {
             serviceIntent.putExtra("phone_number", phoneNumber);
             serviceIntent.putExtra("call_state", callStateLabel);
             if (call != null) {
+                serviceIntent.putExtra("candidate_name", call.getCandidateName());
                 serviceIntent.putExtra("company_name", call.getCompanyName());
                 serviceIntent.putExtra("round_status", call.getRoundStatus());
                 serviceIntent.putExtra("job_call_id", (long) call.getId());
@@ -411,10 +412,8 @@ public class CallReceiver extends BroadcastReceiver {
             db.insertCallHistory(call.getId(), typeLabel, entry.duration, entry.date + entry.duration * 1000L);
         }
 
-        // Auto-detect newly created call recording file & transcribe via Deepgram + OpenAI summary
-        if (entry.duration > 0) {
-            findRecordingWithRetry(context, entry, 1);
-        }
+        // Auto-detect recording scanning skipped - calls are uploaded manually
+        DebugLogger.log(context, "[Receiver] Auto-recording scan skipped (manual upload mode). Call history logged.");
     }
 
     /**
