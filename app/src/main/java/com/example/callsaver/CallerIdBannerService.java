@@ -223,11 +223,12 @@ public class CallerIdBannerService extends Service {
                 Intent logIntent = new Intent(this, InCallActivity.class);
                 logIntent.putExtra("mode", "review");
                 logIntent.putExtra("phone_number", finalPhoneNumber);
+                logIntent.putExtra("candidate_name", displayCandidateName);
                 logIntent.putExtra("company_name", finalCompany);
                 logIntent.putExtra("round_status", finalRoundStatus);
                 logIntent.putExtra("recruiter_name", finalRecruiter);
                 logIntent.putExtra("job_call_id", finalJobCallId);
-                logIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                logIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
                 startActivity(logIntent);
                 removeOverlay();
                 showForegroundNotification(false);

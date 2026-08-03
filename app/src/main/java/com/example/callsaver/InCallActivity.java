@@ -444,10 +444,11 @@ public class InCallActivity extends AppCompatActivity {
 
         String candidateName = "";
         String appliedRole = "";
-        if (jobCallId != -1) {
+        if (phoneNumber != null && !phoneNumber.trim().isEmpty()) {
             DatabaseHelper db = new DatabaseHelper(this);
             JobCall matchedCall = db.getJobCallByNumber(this, phoneNumber);
             if (matchedCall != null) {
+                if (jobCallId <= 0) jobCallId = (long) matchedCall.getId();
                 candidateName = matchedCall.getCandidateName();
                 roundStatus = matchedCall.getRoundStatus();
                 tags = matchedCall.getTags();
