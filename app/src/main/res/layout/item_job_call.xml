@@ -47,38 +47,30 @@
             android:layout_weight="1"
             android:orientation="vertical">
 
-            <!-- Row: Company name + status badge -->
-            <LinearLayout
+            <!-- Row: Company name (own line, full width so it's never cut off by the badge) -->
+            <TextView
+                android:id="@+id/tv_company_name"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical">
+                android:text="Company Name"
+                android:textColor="@color/text_primary"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:maxLines="1"
+                android:ellipsize="end" />
 
-                <TextView
-                    android:id="@+id/tv_company_name"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginEnd="8dp"
-                    android:text="Company Name"
-                    android:textColor="@color/text_primary"
-                    android:textSize="16sp"
-                    android:textStyle="bold"
-                    android:maxLines="1"
-                    android:ellipsize="end" />
-
-                <!-- Round Status Badge -->
-                <TextView
-                    android:id="@+id/tv_status_badge"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:paddingHorizontal="10dp"
-                    android:paddingVertical="4dp"
-                    android:text="First time"
-                    android:textSize="11sp"
-                    android:textStyle="bold"
-                    android:background="@android:color/transparent" />
-            </LinearLayout>
+            <!-- Round Status Badge - own line below the name, not squeezed alongside it -->
+            <TextView
+                android:id="@+id/tv_status_badge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:paddingHorizontal="10dp"
+                android:paddingVertical="4dp"
+                android:text="First time"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:background="@android:color/transparent" />
 
             <!-- Phone number -->
             <TextView
